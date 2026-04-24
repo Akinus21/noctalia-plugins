@@ -1,0 +1,89 @@
+name: Update Registry
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '*/manifest.json'
+
+jobs:
+  update-registry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed plugins
+        id: changed
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep 'manifest.json$' | sed 's|/manifest.json||' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "changed=$CHANGED" >> $GITHUB_OUTPUT
+
+      - name: Update registry
+        if: steps.changed.outputs.changed != '[]'
+        run: |
+          echo "Changed plugins: ${{ steps.changed.outputs.changed }}"
+
+          node << 'EOF'
+            const fs = require('fs');
+            const changed = JSON.parse('${{ steps.changed.outputs.changed }}');
+
+            if (changed.length === 0) {
+              console.log('No plugins changed');
+              process.exit(0);
+            }
+
+            const registry = JSON.parse(fs.readFileSync('registry.json', 'utf8'));
+
+            changed.forEach(pluginId => {
+              const manifestPath = pluginId + '/manifest.json';
+              if (!fs.existsSync(manifestPath)) {
+                console.log('No manifest at', manifestPath);
+                return;
+              }
+
+              const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+              const pluginIndex = registry.plugins.findIndex(p => p.id === pluginId);
+
+              if (pluginIndex >= 0) {
+                registry.plugins[pluginIndex].version = manifest.version;
+                registry.plugins[pluginIndex].name = manifest.name;
+                registry.plugins[pluginIndex].description = manifest.description;
+                registry.plugins[pluginIndex].tags = manifest.tags || [];
+                registry.plugins[pluginIndex].author = manifest.author;
+                registry.plugins[pluginIndex].license = manifest.license;
+                registry.plugins[pluginIndex].repository = manifest.repository;
+                registry.plugins[pluginIndex].minNoctaliaVersion = manifest.minNoctaliaVersion;
+              } else {
+                registry.plugins.push({
+                  id: manifest.id,
+                  name: manifest.name,
+                  version: manifest.version,
+                  description: manifest.description,
+                  tags: manifest.tags || [],
+                  author: manifest.author,
+                  license: manifest.license,
+                  repository: manifest.repository,
+                  minNoctaliaVersion: manifest.minNoctaliaVersion
+                });
+              }
+              console.log('Updated:', pluginId, '->', manifest.version);
+            });
+
+            fs.writeFileSync('registry.json', JSON.stringify(registry, null, 2) + '\n');
+            console.log('Registry updated successfully');
+          EOF
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add registry.json
+          if git diff --quiet --cached; then
+            echo "No changes to registry.json, skipping"
+          else
+            git commit -m "chore: update registry for changed plugins"
+            git push
+          fi
