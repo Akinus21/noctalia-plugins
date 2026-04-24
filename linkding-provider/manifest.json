@@ -16,7 +16,7 @@
     "plugins": []
   },
   "metadata": {
-    "commandPrefix": "lnk",
+    "commandPrefix": "linkding",
     "defaultSettings": {
       "linkdingUrl": "",
       "apiToken": "",
