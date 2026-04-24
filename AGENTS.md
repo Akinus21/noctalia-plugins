@@ -384,3 +384,9 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `chore`
 ## Git Configuration
 
 SSH key for pushing: `/home/opencode/.ssh/github`
+
+## Self-Instructions
+
+When the user says "instruct yourself" or "remember that", immediately save the instruction to this file under the appropriate section (e.g., development patterns, git workflow, testing, etc.).
+
+**Always push to GitHub after completing and verifying changes.**
