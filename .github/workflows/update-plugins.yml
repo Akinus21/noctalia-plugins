@@ -1,48 +1,40 @@
-name: Update Registry
+name: Update Plugins
 
 on:
   push:
     branches:
       - main
     paths:
-      - '*/manifest.json'
+      - '*/**'
 
 jobs:
-  update-registry:
+  update-plugins:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Get changed plugins
+      - name: Detect changed plugins
         id: changed
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep 'manifest.json$' | sed 's|/manifest.json||' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep -v '^\.github/' | sed 's|/.*||' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')
           echo "changed=$CHANGED" >> $GITHUB_OUTPUT
-          echo "Changed plugins list: $CHANGED"
+          echo "Changed plugins: $CHANGED"
 
-      - name: Update registry
+      - name: Bump versions and update registry
         env:
           CHANGED: ${{ steps.changed.outputs.changed }}
         run: |
-          echo "Changed plugins: $CHANGED"
-
           if [ "$CHANGED" = "[]" ] || [ -z "$CHANGED" ]; then
             echo "No plugins changed, skipping"
             exit 0
           fi
 
-          node << EOF
+          node << 'EOF'
             const fs = require('fs');
+            const { execSync } = require('child_process');
             const changed = JSON.parse(process.env.CHANGED);
-
-            if (changed.length === 0) {
-              console.log('No plugins changed');
-              process.exit(0);
-            }
-
-            const registry = JSON.parse(fs.readFileSync('registry.json', 'utf8'));
 
             changed.forEach(pluginId => {
               const manifestPath = pluginId + '/manifest.json';
@@ -50,6 +42,31 @@ jobs:
                 console.log('No manifest at', manifestPath);
                 return;
               }
+
+              const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+
+              // Bump version
+              const versionParts = manifest.version.split('.');
+              const major = parseInt(versionParts[0]);
+              const minor = parseInt(versionParts[1]);
+              const patch = parseInt(versionParts[2]) + 1;
+              const newVersion = `${major}.${minor}.${patch}`;
+              manifest.version = newVersion;
+
+              // Write updated manifest
+              fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+              console.log('Bumped', pluginId, 'from', manifest.version + ' to ' + newVersion);
+
+              // Stage manifest for commit
+              execSync('git add ' + manifestPath, { stdio: 'inherit' });
+            });
+
+            // Update registry.json
+            const registry = JSON.parse(fs.readFileSync('registry.json', 'utf8'));
+
+            changed.forEach(pluginId => {
+              const manifestPath = pluginId + '/manifest.json';
+              if (!fs.existsSync(manifestPath)) return;
 
               const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
               const pluginIndex = registry.plugins.findIndex(p => p.id === pluginId);
@@ -76,7 +93,7 @@ jobs:
                   minNoctaliaVersion: manifest.minNoctaliaVersion
                 });
               }
-              console.log('Updated:', pluginId, '->', manifest.version);
+              console.log('Updated registry for:', pluginId);
             });
 
             fs.writeFileSync('registry.json', JSON.stringify(registry, null, 2) + '\n');
@@ -89,8 +106,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add registry.json
           if git diff --quiet --cached; then
-            echo "No changes to registry.json, skipping"
+            echo "No changes to commit"
           else
-            git commit -m "chore: update registry for changed plugins"
+            git commit -m "chore: bump versions and update registry"
             git push
           fi
