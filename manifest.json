@@ -1,0 +1,28 @@
+{
+  "id": "linkding-provider",
+  "name": "Linkding Bookmarks",
+  "version": "1.0.2",
+  "minNoctaliaVersion": "3.9.0",
+  "author": "Akinus21",
+  "license": "MIT",
+  "repository": "https://github.com/Akinus21/homebrew-tap",
+  "description": "Search, browse, and manage your Linkding bookmarks from the launcher.",
+  "entryPoints": {
+    "launcherProvider": "LauncherProvider.qml",
+    "panel": "Panel.qml",
+    "settings": "Settings.qml"
+  },
+  "dependencies": {
+    "plugins": []
+  },
+  "metadata": {
+    "commandPrefix": "lnk",
+    "defaultSettings": {
+      "linkdingUrl": "",
+      "apiToken": "",
+      "cacheMaxAgeHours": 1,
+      "cacheMaxAgeMinutes": 0,
+      "cacheMaxAgeSeconds": 0
+    }
+  }
+}
