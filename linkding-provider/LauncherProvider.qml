@@ -66,27 +66,27 @@ Item {
     // ── Command handling ──────────────────────────────────────────────────
 
     function handleCommand(searchText) {
-        return searchText.startsWith(">lnk") || searchText.startsWith(">bmk")
+        return searchText.startsWith(">linkding") || searchText.startsWith(">bookmarks")
     }
 
     function commands() {
         return [
             {
-                "name": ">lnk",
+                "name": ">linkding",
                 "description": "Search Linkding bookmarks (use # for tag search)",
                 "icon": "bookmarks",
                 "isTablerIcon": true,
-                "onActivate": function() { launcher.setSearchText(">lnk ") }
+                "onActivate": function() { launcher.setSearchText(">linkding ") }
             },
             {
-                "name": ">bmk",
+                "name": ">bookmarks",
                 "description": "Search Linkding bookmarks (use # for tag search)",
                 "icon": "bookmarks",
                 "isTablerIcon": true,
-                "onActivate": function() { launcher.setSearchText(">bmk ") }
+                "onActivate": function() { launcher.setSearchText(">bookmarks ") }
             },
             {
-                "name": ">lnk new",
+                "name": ">linkding new",
                 "description": "Add a new bookmark",
                 "icon": "bookmark-plus",
                 "isTablerIcon": true,
@@ -100,10 +100,10 @@ Item {
     function getResults(searchText) {
         // Strip either prefix
         var query = ""
-        if (searchText.startsWith(">lnk")) {
-            query = searchText.slice(4).trim()
-        } else if (searchText.startsWith(">bmk")) {
-            query = searchText.slice(4).trim()
+        if (searchText.startsWith(">linkding")) {
+            query = searchText.slice(9).trim()
+        } else if (searchText.startsWith(">bookmarks")) {
+            query = searchText.slice(10).trim()
         } else {
             return []
         }

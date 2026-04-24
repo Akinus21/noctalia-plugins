@@ -6,41 +6,29 @@ import qs.Services.UI
 
 ColumnLayout {
     id: root
-
-    // ── Injected by Noctalia ─────────────────────────────────────────────
-    property var pluginApi: null
-
     spacing: Style.marginM
 
-    // ── Local state ───────────────────────────────────────────────────────
-    // Always read from pluginSettings first, fall back to defaultSettings
+    property var pluginApi: null
 
-    property string editUrl:
-        pluginApi?.pluginSettings?.linkdingUrl ||
-        pluginApi?.manifest?.metadata?.defaultSettings?.linkdingUrl || ""
+    Component.onCompleted: {
+        Logger.i("LinkdingSettings", "Settings UI loaded, pluginApi:", pluginApi)
+    }
 
-    property string editToken:
-        pluginApi?.pluginSettings?.apiToken ||
-        pluginApi?.manifest?.metadata?.defaultSettings?.apiToken || ""
+    function saveSettings() {
+        if (!pluginApi) {
+            Logger.e("LinkdingSettings", "Cannot save: pluginApi is null")
+            return
+        }
 
-    property int editHours:
-        pluginApi?.pluginSettings?.cacheMaxAgeHours ??
-        pluginApi?.manifest?.metadata?.defaultSettings?.cacheMaxAgeHours ?? 1
+        pluginApi.pluginSettings.linkdingUrl = editUrlInput.text.trim()
+        pluginApi.pluginSettings.apiToken = editTokenInput.text.trim()
+        pluginApi.pluginSettings.cacheMaxAgeHours = editHours.value
+        pluginApi.pluginSettings.cacheMaxAgeMinutes = editMinutes.value
+        pluginApi.pluginSettings.cacheMaxAgeSeconds = editSeconds.value
 
-    property int editMinutes:
-        pluginApi?.pluginSettings?.cacheMaxAgeMinutes ??
-        pluginApi?.manifest?.metadata?.defaultSettings?.cacheMaxAgeMinutes ?? 0
-
-    property int editSeconds:
-        pluginApi?.pluginSettings?.cacheMaxAgeSeconds ??
-        pluginApi?.manifest?.metadata?.defaultSettings?.cacheMaxAgeSeconds ?? 0
-
-    // Connection test state
-    property bool testing:    false
-    property string testStatus: ""   // "", "ok", "error"
-    property string testMessage: ""
-
-    // ── Section: Connection ───────────────────────────────────────────────
+        pluginApi.saveSettings()
+        Logger.i("LinkdingSettings", "Settings saved")
+    }
 
     NLabel {
         label: "Connection"
@@ -48,46 +36,39 @@ ColumnLayout {
     }
 
     NTextInput {
+        id: editUrlInput
         Layout.fillWidth: true
         label: "Linkding URL"
         description: "Base URL of your Linkding instance (e.g. https://links.yourdomain.com)"
         placeholderText: "https://links.yourdomain.com"
-        text: root.editUrl
-        onTextChanged: {
-            root.editUrl    = text
-            root.testStatus = ""
-        }
+        text: pluginApi?.pluginSettings?.linkdingUrl || ""
+        onTextChanged: testStatus = ""
     }
 
     NTextInput {
+        id: editTokenInput
         Layout.fillWidth: true
         label: "API Token"
         description: "Found in Linkding → Settings → Integrations → REST API"
         placeholderText: "your-api-token-here"
-        text: root.editToken
         echoMode: TextInput.Password
-        onTextChanged: {
-            root.editToken  = text
-            root.testStatus = ""
-        }
+        text: pluginApi?.pluginSettings?.apiToken || ""
+        onTextChanged: testStatus = ""
     }
 
-    // Test connection button + status
     RowLayout {
         Layout.fillWidth: true
         spacing: Style.marginM
 
         NButton {
-            text: root.testing ? "Testing…" : "Test Connection"
-            enabled: !root.testing && root.editUrl.trim().length > 0 && root.editToken.trim().length > 0
-            onClicked: root.testConnection()
+            text: testing ? "Testing…" : "Test Connection"
+            enabled: !testing && editUrlInput.text.trim().length > 0 && editTokenInput.text.trim().length > 0
+            onClicked: testConnection()
         }
 
-        // Status badge
         Rectangle {
-            visible: root.testStatus !== ""
-            color: root.testStatus === "ok" ? Qt.rgba(0.2, 0.8, 0.4, 0.15)
-                                            : Qt.rgba(0.9, 0.2, 0.2, 0.15)
+            visible: testStatus !== ""
+            color: testStatus === "ok" ? Qt.rgba(0.2, 0.8, 0.4, 0.15) : Qt.rgba(0.9, 0.2, 0.2, 0.15)
             radius: Style.radiusS
             implicitWidth: statusRow.implicitWidth + Style.marginM * 2
             implicitHeight: statusRow.implicitHeight + Style.marginS * 2
@@ -98,14 +79,14 @@ ColumnLayout {
                 spacing: Style.marginXS
 
                 NIcon {
-                    icon: root.testStatus === "ok" ? "circle-check" : "circle-x"
-                    color: root.testStatus === "ok" ? "#33cc66" : "#ff4444"
+                    icon: testStatus === "ok" ? "circle-check" : "circle-x"
+                    color: testStatus === "ok" ? "#33cc66" : "#ff4444"
                     pointSize: Style.fontSizeS
                 }
 
                 NText {
-                    text: root.testMessage
-                    color: root.testStatus === "ok" ? "#33cc66" : "#ff4444"
+                    text: testMessage
+                    color: testStatus === "ok" ? "#33cc66" : "#ff4444"
                     pointSize: Style.fontSizeS
                 }
             }
@@ -114,27 +95,64 @@ ColumnLayout {
         Item { Layout.fillWidth: true }
     }
 
-    // ── Divider ───────────────────────────────────────────────────────────
+    property bool testing: false
+    property string testStatus: ""
+    property string testMessage: ""
+
+    function testConnection() {
+        testing = true
+        testStatus = ""
+        testMessage = ""
+
+        var xhr = new XMLHttpRequest()
+        var url = editUrlInput.text.replace(/\/$/, "") + "/api/bookmarks/?limit=1"
+        xhr.open("GET", url, true)
+        xhr.setRequestHeader("Authorization", "Token " + editTokenInput.text.trim())
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState !== XMLHttpRequest.DONE) return
+            testing = false
+
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText)
+                    var count = data.count !== undefined ? data.count : "?"
+                    testStatus = "ok"
+                    testMessage = "Connected — " + count + " bookmark" + (count === 1 ? "" : "s")
+                } catch (e) {
+                    testStatus = "ok"
+                    testMessage = "Connected"
+                }
+            } else if (xhr.status === 401 || xhr.status === 403) {
+                testStatus = "error"
+                testMessage = "Invalid API token"
+            } else if (xhr.status === 0) {
+                testStatus = "error"
+                testMessage = "Cannot reach server"
+            } else {
+                testStatus = "error"
+                testMessage = "Error " + xhr.status
+            }
+        }
+
+        xhr.send()
+    }
 
     NDivider {
         Layout.fillWidth: true
-        Layout.topMargin:    Style.marginS
+        Layout.topMargin: Style.marginS
         Layout.bottomMargin: Style.marginS
     }
-
-    // ── Section: Cache ────────────────────────────────────────────────────
 
     NLabel {
         label: "Cache"
         description: "How long to keep bookmarks cached before fetching fresh data"
     }
 
-    // Hours / Minutes / Seconds row
     RowLayout {
         Layout.fillWidth: true
         spacing: Style.marginM
 
-        // Hours
         ColumnLayout {
             spacing: Style.marginXS
 
@@ -145,14 +163,14 @@ ColumnLayout {
             }
 
             NSpinBox {
+                id: editHours
                 from: 0
-                to: 168    // up to 1 week
-                value: root.editHours
-                onValueChanged: root.editHours = value
+                to: 168
+                value: pluginApi?.pluginSettings?.cacheMaxAgeHours ?? 1
+                onValueChanged: {}
             }
         }
 
-        // Minutes
         ColumnLayout {
             spacing: Style.marginXS
 
@@ -163,14 +181,14 @@ ColumnLayout {
             }
 
             NSpinBox {
+                id: editMinutes
                 from: 0
                 to: 59
-                value: root.editMinutes
-                onValueChanged: root.editMinutes = value
+                value: pluginApi?.pluginSettings?.cacheMaxAgeMinutes ?? 0
+                onValueChanged: {}
             }
         }
 
-        // Seconds
         ColumnLayout {
             spacing: Style.marginXS
 
@@ -181,21 +199,20 @@ ColumnLayout {
             }
 
             NSpinBox {
+                id: editSeconds
                 from: 0
                 to: 59
-                value: root.editSeconds
-                onValueChanged: root.editSeconds = value
+                value: pluginApi?.pluginSettings?.cacheMaxAgeSeconds ?? 0
+                onValueChanged: {}
             }
         }
 
         Item { Layout.fillWidth: true }
     }
 
-    // Computed total as a friendly hint
     NText {
         visible: totalSeconds > 0
-        readonly property int totalSeconds:
-            root.editHours * 3600 + root.editMinutes * 60 + root.editSeconds
+        readonly property int totalSeconds: editHours.value * 3600 + editMinutes.value * 60 + editSeconds.value
         text: "Cache refreshes every " + formatDuration(totalSeconds)
         pointSize: Style.fontSizeS
         color: Color.mOnSurfaceVariant
@@ -205,30 +222,25 @@ ColumnLayout {
             var h = Math.floor(s / 3600)
             var m = Math.floor((s % 3600) / 60)
             var sec = s % 60
-            if (h > 0)   parts.push(h   + (h   === 1 ? " hour"   : " hours"))
-            if (m > 0)   parts.push(m   + (m   === 1 ? " minute" : " minutes"))
+            if (h > 0) parts.push(h + (h === 1 ? " hour" : " hours"))
+            if (m > 0) parts.push(m + (m === 1 ? " minute" : " minutes"))
             if (sec > 0) parts.push(sec + (sec === 1 ? " second" : " seconds"))
             return parts.length > 0 ? parts.join(", ") : "0 seconds"
         }
     }
 
-    // Zero-duration warning
     NText {
-        visible: root.editHours === 0 && root.editMinutes === 0 && root.editSeconds === 0
+        visible: editHours.value === 0 && editMinutes.value === 0 && editSeconds.value === 0
         text: "⚠ Cache age of 0 will refresh on every launcher open"
         pointSize: Style.fontSizeS
         color: "#ffaa00"
     }
 
-    // ── Divider ───────────────────────────────────────────────────────────
-
     NDivider {
         Layout.fillWidth: true
-        Layout.topMargin:    Style.marginS
+        Layout.topMargin: Style.marginS
         Layout.bottomMargin: Style.marginS
     }
-
-    // ── Section: Cache management ─────────────────────────────────────────
 
     NLabel {
         label: "Cache Management"
@@ -237,51 +249,8 @@ ColumnLayout {
 
     NButton {
         text: "Clear Cache"
-        onClicked: root.clearCache()
+        onClicked: clearCache()
     }
-
-    // ── Connection test logic ─────────────────────────────────────────────
-
-    function testConnection() {
-        testing     = true
-        testStatus  = ""
-        testMessage = ""
-
-        var xhr = new XMLHttpRequest()
-        var url = editUrl.replace(/\/$/, "") + "/api/bookmarks/?limit=1"
-        xhr.open("GET", url, true)
-        xhr.setRequestHeader("Authorization", "Token " + editToken.trim())
-
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState !== XMLHttpRequest.DONE) return
-            testing = false
-
-            if (xhr.status === 200) {
-                try {
-                    var data = JSON.parse(xhr.responseText)
-                    var count = data.count !== undefined ? data.count : "?"
-                    testStatus  = "ok"
-                    testMessage = "Connected — " + count + " bookmark" + (count === 1 ? "" : "s")
-                } catch (e) {
-                    testStatus  = "ok"
-                    testMessage = "Connected"
-                }
-            } else if (xhr.status === 401 || xhr.status === 403) {
-                testStatus  = "error"
-                testMessage = "Invalid API token"
-            } else if (xhr.status === 0) {
-                testStatus  = "error"
-                testMessage = "Cannot reach server"
-            } else {
-                testStatus  = "error"
-                testMessage = "Error " + xhr.status
-            }
-        }
-
-        xhr.send()
-    }
-
-    // ── Cache clear logic ─────────────────────────────────────────────────
 
     FileView {
         id: cacheClearer
@@ -293,27 +262,5 @@ ColumnLayout {
         cacheClearer.setText("{}")
         ToastService.showNotice("Cache cleared — will refresh on next open")
         Logger.i("LinkdingSettings", "Cache cleared by user")
-    }
-
-    // ── saveSettings — called by Noctalia when user clicks Save ───────────
-
-    function saveSettings() {
-        if (!pluginApi) {
-            Logger.e("LinkdingSettings", "Cannot save: pluginApi is null")
-            return
-        }
-
-        pluginApi.pluginSettings.linkdingUrl        = root.editUrl.trim()
-        pluginApi.pluginSettings.apiToken           = root.editToken.trim()
-        pluginApi.pluginSettings.cacheMaxAgeHours   = root.editHours
-        pluginApi.pluginSettings.cacheMaxAgeMinutes = root.editMinutes
-        pluginApi.pluginSettings.cacheMaxAgeSeconds = root.editSeconds
-
-        pluginApi.saveSettings()
-        Logger.i("LinkdingSettings", "Settings saved")
-    }
-
-    Component.onCompleted: {
-        Logger.i("LinkdingSettings", "Settings UI loaded")
     }
 }
