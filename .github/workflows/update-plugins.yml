@@ -18,7 +18,7 @@ jobs:
       - name: Detect changed plugins
         id: changed
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep -v '^\.github/' | sed 's|/.*||' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')
+          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep -v '^\.github/' | sed 's|/[^/]*$||' | sort -u | grep -v '^$' | jq -R -s -c 'split("\n") | map(select(length > 0)) | unique')
           echo "changed=$CHANGED" >> $GITHUB_OUTPUT
           echo "Changed plugins: $CHANGED"
 
@@ -26,43 +26,74 @@ jobs:
         env:
           CHANGED: ${{ steps.changed.outputs.changed }}
         run: |
-          if [ "$CHANGED" = "[]" ] || [ -z "$CHANGED" ]; then
+          echo "CHANGED value: $CHANGED"
+          if [ "$CHANGED" = "[]" ] || [ -z "$CHANGED" ] || [ "$CHANGED" = "[\"\"]" ]; then
             echo "No plugins changed, skipping"
             exit 0
           fi
 
-          node << 'EOF'
+          node << 'EOFNODE'
             const fs = require('fs');
             const { execSync } = require('child_process');
-            const changed = JSON.parse(process.env.CHANGED);
+
+            const changedStr = process.env.CHANGED;
+            console.log('Raw CHANGED:', changedStr);
+
+            let changed;
+            try {
+              changed = JSON.parse(changedStr);
+            } catch (e) {
+              console.error('Failed to parse CHANGED:', e.message);
+              process.exit(1);
+            }
+
+            console.log('Parsed changed plugins:', changed);
+
+            if (!Array.isArray(changed) || changed.length === 0) {
+              console.log('No plugins to update');
+              process.exit(0);
+            }
 
             changed.forEach(pluginId => {
+              console.log('Processing plugin:', pluginId);
               const manifestPath = pluginId + '/manifest.json';
               if (!fs.existsSync(manifestPath)) {
                 console.log('No manifest at', manifestPath);
                 return;
               }
 
-              const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+              const manifestContent = fs.readFileSync(manifestPath, 'utf8');
+              const manifest = JSON.parse(manifestContent);
+              const oldVersion = manifest.version;
 
               // Bump version
-              const versionParts = manifest.version.split('.');
+              const versionParts = oldVersion.split('.');
               const major = parseInt(versionParts[0]);
               const minor = parseInt(versionParts[1]);
               const patch = parseInt(versionParts[2]) + 1;
-              const newVersion = `${major}.${minor}.${patch}`;
+              const newVersion = major + '.' + minor + '.' + patch;
               manifest.version = newVersion;
 
               // Write updated manifest
               fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
-              console.log('Bumped', pluginId, 'from', manifest.version + ' to ' + newVersion);
+              console.log('Bumped', pluginId, 'from', oldVersion, 'to', newVersion);
 
               // Stage manifest for commit
-              execSync('git add ' + manifestPath, { stdio: 'inherit' });
+              try {
+                execSync('git add "' + manifestPath + '"', { stdio: 'inherit' });
+              } catch (e) {
+                console.log('git add failed for', manifestPath);
+              }
             });
 
             // Update registry.json
-            const registry = JSON.parse(fs.readFileSync('registry.json', 'utf8'));
+            let registry;
+            try {
+              registry = JSON.parse(fs.readFileSync('registry.json', 'utf8'));
+            } catch (e) {
+              console.log('Creating new registry');
+              registry = { plugins: [] };
+            }
 
             changed.forEach(pluginId => {
               const manifestPath = pluginId + '/manifest.json';
@@ -98,7 +129,7 @@ jobs:
 
             fs.writeFileSync('registry.json', JSON.stringify(registry, null, 2) + '\n');
             console.log('Registry updated successfully');
-          EOF
+          EOFNODE
 
       - name: Commit and push
         run: |
