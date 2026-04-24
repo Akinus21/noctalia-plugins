@@ -380,3 +380,7 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `chore`
 - [Plugin Documentation](https://docs.noctalia.dev/development/plugins/overview/)
 - [Development Guidelines](https://docs.noctalia.dev/development/guideline/)
 - [Noctalia Widgets](https://github.com/noctalia-dev/noctalia-shell/tree/main/Widgets) — all N* components
+
+## Git Configuration
+
+SSH key for pushing: `/home/opencode/.ssh/github`

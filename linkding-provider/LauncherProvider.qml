@@ -115,7 +115,13 @@ Item {
                 "description": "Open Settings to enter your Linkding URL and API token",
                 "icon": "settings",
                 "isTablerIcon": true,
-                "onActivate": function() {}
+                "onActivate": function() {
+                    if (pluginApi) {
+                        pluginApi.withCurrentScreen(function(screen) {
+                            BarService.openPluginSettings(screen, pluginApi.manifest)
+                        })
+                    }
+                }
             }]
         }
 
