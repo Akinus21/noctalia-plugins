@@ -3,6 +3,7 @@
   "name": "Linkding Bookmarks",
   "version": "1.0.3",
   "minNoctaliaVersion": "3.9.0",
+  "test": true,
   "author": "Akinus21",
   "license": "MIT",
   "repository": "https://github.com/Akinus21/homebrew-tap",
