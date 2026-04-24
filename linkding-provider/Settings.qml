@@ -51,7 +51,6 @@ ColumnLayout {
         label: "API Token"
         description: "Found in Linkding → Settings → Integrations → REST API"
         placeholderText: "your-api-token-here"
-        echoMode: TextInput.Password
         text: pluginApi?.pluginSettings?.apiToken || ""
         onTextChanged: testStatus = ""
     }
