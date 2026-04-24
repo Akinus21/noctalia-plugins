@@ -390,3 +390,7 @@ SSH key for pushing: `/home/opencode/.ssh/github`
 When the user says "instruct yourself" or "remember that", immediately save the instruction to this file under the appropriate section (e.g., development patterns, git workflow, testing, etc.).
 
 **Always push to GitHub after completing and verifying changes.**
+
+**"Remember that"** means add whatever the user is telling me to remember to this AGENTS.md file.
+
+**This repo is configured to be used as a custom plugin source in Noctalia.**
