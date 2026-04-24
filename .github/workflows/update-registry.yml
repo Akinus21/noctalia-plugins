@@ -20,15 +20,22 @@ jobs:
         run: |
           CHANGED=$(git diff --name-only HEAD~1 HEAD | grep 'manifest.json$' | sed 's|/manifest.json||' | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "changed=$CHANGED" >> $GITHUB_OUTPUT
+          echo "Changed plugins list: $CHANGED"
 
       - name: Update registry
-        if: steps.changed.outputs.changed != '[]'
+        env:
+          CHANGED: ${{ steps.changed.outputs.changed }}
         run: |
-          echo "Changed plugins: ${{ steps.changed.outputs.changed }}"
+          echo "Changed plugins: $CHANGED"
 
-          node << 'EOF'
+          if [ "$CHANGED" = "[]" ] || [ -z "$CHANGED" ]; then
+            echo "No plugins changed, skipping"
+            exit 0
+          fi
+
+          node << EOF
             const fs = require('fs');
-            const changed = JSON.parse('${{ steps.changed.outputs.changed }}');
+            const changed = JSON.parse(process.env.CHANGED);
 
             if (changed.length === 0) {
               console.log('No plugins changed');
