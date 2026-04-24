@@ -3,12 +3,9 @@
     {
       "id": "linkding-provider",
       "name": "Linkding Bookmarks",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "description": "Search, browse, and manage your Linkding bookmarks from the launcher.",
-      "tags": [
-        "Launcher",
-        "Panel"
-      ],
+      "tags": [],
       "author": "Akinus21",
       "license": "MIT",
       "repository": "https://github.com/Akinus21/homebrew-tap",
