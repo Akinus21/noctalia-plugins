@@ -15,9 +15,17 @@ Item {
 
     anchors.fill: parent
 
-    readonly property string panelMode: pluginApi?.pluginSettings?._panelMode || "view"
-    readonly property var viewItem: pluginApi?.pluginSettings?._viewItem || null
-    readonly property var editItem: pluginApi?.pluginSettings?._editItem || null
+    property string panelMode: "view"
+    property var viewItem: null
+    property var editItem: null
+
+    Component.onCompleted: {
+        if (pluginApi && pluginApi.pluginSettings) {
+            panelMode = pluginApi.pluginSettings._panelMode || "view"
+            viewItem = pluginApi.pluginSettings._viewItem || null
+            editItem = pluginApi.pluginSettings._editItem || null
+        }
+    }
 
     Rectangle {
         id: panelContainer

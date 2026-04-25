@@ -133,7 +133,7 @@ Item {
             var item = items[i]
             results.push({
                 "name": item.name || "Untitled",
-                "description": item.login?.username || "",
+                "description": (item.login ? item.login.username : "") || "",
                 "icon": "user",
                 "isTablerIcon": true,
                 "provider": root,
