@@ -40,6 +40,12 @@ Item {
                 color: Color.mOnSurface
             }
 
+            NTextInput {
+                Layout.fillWidth: true
+                label: "URL"
+                placeholderText: "https://example.com"
+            }
+
             NButton {
                 text: "Close"
                 onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
