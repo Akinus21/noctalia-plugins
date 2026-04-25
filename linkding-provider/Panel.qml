@@ -1,5 +1,5 @@
-import QtQuick
-import QtQuick.Layouts
+import QtQuick 2.15
+import QtQuick.Layouts 2.15
 import qs.Commons
 import qs.Widgets
 import qs.Services.UI
@@ -29,41 +29,64 @@ Item {
             }
             spacing: Style.marginL
 
-            NLabel {
-                label: "New Bookmark"
-            }
-
-            NTextInput {
-                id: urlInput
+            Rectangle {
                 Layout.fillWidth: true
-                label: "URL"
-                placeholderText: "https://example.com"
-            }
+                Layout.fillHeight: true
+                color: Color.mSurfaceVariant
+                radius: Style.radiusL
 
-            NTextInput {
-                id: tagsInput
-                Layout.fillWidth: true
-                label: "Tags"
-                placeholderText: "dev, tools"
-            }
+                ColumnLayout {
+                    anchors {
+                        fill: parent
+                        margins: Style.marginL
+                    }
+                    spacing: Style.marginL
 
-            RowLayout {
-                Layout.fillWidth: true
+                    NLabel {
+                        id: titleLabel
+                        label: "New Bookmark"
+                        Layout.alignment: Qt.AlignHCenter
+                    }
 
-                NButton {
-                    text: "Cancel"
-                    onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
-                }
+                    NTextInput {
+                        id: urlInput
+                        Layout.fillWidth: true
+                        label: "URL"
+                        placeholderText: "https://example.com"
+                    }
 
-                NButton {
-                    text: "Add"
-                    highlighted: true
+                    NTextInput {
+                        id: tagsInput
+                        Layout.fillWidth: true
+                        label: "Tags"
+                        placeholderText: "dev, tools"
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Style.marginS
+
+                        NButton {
+                            id: cancelButton
+                            text: "Cancel"
+                            onClicked: root.pluginApi?.closePanel(root.pluginApi?.panelOpenScreen)
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        NButton {
+                            id: addButton
+                            text: "Add"
+                            highlighted: true
+                            enabled: urlInput.text.trim().length > 0
+                        }
+                    }
                 }
             }
         }
     }
 
     Component.onCompleted: {
-        Logger.i("LinkdingPanel", "Panel loaded")
+        Logger.i("LinkdingPanel", "Panel component completed")
     }
 }
