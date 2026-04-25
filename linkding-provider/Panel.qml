@@ -40,29 +40,14 @@ Item {
             }
 
             NTextInput {
-                id: urlInput
                 Layout.fillWidth: true
                 label: "URL"
                 placeholderText: "https://example.com"
             }
 
-            NTextInput {
-                id: titleInput
-                Layout.fillWidth: true
-                label: "Title"
-                placeholderText: "Bookmark title"
-            }
-
             NButton {
-                text: "Open Settings"
-                icon: "settings"
-                onClicked: BarService.openPluginSettings(pluginApi.panelOpenScreen, pluginApi.manifest)
-            }
-
-            NButton {
-                text: "Add"
-                highlighted: true
-                onClicked: Logger.i("LinkdingPanel", "Add clicked, URL:", urlInput.text)
+                text: "Close"
+                onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
             }
         }
     }
