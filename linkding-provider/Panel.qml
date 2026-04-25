@@ -78,7 +78,10 @@ Item {
             NButton {
                 id: addButton
                 text: "Add"
-                onClicked: {}
+                onClicked: {
+                    console.log("ADD CLICKED")
+                    ToastService.showNotice("Add button clicked")
+                }
             }
         }
     }
