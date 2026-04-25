@@ -98,6 +98,13 @@ Item {
                 "icon": "pencil",
                 "isTablerIcon": true,
                 "onActivate": function() { launcher.setSearchText(">linkding edit ") }
+            },
+            {
+                "name": ">linkding delete",
+                "description": "Delete a bookmark",
+                "icon": "trash",
+                "isTablerIcon": true,
+                "onActivate": function() { launcher.setSearchText(">linkding delete ") }
             }
         ]
     }
@@ -174,6 +181,33 @@ Item {
                 editResults.push(makeEditResult(matched[j]))
             }
             return editResults
+        }
+
+        // "delete" mode - search for bookmark to delete
+        if (query.startsWith("delete ")) {
+            var delQuery = query.slice(7).toLowerCase()
+            var delMatched = []
+            for (var i = 0; i < bookmarks.length; i++) {
+                var b = bookmarks[i]
+                var haystack = ((b.title || "") + " " + (b.url || "")).toLowerCase()
+                if (fuzzyMatch(delQuery, haystack)) {
+                    delMatched.push(b)
+                }
+            }
+            if (delMatched.length === 0 && loaded) {
+                return [{
+                    "name": "No bookmarks match",
+                    "description": "Try a different search term",
+                    "icon": "search-off",
+                    "isTablerIcon": true,
+                    "onActivate": function() {}
+                }]
+            }
+            var delResults = []
+            for (var j = 0; j < Math.min(delMatched.length, 20); j++) {
+                delResults.push(makeDeleteResult(delMatched[j]))
+            }
+            return delResults
         }
 
         var pool = bookmarks
@@ -308,6 +342,33 @@ Item {
 
             "onActivate": function() {
                 openEditPanel(b)
+            }
+        }
+    }
+
+    function makeDeleteResult(b) {
+        var bId    = b.id
+        var bUrl   = b.url     || ""
+        var bTitle = b.title   || bUrl
+        var bTags  = (b.tag_names || []).join(", ")
+
+        return {
+            "name": bTitle,
+            "description": bTags || bUrl,
+            "icon": "trash",
+            "isTablerIcon": true,
+            "provider": root,
+
+            "onActivate": function() {
+                if (pendingDeleteId === String(bId)) {
+                    pendingDeleteId = ""
+                    deleteBookmark(bId)
+                    launcher.close()
+                } else {
+                    pendingDeleteId = String(bId)
+                    ToastService.showNotice("Press again to confirm delete")
+                    if (launcher) launcher.updateResults()
+                }
             }
         }
     }
