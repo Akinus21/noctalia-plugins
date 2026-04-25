@@ -11,18 +11,11 @@ Item {
 
     readonly property var geometryPlaceholder: panelContainer
     readonly property bool allowAttach: true
+
     property real contentPreferredWidth: 400 * Style.uiScaleRatio
     property real contentPreferredHeight: 300 * Style.uiScaleRatio
 
     anchors.fill: parent
-
-    Component.onDestruction: {
-        Logger.i("LinkdingPanel", "Panel destroyed")
-    }
-
-    onPluginApiChanged: {
-        Logger.i("LinkdingPanel", "pluginApi changed:", pluginApi !== null)
-    }
 
     Rectangle {
         id: panelContainer
@@ -36,56 +29,41 @@ Item {
             }
             spacing: Style.marginL
 
-            Rectangle {
+            NLabel {
+                label: "New Bookmark"
+            }
+
+            NTextInput {
+                id: urlInput
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                color: Color.mSurfaceVariant
-                radius: Style.radiusL
+                label: "URL"
+                placeholderText: "https://example.com"
+            }
 
-                ColumnLayout {
-                    anchors {
-                        fill: parent
-                        margins: Style.marginL
-                    }
-                    spacing: Style.marginL
+            NTextInput {
+                id: tagsInput
+                Layout.fillWidth: true
+                label: "Tags"
+                placeholderText: "dev, tools"
+            }
 
-                    NLabel {
-                        label: "New Bookmark"
-                    }
+            RowLayout {
+                Layout.fillWidth: true
 
-                    NTextInput {
-                        id: urlInput
-                        Layout.fillWidth: true
-                        label: "URL"
-                        placeholderText: "https://example.com"
-                    }
+                NButton {
+                    text: "Cancel"
+                    onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
+                }
 
-                    NTextInput {
-                        id: tagsInput
-                        Layout.fillWidth: true
-                        label: "Tags"
-                        placeholderText: "dev, tools"
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        NButton {
-                            text: "Cancel"
-                            onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
-                        }
-
-                        NButton {
-                            text: "Add"
-                            highlighted: true
-                        }
-                    }
+                NButton {
+                    text: "Add"
+                    highlighted: true
                 }
             }
         }
     }
 
     Component.onCompleted: {
-        Logger.i("LinkdingPanel", "Panel loaded, pluginApi:", pluginApi !== null)
+        Logger.i("LinkdingPanel", "Panel loaded")
     }
 }

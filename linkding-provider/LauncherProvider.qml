@@ -457,8 +457,8 @@ Item {
     function openCreatePanel() {
         if (!pluginApi) return
         pluginApi.withCurrentScreen(function(screen) {
-            pluginApi.pluginSettings._panelMode      = "create"
-            pluginApi.pluginSettings._editBookmark   = null
+            pluginApi.pluginSettings._panelMode = "create"
+            pluginApi.pluginSettings._editBookmark = null
             pluginApi.openPanel(screen)
         })
         launcher.close()
@@ -467,7 +467,7 @@ Item {
     function openEditPanel(bookmark) {
         if (!pluginApi) return
         pluginApi.withCurrentScreen(function(screen) {
-            pluginApi.pluginSettings._panelMode    = "edit"
+            pluginApi.pluginSettings._panelMode = "edit"
             pluginApi.pluginSettings._editBookmark = bookmark
             pluginApi.openPanel(screen)
         })
