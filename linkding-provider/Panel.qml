@@ -46,6 +46,13 @@ Item {
                 placeholderText: "https://example.com"
             }
 
+            NTextInput {
+                id: titleInput
+                Layout.fillWidth: true
+                label: "Title"
+                placeholderText: "Bookmark title"
+            }
+
             NButton {
                 text: "Open Settings"
                 icon: "settings"
