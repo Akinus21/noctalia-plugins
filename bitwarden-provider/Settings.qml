@@ -38,7 +38,7 @@ ColumnLayout {
     NTextInput {
         Layout.fillWidth: true
         label: "Session Token (optional)"
-        description: "Paste output of 'bw unlock' — avoids re-authentication"
+        description: "Paste output of 'bw unlock' - avoids re-authentication"
         placeholderText: "Run 'bw unlock' in terminal, then 'echo $BW_SESSION'"
         text: root.sessionToken
         onTextChanged: root.sessionToken = text
