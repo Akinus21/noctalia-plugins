@@ -7,8 +7,6 @@ import qs.Widgets
 Item {
     id: root
 
-    focus: true
-
     property var pluginApi: null
     readonly property var geometryPlaceholder: mainContainer
     property real contentPreferredWidth: 400 * Style.uiScaleRatio
