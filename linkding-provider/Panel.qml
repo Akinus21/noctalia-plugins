@@ -7,17 +7,24 @@ import qs.Widgets
 Item {
     id: root
 
+    focus: true
+
     property var pluginApi: null
-    readonly property var geometryPlaceholder: mainContainer
+    readonly property var geometryPlaceholder: panelContainer
     property real contentPreferredWidth: 400 * Style.uiScaleRatio
     property real contentPreferredHeight: 300 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
     anchors.fill: parent
 
-    Item {
-        id: mainContainer
+    Component.onCompleted: {
+        Logger.i("LinkdingPanel", "Panel loaded")
+    }
+
+    Rectangle {
+        id: panelContainer
         anchors.fill: parent
+        color: "transparent"
 
         ColumnLayout {
             anchors {
@@ -38,9 +45,5 @@ Item {
                 onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
             }
         }
-    }
-
-    Component.onCompleted: {
-        Logger.i("LinkdingPanel", "Panel loaded")
     }
 }
