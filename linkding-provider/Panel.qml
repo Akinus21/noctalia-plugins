@@ -39,32 +39,42 @@ Item {
                 color: Color.mOnSurfaceVariant
             }
 
-            NTextInput {
-                id: urlInput
+            NBox {
                 Layout.fillWidth: true
-                label: "URL"
-                placeholderText: "https://example.com"
-            }
 
-            NTextInput {
-                id: titleInput
-                Layout.fillWidth: true
-                label: "Title"
-                placeholderText: "Bookmark title"
-            }
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: Style.marginM
+                    spacing: Style.marginM
 
-            NTextInput {
-                id: tagsInput
-                Layout.fillWidth: true
-                label: "Tags"
-                placeholderText: "dev, tools, notes"
-            }
+                    NTextInput {
+                        id: urlInput
+                        Layout.fillWidth: true
+                        label: "URL"
+                        placeholderText: "https://example.com"
+                    }
 
-            NTextInput {
-                id: descInput
-                Layout.fillWidth: true
-                label: "Description"
-                placeholderText: "Optional description"
+                    NTextInput {
+                        id: titleInput
+                        Layout.fillWidth: true
+                        label: "Title"
+                        placeholderText: "Bookmark title"
+                    }
+
+                    NTextInput {
+                        id: tagsInput
+                        Layout.fillWidth: true
+                        label: "Tags"
+                        placeholderText: "dev, tools, notes"
+                    }
+
+                    NTextInput {
+                        id: descInput
+                        Layout.fillWidth: true
+                        label: "Description"
+                        placeholderText: "Optional description"
+                    }
+                }
             }
 
             NButton {
