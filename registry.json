@@ -14,7 +14,7 @@
     {
       "id": "bitwarden-provider",
       "name": "Bitwarden Vault",
-      "version": "1.0.12",
+      "version": "1.0.13",
       "description": "Access your Bitwarden vault from the launcher - search logins, copy usernames and passwords.",
       "tags": [
         "Launcher",
