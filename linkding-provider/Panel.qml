@@ -11,11 +11,18 @@ Item {
 
     readonly property var geometryPlaceholder: panelContainer
     readonly property bool allowAttach: true
-
     property real contentPreferredWidth: 400 * Style.uiScaleRatio
     property real contentPreferredHeight: 300 * Style.uiScaleRatio
 
     anchors.fill: parent
+
+    Component.onDestruction: {
+        Logger.i("LinkdingPanel", "Panel destroyed")
+    }
+
+    onPluginApiChanged: {
+        Logger.i("LinkdingPanel", "pluginApi changed:", pluginApi !== null)
+    }
 
     Rectangle {
         id: panelContainer
@@ -79,6 +86,6 @@ Item {
     }
 
     Component.onCompleted: {
-        Logger.i("LinkdingPanel", "Panel loaded")
+        Logger.i("LinkdingPanel", "Panel loaded, pluginApi:", pluginApi !== null)
     }
 }
