@@ -31,6 +31,13 @@ Item {
     }
     readonly property var mainInstance: mainInstance
 
+    // ── LauncherProvider entry point ───────────────────────────────────────
+    Item {
+        id: mainInstance
+        property var pluginApi: null
+    }
+    readonly property var mainInstance: mainInstance
+
     // ── Internal state ───────────────────────────────────────────────────
     property var bookmarks: []           // full cached list
     property bool loaded: false          // cache loaded from disk
