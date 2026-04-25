@@ -45,22 +45,10 @@ Item {
                 placeholderText: "https://example.com"
             }
 
-            NText {
-                text: "Title goes here"
-                pointSize: Style.fontSizeM
-                color: Color.mOnSurfaceVariant
-            }
-
             NTextInput {
                 Layout.fillWidth: true
                 label: "Title"
                 placeholderText: "Bookmark title"
-            }
-
-            NText {
-                text: "Tags go here"
-                pointSize: Style.fontSizeM
-                color: Color.mOnSurfaceVariant
             }
 
             NTextInput {
@@ -69,21 +57,27 @@ Item {
                 placeholderText: "dev, tools, notes"
             }
 
-            NText {
-                text: "Description goes here"
-                pointSize: Style.fontSizeM
-                color: Color.mOnSurfaceVariant
-            }
-
             NTextInput {
                 Layout.fillWidth: true
                 label: "Description"
                 placeholderText: "Optional description"
             }
 
-            NButton {
-                text: "Close"
-                onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.marginM
+
+                NButton {
+                    text: "Close"
+                    onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
+                }
+
+                Item { Layout.fillWidth: true }
+
+                NButton {
+                    text: "Save"
+                    highlighted: true
+                }
             }
         }
     }
