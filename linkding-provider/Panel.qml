@@ -46,6 +46,12 @@ Item {
                 placeholderText: "https://example.com"
             }
 
+            NTextInput {
+                Layout.fillWidth: true
+                label: "Title"
+                placeholderText: "Bookmark title"
+            }
+
             NButton {
                 text: "Close"
                 onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
