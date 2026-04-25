@@ -41,24 +41,28 @@ Item {
             }
 
             NTextInput {
+                id: urlInput
                 Layout.fillWidth: true
                 label: "URL"
                 placeholderText: "https://example.com"
             }
 
             NTextInput {
+                id: titleInput
                 Layout.fillWidth: true
                 label: "Title"
                 placeholderText: "Bookmark title"
             }
 
             NTextInput {
+                id: tagsInput
                 Layout.fillWidth: true
                 label: "Tags"
                 placeholderText: "dev, tools, notes"
             }
 
             NTextInput {
+                id: descInput
                 Layout.fillWidth: true
                 label: "Description"
                 placeholderText: "Optional description"
@@ -72,6 +76,7 @@ Item {
             NButton {
                 text: "Add"
                 outlined: true
+                onClicked: Logger.i("LinkdingPanel", "url:", urlInput.text, "title:", titleInput.text, "tags:", tagsInput.text)
             }
         }
     }
