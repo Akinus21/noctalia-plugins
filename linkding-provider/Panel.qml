@@ -18,6 +18,7 @@ Item {
     anchors.fill: parent
 
     Component.onCompleted: {
+        console.log("PANEL LOADED")
         Logger.i("LinkdingPanel", "Panel loaded")
     }
 
@@ -70,17 +71,17 @@ Item {
 
             NButton {
                 text: "Close"
-                onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
+                onClicked: {
+                    console.log("CLOSE CLICKED")
+                    pluginApi.closePanel(pluginApi.panelOpenScreen)
+                }
             }
 
             NButton {
                 text: "Add"
                 outlined: true
-                onClicked: {
+                onClicked: function() {
                     console.log("ADD CLICKED")
-                    console.log("url:", urlInput.text)
-                    console.log("title:", titleInput.text)
-                    Logger.i("LinkdingPanel", "Add clicked")
                 }
             }
         }
