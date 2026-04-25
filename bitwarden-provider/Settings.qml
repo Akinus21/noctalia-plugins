@@ -41,7 +41,6 @@ ColumnLayout {
         description: "Paste output of 'bw unlock' — avoids re-authentication"
         placeholderText: "Run 'bw unlock' in terminal, then 'echo $BW_SESSION'"
         text: root.sessionToken
-        echoMode: TextInput.Password
         onTextChanged: root.sessionToken = text
     }
 
