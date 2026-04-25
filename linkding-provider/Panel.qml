@@ -40,12 +40,16 @@ Item {
             }
 
             NBox {
+                id: formBox
                 Layout.fillWidth: true
+                Layout.fillHeight: true
+                implicitHeight: formColumn.implicitHeight + Style.margin2M
 
                 ColumnLayout {
+                    id: formColumn
                     anchors.fill: parent
                     anchors.margins: Style.marginM
-                    spacing: Style.marginM
+                    spacing: Style.marginS
 
                     NTextInput {
                         id: urlInput
@@ -74,6 +78,8 @@ Item {
                         label: "Description"
                         placeholderText: "Optional description"
                     }
+
+                    Item { Layout.fillHeight: true }
                 }
             }
 
