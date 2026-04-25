@@ -53,6 +53,13 @@ Item {
                 placeholderText: "Bookmark title"
             }
 
+            NTextInput {
+                id: tagsInput
+                Layout.fillWidth: true
+                label: "Tags"
+                placeholderText: "dev, tools, notes"
+            }
+
             NButton {
                 text: "Open Settings"
                 icon: "settings"
