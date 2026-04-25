@@ -71,6 +71,7 @@ Item {
 
             NButton {
                 text: "Add"
+                outlined: true
             }
         }
     }
