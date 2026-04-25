@@ -10,10 +10,8 @@ Item {
     property var pluginApi: null
 
     readonly property var geometryPlaceholder: panelContainer
-    readonly property bool allowAttach: true
 
-    property real contentPreferredWidth: 400 * Style.uiScaleRatio
-    property real contentPreferredHeight: 300 * Style.uiScaleRatio
+    readonly property bool allowAttach: true
 
     anchors.fill: parent
 
@@ -23,13 +21,14 @@ Item {
         color: Color.mSurface
 
         ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: Style.marginL
+            anchors {
+                fill: parent
+                margins: Style.marginL
+            }
             spacing: Style.marginL
 
             NLabel {
                 label: "New Bookmark"
-                description: "Add a new Linkding bookmark"
             }
 
             NTextInput {
