@@ -45,6 +45,12 @@ Item {
                 placeholderText: "https://example.com"
             }
 
+            NText {
+                text: "Title goes here"
+                pointSize: Style.fontSizeM
+                color: Color.mOnSurfaceVariant
+            }
+
             NButton {
                 text: "Close"
                 onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
