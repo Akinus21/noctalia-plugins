@@ -10,7 +10,7 @@ Item {
     property var pluginApi: null
     readonly property var geometryPlaceholder: mainContainer
     property real contentPreferredWidth: 400 * Style.uiScaleRatio
-    property real contentPreferredHeight: 480 * Style.uiScaleRatio
+    property real contentPreferredHeight: 560 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
     anchors.fill: parent
