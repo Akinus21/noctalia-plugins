@@ -63,21 +63,14 @@ Item {
                 placeholderText: "Optional description"
             }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Style.marginM
+            NButton {
+                text: "Close"
+                onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
+            }
 
-                NButton {
-                    text: "Close"
-                    onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
-                }
-
-                Item { Layout.fillWidth: true }
-
-                NButton {
-                    text: "Save"
-                    highlighted: true
-                }
+            NButton {
+                text: "Save"
+                highlighted: true
             }
         }
     }
