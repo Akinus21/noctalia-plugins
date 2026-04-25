@@ -69,7 +69,7 @@ Item {
             }
 
             NButton {
-                text: "Save"
+                text: "Add"
                 highlighted: true
             }
         }
