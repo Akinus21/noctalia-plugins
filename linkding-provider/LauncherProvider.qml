@@ -24,6 +24,13 @@ Item {
     property var categories: ["all"]
     property var categoryIcons: ({ "all": "bookmarks" })
 
+    // ── LauncherProvider entry point ───────────────────────────────────────
+    Item {
+        id: mainInstance
+        property var pluginApi: null
+    }
+    readonly property var mainInstance: mainInstance
+
     // ── Internal state ───────────────────────────────────────────────────
     property var bookmarks: []           // full cached list
     property bool loaded: false          // cache loaded from disk
