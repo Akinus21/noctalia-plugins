@@ -39,6 +39,13 @@ Item {
                 color: Color.mOnSurfaceVariant
             }
 
+            NTextInput {
+                id: urlInput
+                Layout.fillWidth: true
+                label: "URL"
+                placeholderText: "https://example.com"
+            }
+
             NButton {
                 text: "Open Settings"
                 icon: "settings"
