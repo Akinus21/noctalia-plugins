@@ -6,68 +6,49 @@ import qs.Widgets
 Item {
     id: root
 
+    focus: true
+
     property var pluginApi: null
-    readonly property var geometryPlaceholder: panelContainer
+    readonly property var geometryPlaceholder: mainContainer
     property real contentPreferredWidth: 400 * Style.uiScaleRatio
     property real contentPreferredHeight: 300 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
     anchors.fill: parent
 
-    Rectangle {
-        id: panelContainer
+    Item {
+        id: mainContainer
         anchors.fill: parent
-        color: "transparent"
 
         ColumnLayout {
             anchors {
                 fill: parent
-                margins: Style.marginM
+                margins: Style.marginL
             }
             spacing: Style.marginL
 
-            NBox {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+            NText {
+                text: "Linkding Bookmarks"
+                pointSize: Style.fontSizeXL
+                font.weight: Font.Bold
+                color: Color.mOnSurface
+            }
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: Style.marginM
-                    spacing: Style.marginM
+            NText {
+                text: "Configure and manage your Linkding bookmarks"
+                pointSize: Style.fontSizeM
+                color: Color.mOnSurfaceVariant
+            }
 
-                    NLabel {
-                        label: "New Bookmark"
-                    }
+            NButton {
+                text: "Open Settings"
+                icon: "settings"
+                onClicked: BarService.openPluginSettings(pluginApi.panelOpenScreen, pluginApi.manifest)
+            }
 
-                    NTextInput {
-                        id: urlInput
-                        Layout.fillWidth: true
-                        label: "URL"
-                        placeholderText: "https://example.com"
-                    }
-
-                    NTextInput {
-                        id: tagsInput
-                        Layout.fillWidth: true
-                        label: "Tags"
-                        placeholderText: "dev, tools"
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: Style.marginS
-
-                        NButton {
-                            text: "Cancel"
-                            onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
-                        }
-
-                        NButton {
-                            text: "Add"
-                            highlighted: true
-                        }
-                    }
-                }
+            NButton {
+                text: "Close"
+                onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
             }
         }
     }
