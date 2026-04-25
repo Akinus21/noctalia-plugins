@@ -1,5 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Layouts 2.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 import qs.Commons
 import qs.Widgets
 import qs.Services.UI
@@ -9,18 +10,92 @@ Item {
 
     property var pluginApi: null
 
-    readonly property var geometryPlaceholder: panelContainer
-    readonly property bool allowAttach: true
+    // ── Form state ───────────────────────────────────────────────────────
+    property string formUrl: ""
+    property string formTags: ""
+    property bool saving: false
+    property var editBookmark: null
 
-    property real contentPreferredWidth: 400 * Style.uiScaleRatio
-    property real contentPreferredHeight: 300 * Style.uiScaleRatio
+    // ── Helpers ──────────────────────────────────────────────────────────
+    readonly property string linkdingUrl: pluginApi?.pluginSettings?.linkdingUrl || ""
+    readonly property string apiToken: pluginApi?.pluginSettings?.apiToken || ""
 
-    anchors.fill: parent
+    // ── Initialize form based on mode ────────────────────────────────────
+    Component.onCompleted: {
+        if (root.editBookmark) {
+            formUrl = root.editBookmark.url || ""
+            formTags = (root.editBookmark.tag_names || []).join(", ")
+        }
+        Logger.i("LinkdingForm", "Form loaded, mode:", root.editBookmark ? "edit" : "new")
+    }
 
+    function save() {
+        if (saving) return
+        if (!formUrl.trim()) {
+            ToastService.showError("URL is required")
+            return
+        }
+
+        saving = true
+
+        var tags = formTags.split(",")
+            .map(function(t) { return t.trim() })
+            .filter(function(t) { return t.length > 0 })
+
+        var payload = JSON.stringify({
+            url:        formUrl.trim(),
+            tag_names:  tags,
+            is_archived: false
+        })
+
+        var xhr = new XMLHttpRequest()
+        var baseUrl = linkdingUrl.replace(/\/$/, "")
+
+        if (root.editBookmark) {
+            xhr.open("PATCH", baseUrl + "/api/bookmarks/" + root.editBookmark.id + "/", true)
+        } else {
+            xhr.open("POST", baseUrl + "/api/bookmarks/", true)
+        }
+
+        xhr.setRequestHeader("Authorization", "Token " + apiToken)
+        xhr.setRequestHeader("Content-Type", "application/json")
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState !== XMLHttpRequest.DONE) return
+            saving = false
+
+            if (xhr.status === 200 || xhr.status === 201) {
+                try {
+                    var saved = JSON.parse(xhr.responseText)
+                    var provider = pluginApi?.launcherProvider
+                    if (provider && typeof provider.onBookmarkSaved === "function") {
+                        provider.onBookmarkSaved(saved)
+                    }
+                    ToastService.showNotice(root.editBookmark ? "Bookmark updated" : "Bookmark saved")
+                    root.close()
+                } catch (e) {
+                    Logger.e("LinkdingForm", "Parse error:", e)
+                    ToastService.showError("Unexpected response")
+                }
+            } else if (xhr.status === 0) {
+                ToastService.showError("Cannot reach Linkding")
+            } else {
+                Logger.e("LinkdingForm", "API error:", xhr.status, xhr.responseText)
+                ToastService.showError("Linkding error: " + xhr.status)
+            }
+        }
+
+        xhr.send(payload)
+    }
+
+    function close() {
+        pluginApi?.closePanel(pluginApi?.panelOpenScreen)
+    }
+
+    // ── UI ───────────────────────────────────────────────────────────────
     Rectangle {
-        id: panelContainer
         anchors.fill: parent
-        color: "transparent"
+        color: Color.mSurface
 
         ColumnLayout {
             anchors {
@@ -29,64 +104,84 @@ Item {
             }
             spacing: Style.marginL
 
+            NLabel {
+                label: editBookmark ? "Edit Bookmark" : "New Bookmark"
+                Layout.alignment: Qt.AlignHCenter
+            }
+
+            NTextInput {
+                id: urlInput
+                Layout.fillWidth: true
+                label: "URL"
+                placeholderText: "https://example.com"
+                text: root.formUrl
+                onTextChanged: root.formUrl = text
+                Layout.topMargin: Style.marginM
+            }
+
+            NTextInput {
+                id: tagsInput
+                Layout.fillWidth: true
+                label: "Tags"
+                placeholderText: "dev, tools"
+                text: root.formTags
+                onTextChanged: root.formTags = text
+            }
+
             Rectangle {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                visible: editBookmark
                 color: Color.mSurfaceVariant
-                radius: Style.radiusL
+                radius: Style.radiusM
+                implicitHeight: hintRow.implicitHeight + Style.marginM * 2
 
-                ColumnLayout {
+                RowLayout {
+                    id: hintRow
                     anchors {
                         fill: parent
-                        margins: Style.marginL
+                        margins: Style.marginM
                     }
-                    spacing: Style.marginL
+                    spacing: Style.marginS
 
-                    NLabel {
-                        id: titleLabel
-                        label: "New Bookmark"
-                        Layout.alignment: Qt.AlignHCenter
+                    NIcon {
+                        icon: "info-circle"
+                        color: Color.mOnSurfaceVariant
+                        pointSize: Style.fontSizeS
                     }
 
-                    NTextInput {
-                        id: urlInput
+                    NText {
+                        text: "Title: " + (editBookmark.title || "(auto-fetched)")
+                        pointSize: Style.fontSizeS
+                        color: Color.mOnSurfaceVariant
+                        wrapMode: Text.WordWrap
                         Layout.fillWidth: true
-                        label: "URL"
-                        placeholderText: "https://example.com"
                     }
+                }
+            }
 
-                    NTextInput {
-                        id: tagsInput
-                        Layout.fillWidth: true
-                        label: "Tags"
-                        placeholderText: "dev, tools"
-                    }
+            Item { Layout.fillHeight: true }
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: Style.marginS
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.marginS
 
-                        NButton {
-                            id: cancelButton
-                            text: "Cancel"
-                            onClicked: root.pluginApi?.closePanel(root.pluginApi?.panelOpenScreen)
-                        }
+                NButton {
+                    text: "Cancel"
+                    onClicked: root.close()
+                }
 
-                        Item { Layout.fillWidth: true }
-
-                        NButton {
-                            id: addButton
-                            text: "Add"
-                            highlighted: true
-                            enabled: urlInput.text.trim().length > 0
-                        }
-                    }
+                NButton {
+                    text: root.editBookmark ? "Save Changes" : "Add Bookmark"
+                    highlighted: true
+                    enabled: !root.saving && root.formUrl.trim().length > 0
+                    onClicked: root.save()
                 }
             }
         }
     }
 
     Component.onCompleted: {
-        Logger.i("LinkdingPanel", "Panel component completed")
+        Logger.i("LinkdingForm", "Form component completed")
+        urlInput.forceActiveFocus()
     }
 }

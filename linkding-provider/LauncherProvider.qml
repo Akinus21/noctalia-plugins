@@ -455,19 +455,22 @@ Item {
     // ── Panel helpers ─────────────────────────────────────────────────────
 
     function openCreatePanel() {
+        Logger.i("LinkdingProvider", "Creating new bookmark window")
         if (!pluginApi) return
+        
+        // Open settings panel as a modal window for new bookmark entry
         pluginApi.withCurrentScreen(function(screen) {
-            pluginApi.pluginSettings._panelMode = "create"
-            pluginApi.pluginSettings._editBookmark = null
             pluginApi.openPanel(screen)
         })
         launcher.close()
     }
 
     function openEditPanel(bookmark) {
+        Logger.i("LinkdingProvider", "Editing bookmark:", bookmark?.id)
         if (!pluginApi) return
+        
+        // Open settings panel as a modal window for editing
         pluginApi.withCurrentScreen(function(screen) {
-            pluginApi.pluginSettings._panelMode = "edit"
             pluginApi.pluginSettings._editBookmark = bookmark
             pluginApi.openPanel(screen)
         })
