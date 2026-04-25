@@ -1,0 +1,53 @@
+{
+  "provider": {
+    "name": "Bitwarden Vault"
+  },
+  "commands": {
+    "search": "Search Bitwarden vault (use # for type filter)",
+    "username": "Copy username for a login",
+    "password": "Copy password for a login",
+    "items": "Browse all vault items",
+    "new": "Add a new vault item",
+    "unlock": "Unlock your Bitwarden vault"
+  },
+  "errors": {
+    "notInstalled": "Bitwarden CLI not installed",
+    "notInstalledDesc": "Install from bitwarden.com/download then unlock your vault",
+    "vaultLocked": "Vault is locked",
+    "vaultLockedDesc": "Run 'bw unlock' in terminal or configure session token in settings",
+    "noItems": "No items found",
+    "tryDifferent": "Try a different search term"
+  },
+  "panel": {
+    "viewTitle": "Vault Item",
+    "editTitle": "Edit Item",
+    "createTitle": "New Item",
+    "name": "Name",
+    "username": "Username",
+    "password": "Password",
+    "url": "URL",
+    "notes": "Notes",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "create": "Create",
+    "usernameCopied": "Username copied",
+    "passwordCopied": "Password copied",
+    "itemUpdated": "Item updated",
+    "itemCreated": "Item created",
+    "itemDeleted": "Item deleted",
+    "deleteConfirm": "Press Delete again to confirm",
+    "updateFailed": "Update failed",
+    "createFailed": "Create failed",
+    "deleteFailed": "Delete failed",
+    "nameRequired": "Name is required"
+  },
+  "settings": {
+    "title": "Bitwarden Settings",
+    "vaultUrl": "Vault URL (optional)",
+    "vaultUrlDesc": "Your Bitwarden/vaultwarden server URL",
+    "sessionToken": "Session Token (optional)",
+    "sessionTokenDesc": "Paste output of 'bw unlock' — avoids re-authentication"
+  }
+}
