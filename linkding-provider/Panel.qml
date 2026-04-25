@@ -41,6 +41,17 @@ Item {
                 color: Color.mOnSurface
             }
 
+            NText {
+                text: "TEST CLICK ME"
+                color: Color.mPrimary
+                pointSize: Style.fontSizeL
+                font.weight: Font.Bold
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: console.log("TEXT CLICKED")
+                }
+            }
+
             NTextInput {
                 id: urlInput
                 Layout.fillWidth: true
@@ -80,9 +91,7 @@ Item {
             NButton {
                 text: "Add"
                 outlined: true
-                onClicked: function() {
-                    console.log("ADD CLICKED")
-                }
+                onClicked: console.log("ADD CLICKED")
             }
         }
     }
