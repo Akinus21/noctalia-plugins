@@ -127,7 +127,7 @@ Item {
                                             "sh", "-c",
                                             "command -v apt >/dev/null 2>&1 && sudo apt install -y bitwarden-cli || command -v pacman >/dev/null 2>&1 && sudo pacman -S bitwarden-cli || command -v brew >/dev/null 2>&1 && brew install bitwarden-cli || echo 'unsupported'"
                                         ])
-                                        proc.Completed: {
+                                        proc.onCompleted: {
                                             if (proc.exitCode === 0) {
                                                 bwInstalled = true
                                                 pluginApi.pluginSettings.bwAvailable = true
@@ -441,8 +441,7 @@ Item {
             "sh", "-c",
             "BW_PASSWORD=\"" + password + "\" bw unlock " + urlArg + " --passwordenv --raw"
         ])
-
-        proc.Completed: {
+        proc.onCompleted: {
             unlocking = false
             unlockButton.enabled = true
 
@@ -525,7 +524,7 @@ Item {
         cmd += "' | bw edit item '" + item.id + "' --sessionid " + sessionToken
 
         var proc = Quickshell.execDetached(["sh", "-c", cmd])
-        proc.Completed: {
+        proc.onCompleted: {
             if (proc.exitCode === 0) {
                 ToastService.showNotice("Item updated")
                 closePanel()
@@ -543,7 +542,7 @@ Item {
             "sh", "-c",
             "echo '" + jsonStr + "' | bw create item --sessionid " + sessionToken
         ])
-        proc.Completed: {
+        proc.onCompleted: {
             if (proc.exitCode === 0) {
                 ToastService.showNotice("Item created")
                 closePanel()
@@ -579,7 +578,7 @@ Item {
         var proc = Quickshell.execDetached([
             "bw", "delete", "item", viewItem.id, "--sessionid", sessionToken
         ])
-        proc.Completed: {
+        proc.onCompleted: {
             if (proc.exitCode === 0) {
                 ToastService.showNotice("Item deleted")
                 closePanel()

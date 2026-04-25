@@ -51,7 +51,7 @@ Item {
 
     function checkBwInstalled() {
         var proc = Quickshell.execDetached(["which", "bw"])
-        proc Completed: {
+        proc.onCompleted: {
             if (proc.exitCode === 0) {
                 pluginApi.pluginSettings.bwAvailable = true
                 Logger.i("BitwardenProvider", "bw CLI found")
@@ -65,7 +65,7 @@ Item {
 
     function checkUnlockStatus() {
         var proc = Quickshell.execDetached(["bw", "status"])
-        proc Completed: {
+        proc.onCompleted: {
             try {
                 var output = proc.readAll()
                 var status = JSON.parse(String(output))
@@ -387,7 +387,7 @@ Item {
         fetching = true
 
         var proc = Quickshell.execDetached(["bw", "list", "items", "--sessionid", sessionToken])
-        proc Completed: {
+        proc.onCompleted: {
             fetching = false
             if (proc.exitCode === 0) {
                 try {
@@ -515,7 +515,7 @@ Item {
         var proc = Quickshell.execDetached([
             "bw", "delete", "item", id, "--sessionid", sessionToken
         ])
-        proc.Completed: {
+        proc.onCompleted: {
             if (proc.exitCode === 0) {
                 ToastService.showNotice("Item deleted")
                 loaded = false
