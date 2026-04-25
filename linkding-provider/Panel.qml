@@ -11,8 +11,8 @@ Item {
 
     property var pluginApi: null
     readonly property var geometryPlaceholder: mainContainer
-    property real contentPreferredWidth: 420 * Style.uiScaleRatio
-    property real contentPreferredHeight: 380 * Style.uiScaleRatio
+    property real contentPreferredWidth: 400 * Style.uiScaleRatio
+    property real contentPreferredHeight: 300 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
     anchors.fill: parent
@@ -28,83 +28,28 @@ Item {
             }
             spacing: Style.marginL
 
-            // Header
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Style.marginM
-
-                NIcon {
-                    icon: "bookmark-plus"
-                    pointSize: Style.fontSizeXL
-                    color: Color.mPrimary
-                }
-
-                NText {
-                    text: "Add Bookmark"
-                    pointSize: Style.fontSizeL
-                    font.weight: Font.Bold
-                    color: Color.mOnSurface
-                    Layout.fillWidth: true
-                }
-
-                NIconButton {
-                    icon: "x"
-                    baseSize: Style.baseWidgetSize
-                    onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
-                }
+            NText {
+                text: "Linkding Bookmarks"
+                pointSize: Style.fontSizeXL
+                font.weight: Font.Bold
+                color: Color.mOnSurface
             }
 
-            // Form
-            NBox {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: Style.marginM
-                    spacing: Style.marginM
-
-                    NTextInput {
-                        id: urlInput
-                        Layout.fillWidth: true
-                        label: "URL"
-                        placeholderText: "https://example.com"
-                    }
-
-                    NTextInput {
-                        id: titleInput
-                        Layout.fillWidth: true
-                        label: "Title"
-                        placeholderText: "Bookmark title"
-                    }
-
-                    NTextInput {
-                        id: tagsInput
-                        Layout.fillWidth: true
-                        label: "Tags"
-                        placeholderText: "dev, tools"
-                    }
-
-                    Item { Layout.fillHeight: true }
-                }
+            NText {
+                text: "Configure and manage your Linkding bookmarks"
+                pointSize: Style.fontSizeM
+                color: Color.mOnSurfaceVariant
             }
 
-            // Buttons
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Style.marginM
+            NButton {
+                text: "Open Settings"
+                icon: "settings"
+                onClicked: BarService.openPluginSettings(pluginApi.panelOpenScreen, pluginApi.manifest)
+            }
 
-                NButton {
-                    text: "Cancel"
-                    onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
-                }
-
-                Item { Layout.fillWidth: true }
-
-                NButton {
-                    text: "Add"
-                    highlighted: true
-                }
+            NButton {
+                text: "Close"
+                onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
             }
         }
     }
