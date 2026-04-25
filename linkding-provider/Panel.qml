@@ -57,6 +57,12 @@ Item {
                 placeholderText: "Bookmark title"
             }
 
+            NText {
+                text: "Tags go here"
+                pointSize: Style.fontSizeM
+                color: Color.mOnSurfaceVariant
+            }
+
             NButton {
                 text: "Close"
                 onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
