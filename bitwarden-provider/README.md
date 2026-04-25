@@ -4,13 +4,13 @@ Access your Bitwarden/vaultwarden vault directly from the Noctalia launcher. Sea
 
 ## Features
 
-- **Search vault items** — `>bitwarden <query>` or `>bw <query>`
-- **Copy username** — `>bitwarden username <item>` or `>bw username <item>`
-- **Copy password** — `>bitwarden password <item>` or `>bw password <item>`
-- **Browse items** — `>bitwarden items` or `>bw items`
-- **View details** — Click any item to open a panel with full details
+- **Search vault items** - `>bitwarden <query>` or `>bw <query>`
+- **Copy username** - `>bitwarden username <item>` or `>bw username <item>`
+- **Copy password** - `>bitwarden password <item>` or `>bw password <item>`
+- **Browse items** - `>bitwarden items` or `>bw items`
+- **View details** - Click any item to open a panel with full details
 - **Add/Edit/Delete** items via the panel
-- **Type filter** — Use `#<type>` to filter by item type (login, note, card, identity)
+- **Type filter** - Use `#<type>` to filter by item type (login, note, card, identity)
 
 ## Requirements
 
@@ -36,8 +36,8 @@ Access your Bitwarden/vaultwarden vault directly from the Noctalia launcher. Sea
 
 ### Settings
 
-- **Vault URL** — Your Bitwarden/vaultwarden server URL (optional)
-- **Session Token** — Paste `BW_SESSION` from `bw unlock` to persist authentication
+- **Vault URL** - Your Bitwarden/vaultwarden server URL (optional)
+- **Session Token** - Paste `BW_SESSION` from `bw unlock` to persist authentication
 
 ## Installation
 
@@ -49,4 +49,4 @@ Access your Bitwarden/vaultwarden vault directly from the Noctalia launcher. Sea
 
 - Supports both Bitwarden and vaultwarden servers
 - Session token avoids repeated re-authentication
-- Passwords are never shown in plain text — only copied to clipboard
+- Passwords are never shown in plain text - only copied to clipboard

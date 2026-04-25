@@ -48,6 +48,6 @@
     "vaultUrl": "Vault URL (optional)",
     "vaultUrlDesc": "Your Bitwarden/vaultwarden server URL",
     "sessionToken": "Session Token (optional)",
-    "sessionTokenDesc": "Paste output of 'bw unlock' — avoids re-authentication"
+    "sessionTokenDesc": "Paste output of 'bw unlock' - avoids re-authentication"
   }
 }
