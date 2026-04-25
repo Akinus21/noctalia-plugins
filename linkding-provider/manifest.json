@@ -1,7 +1,7 @@
 {
   "id": "linkding-provider",
   "name": "Linkding Bookmarks",
-  "version": "1.0.64",
+  "version": "1.0.65",
   "minNoctaliaVersion": "3.9.0",
   "test": true,
   "author": "Akinus21",
