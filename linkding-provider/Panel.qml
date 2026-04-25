@@ -60,15 +60,23 @@ Item {
                 placeholderText: "dev, tools, notes"
             }
 
+            NTextInput {
+                id: descInput
+                Layout.fillWidth: true
+                label: "Description"
+                placeholderText: "Optional description"
+            }
+
             NButton {
                 text: "Open Settings"
                 icon: "settings"
                 onClicked: BarService.openPluginSettings(pluginApi.panelOpenScreen, pluginApi.manifest)
             }
 
-            NButton {
-                text: "Close"
-                onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
+NButton {
+                text: "Add"
+                highlighted: true
+                onClicked: Logger.i("LinkdingPanel", "Add clicked, URL:", urlInput.text)
             }
         }
     }
