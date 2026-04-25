@@ -76,7 +76,12 @@ Item {
             NButton {
                 text: "Add"
                 outlined: true
-                onClicked: Logger.i("LinkdingPanel", "url:", urlInput.text, "title:", titleInput.text, "tags:", tagsInput.text)
+                onClicked: {
+                    console.log("ADD CLICKED")
+                    console.log("url:", urlInput.text)
+                    console.log("title:", titleInput.text)
+                    Logger.i("LinkdingPanel", "Add clicked")
+                }
             }
         }
     }
