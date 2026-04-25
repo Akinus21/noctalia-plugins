@@ -7,8 +7,6 @@ import qs.Widgets
 Item {
     id: root
 
-    focus: true
-
     property var pluginApi: null
     readonly property var geometryPlaceholder: panelContainer
     property real contentPreferredWidth: 400 * Style.uiScaleRatio
@@ -39,17 +37,6 @@ Item {
                 pointSize: Style.fontSizeXL
                 font.weight: Font.Bold
                 color: Color.mOnSurface
-            }
-
-            NText {
-                text: "TEST CLICK ME"
-                color: Color.mPrimary
-                pointSize: Style.fontSizeL
-                font.weight: Font.Bold
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: console.log("TEXT CLICKED")
-                }
             }
 
             NTextInput {
@@ -89,9 +76,8 @@ Item {
             }
 
             NButton {
+                id: addButton
                 text: "Add"
-                outlined: true
-                onClicked: console.log("ADD CLICKED")
             }
         }
     }
