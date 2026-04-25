@@ -24,6 +24,7 @@ Item {
     property bool bwInstalled: pluginApi?.pluginSettings?.bwAvailable || false
     property bool vaultUnlocked: pluginApi?.mainInstance?.unlocked || false
     property string vaultUrl: pluginApi?.pluginSettings?.vaultUrl || ""
+    property string masterPassword: ""
 
     Rectangle {
         id: panelContainer
@@ -242,6 +243,8 @@ Item {
                                 placeholderText: "Your master password"
                                 echoMode: TextInput.Password
                                 visible: !vaultUnlocked
+                                onTextChanged: masterPassword = text
+                                text: masterPassword
                             }
 
                             NButton {
@@ -249,7 +252,7 @@ Item {
                                 text: "Unlock Vault"
                                 visible: !vaultUnlocked
                                 Layout.fillWidth: true
-                                enabled: masterPasswordInput.text.length > 0
+                                enabled: masterPassword.length > 0 && !unlocking
                                 onClicked: unlockVault()
                             }
 
@@ -427,16 +430,16 @@ Item {
     property bool unlocking: false
 
     function unlockVault() {
-        if (!masterPasswordInput.text) return
+        if (!masterPassword) return
         unlocking = true
         unlockButton.enabled = false
 
-        var password = masterPasswordInput.text.replace(/'/g, "'\\''")
-        var urlArg = vaultUrl ? "--url " + vaultUrl : ""
+        var password = masterPassword.replace(/"/g, "\\\"")
+        var urlArg = vaultUrl ? "--url \"" + vaultUrl.replace(/"/g, "\\\"") + "\"" : ""
 
         var proc = Quickshell.execDetached([
             "sh", "-c",
-            "BW_PASSWORD='" + password + "' bw unlock " + urlArg + " --passwordenv --raw"
+            "BW_PASSWORD=\"" + password + "\" bw unlock " + urlArg + " --passwordenv --raw"
         ])
 
         proc.Completed: {
