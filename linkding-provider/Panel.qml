@@ -69,6 +69,12 @@ Item {
                 placeholderText: "dev, tools, notes"
             }
 
+            NText {
+                text: "Description goes here"
+                pointSize: Style.fontSizeM
+                color: Color.mOnSurfaceVariant
+            }
+
             NButton {
                 text: "Close"
                 onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
