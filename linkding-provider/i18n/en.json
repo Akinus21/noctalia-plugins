@@ -1,0 +1,23 @@
+{
+  "panel": {
+    "create-title": "Add Bookmark",
+    "edit-title": "Edit Bookmark",
+    "not-configured": "Linkding not configured. Please set URL and API token in settings.",
+    "url-label": "URL",
+    "url-placeholder": "https://example.com",
+    "title-label": "Title",
+    "title-placeholder": "Bookmark title",
+    "desc-label": "Description",
+    "desc-placeholder": "Optional description",
+    "tags-label": "Tags",
+    "tags-placeholder": "dev, tools, notes",
+    "cancel": "Cancel",
+    "save": "Save",
+    "add": "Add",
+    "saving": "Saving…",
+    "saved-new": "Bookmark added",
+    "saved-edit": "Bookmark updated",
+    "parse-error": "Failed to parse response",
+    "save-error": "Save failed"
+  }
+}
