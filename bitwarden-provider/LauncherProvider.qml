@@ -30,7 +30,7 @@ Item {
     property string sessionToken: ""
 
     // ── Helpers ─────────────────────────────────────────────────────────
-    readonly property string bwAvailable:
+    readonly property bool bwAvailable:
         (pluginApi?.pluginSettings?.bwAvailable || false)
 
     readonly property string vaultUrl:
