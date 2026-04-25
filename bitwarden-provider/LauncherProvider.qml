@@ -174,9 +174,15 @@ Item {
                 "icon": "lock-open",
                 "isTablerIcon": true,
                 "onActivate": function() {
-                    ToastService.showNotice("Run 'bw unlock' in terminal, then reload the plugin")
-                    launcher.close()
+                    launcher.setSearchText(">bitwarden setup")
                 }
+            },
+            {
+                "name": ">bitwarden setup",
+                "description": "Setup wizard — install bw, configure vault, unlock",
+                "icon": "settings",
+                "isTablerIcon": true,
+                "onActivate": function() { launcher.setSearchText(">bitwarden setup") }
             }
         ]
     }
@@ -230,6 +236,12 @@ Item {
         // "new" shortcut
         if (query === "new") {
             openCreatePanel()
+            return []
+        }
+
+        // "setup" shortcut - open setup wizard
+        if (query === "setup") {
+            openSetupPanel()
             return []
         }
 
@@ -556,6 +568,16 @@ Item {
         pluginApi.withCurrentScreen(function(screen) {
             pluginApi.pluginSettings._panelMode = "create"
             pluginApi.pluginSettings._editItem = null
+            pluginApi.openPanel(screen)
+        })
+        launcher.close()
+    }
+
+    function openSetupPanel() {
+        if (!pluginApi) return
+        pluginApi.withCurrentScreen(function(screen) {
+            pluginApi.pluginSettings._panelMode = "setup"
+            pluginApi.pluginSettings._setupStep = 1
             pluginApi.openPanel(screen)
         })
         launcher.close()
