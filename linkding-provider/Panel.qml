@@ -10,15 +10,17 @@ Item {
     property var pluginApi: null
 
     readonly property var geometryPlaceholder: panelContainer
-
     readonly property bool allowAttach: true
+
+    property real contentPreferredWidth: 400 * Style.uiScaleRatio
+    property real contentPreferredHeight: 300 * Style.uiScaleRatio
 
     anchors.fill: parent
 
     Rectangle {
         id: panelContainer
         anchors.fill: parent
-        color: Color.mSurface
+        color: "transparent"
 
         ColumnLayout {
             anchors {
@@ -27,35 +29,50 @@ Item {
             }
             spacing: Style.marginL
 
-            NLabel {
-                label: "New Bookmark"
-            }
-
-            NTextInput {
-                id: urlInput
+            Rectangle {
                 Layout.fillWidth: true
-                label: "URL"
-                placeholderText: "https://example.com"
-            }
+                Layout.fillHeight: true
+                color: Color.mSurfaceVariant
+                radius: Style.radiusL
 
-            NTextInput {
-                id: tagsInput
-                Layout.fillWidth: true
-                label: "Tags"
-                placeholderText: "dev, tools"
-            }
+                ColumnLayout {
+                    anchors {
+                        fill: parent
+                        margins: Style.marginL
+                    }
+                    spacing: Style.marginL
 
-            RowLayout {
-                Layout.fillWidth: true
+                    NLabel {
+                        label: "New Bookmark"
+                    }
 
-                NButton {
-                    text: "Cancel"
-                    onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
-                }
+                    NTextInput {
+                        id: urlInput
+                        Layout.fillWidth: true
+                        label: "URL"
+                        placeholderText: "https://example.com"
+                    }
 
-                NButton {
-                    text: "Add"
-                    highlighted: true
+                    NTextInput {
+                        id: tagsInput
+                        Layout.fillWidth: true
+                        label: "Tags"
+                        placeholderText: "dev, tools"
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        NButton {
+                            text: "Cancel"
+                            onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
+                        }
+
+                        NButton {
+                            text: "Add"
+                            highlighted: true
+                        }
+                    }
                 }
             }
         }
