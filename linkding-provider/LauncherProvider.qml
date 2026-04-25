@@ -24,28 +24,11 @@ Item {
     property var categories: ["all"]
     property var categoryIcons: ({ "all": "bookmarks" })
 
-    // ── LauncherProvider entry point ───────────────────────────────────────
-    Item {
-        id: mainInstance
-        property var pluginApi: null
-    }
-    readonly property var mainInstance: mainInstance
-
-    // ── LauncherProvider entry point ───────────────────────────────────────
-    Item {
-        id: mainInstance
-        property var pluginApi: null
-    }
-    readonly property var mainInstance: mainInstance
-
     // ── Internal state ───────────────────────────────────────────────────
     property var bookmarks: []           // full cached list
     property bool loaded: false          // cache loaded from disk
     property bool fetching: false        // network request in flight
     property string pendingDeleteId: ""  // bookmark id awaiting confirmation
-
-    // ── Bookmark window instance ───────────────────────────────────────
-    property var bookmarkWindow: null
 
     // ── Helpers ──────────────────────────────────────────────────────────
     readonly property string cacheFilePath:
@@ -469,50 +452,25 @@ Item {
         root.showsCategories = cats.length > 1
     }
 
-// ── Panel helpers ─────────────────────────────────────────────────────
+    // ── Panel helpers ─────────────────────────────────────────────────────
+
     function openCreatePanel() {
         if (!pluginApi) return
-        openBookmarkWindow("create", null)
+        pluginApi.withCurrentScreen(function(screen) {
+            pluginApi.pluginSettings._panelMode = "create"
+            pluginApi.pluginSettings._editBookmark = null
+            pluginApi.openPanel(screen)
+        })
         launcher.close()
     }
 
     function openEditPanel(bookmark) {
         if (!pluginApi) return
-        openBookmarkWindow("edit", bookmark)
-        launcher.close()
-    }
-
-    function openBookmarkWindow(mode, bookmark) {
-        if (!pluginApi) return
-        if (bookmarkWindow && typeof bookmarkWindow.close === "function") {
-            bookmarkWindow.close()
-        }
-        
-        if (!bookmarkWindow) {
-            var component = Qt.createComponent(pluginApi.pluginDir + "/BookmarkWindow.qml")
-            if (component.status === Component.Error) {
-                Logger.e("LinkdingProvider", "Failed to create BookmarkWindow:", component.errorString())
-                return
-            }
-            bookmarkWindow = component.createObject(pluginApi.mainInstance, {
-                "pluginApi": pluginApi,
-                "mode": mode,
-                "bookmark": bookmark
-            })
-        } else {
-            bookmarkWindow.mode = mode
-            bookmarkWindow.bookmark = bookmark
-            bookmarkWindow.formUrl = mode === "edit" && bookmark ? bookmark.url : ""
-            bookmarkWindow.formTags = mode === "edit" && bookmark ? (bookmark.tag_names || []).join(", ") : ""
-        }
-        
-        bookmarkWindow.show()
-        Logger.i("LinkdingProvider", "Bookmark window opened, mode:", mode)
-    }
-
-    function openEditPanel(bookmark) {
-        if (!pluginApi) return
-        openBookmarkWindow("edit", bookmark)
+        pluginApi.withCurrentScreen(function(screen) {
+            pluginApi.pluginSettings._panelMode = "edit"
+            pluginApi.pluginSettings._editBookmark = bookmark
+            pluginApi.openPanel(screen)
+        })
         launcher.close()
     }
 
@@ -531,16 +489,5 @@ Item {
         if (!found) root.bookmarks.unshift(bookmark)
         rebuildCategories()
         saveCache(root.bookmarks)
-    }
-
-    Component.onDestruction: {
-        if (bookmarkWindow) {
-            bookmarkWindow.close()
-            bookmarkWindow = null
-        }
-    }
-
-    Component.onCompleted: {
-        init()
     }
 }
