@@ -144,7 +144,6 @@ Item {
 
                             NButton {
                                 text: bwInstalled ? "Next →" : "Skip (install manually)"
-                                highlighted: bwInstalled
                                 Layout.fillWidth: true
                                 onClicked: {
                                     root.setupStep = 2
@@ -199,7 +198,6 @@ Item {
 
                                 NButton {
                                     text: "Next →"
-                                    highlighted: true
                                     Layout.fillWidth: true
                                     onClicked: {
                                         pluginApi.pluginSettings.vaultUrl = root.vaultUrl
@@ -280,7 +278,6 @@ Item {
 
                                 NButton {
                                     text: vaultUnlocked ? "Done ✓" : "Skip"
-                                    highlighted: vaultUnlocked
                                     Layout.fillWidth: true
                                     onClicked: {
                                         if (vaultUnlocked) {
