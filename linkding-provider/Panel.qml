@@ -192,7 +192,7 @@ Item {
                             Layout.fillWidth: true
                             placeholderText: "https://example.com"
                             text: root.formUrl
-                            icon: "link"
+                            inputIconName: "link"
                             onTextChanged: root.formUrl = text
                             Keys.onReturnPressed: tagsInput.forceActiveFocus()
                         }
@@ -213,7 +213,7 @@ Item {
                             Layout.fillWidth: true
                             placeholderText: "dev, tools, linux"
                             text: root.formTags
-                            icon: "tags"
+                            inputIconName: "tags"
                             onTextChanged: root.formTags = text
                             Keys.onReturnPressed: root.save()
                         }
