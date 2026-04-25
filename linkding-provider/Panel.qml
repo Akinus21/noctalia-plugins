@@ -56,6 +56,7 @@ Item {
                 id: tagsInput
                 Layout.fillWidth: true
                 label: "Tags"
+                description: "Comma-separated, no # symbol"
                 placeholderText: "dev, tools, notes"
             }
 
