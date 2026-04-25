@@ -15,8 +15,11 @@ Item {
 
     anchors.fill: parent
 
+    readonly property bool isEditMode: pluginApi?.pluginSettings?._panelMode === "edit"
+    readonly property var editBookmark: pluginApi?.pluginSettings?._editBookmark || null
+
     Component.onCompleted: {
-        console.log("PANEL LOADED")
+        console.log("PANEL LOADED", isEditMode ? "EDIT" : "CREATE")
     }
 
     Rectangle {
@@ -31,23 +34,20 @@ Item {
             }
             spacing: Style.marginL
 
-readonly property bool isEditMode: pluginApi?.pluginSettings?._panelMode === "edit"
-    readonly property var editBookmark: pluginApi?.pluginSettings?._editBookmark || null
+            NText {
+                text: isEditMode ? "Edit Bookmark" : "Add Bookmark"
+                pointSize: Style.fontSizeXL
+                font.weight: Font.Bold
+                color: Color.mOnSurface
+            }
 
-    NText {
-        text: isEditMode ? "Edit Bookmark" : "Add Bookmark"
-        pointSize: Style.fontSizeXL
-        font.weight: Font.Bold
-        color: Color.mOnSurface
-    }
-
-    NTextInput {
-        id: urlInput
-        Layout.fillWidth: true
-        label: "URL"
-        placeholderText: "https://example.com"
-        text: isEditMode ? (editBookmark?.url || "") : ""
-    }
+            NTextInput {
+                id: urlInput
+                Layout.fillWidth: true
+                label: "URL"
+                placeholderText: "https://example.com"
+                text: isEditMode ? (editBookmark?.url || "") : ""
+            }
 
             NTextInput {
                 id: titleInput
@@ -74,19 +74,26 @@ readonly property bool isEditMode: pluginApi?.pluginSettings?._panelMode === "ed
                 text: isEditMode ? (editBookmark?.description || "") : ""
             }
 
-            NButton {
-                text: "Close"
-                onClicked: {
-                    pluginApi.pluginSettings._panelMode = null
-                    pluginApi.pluginSettings._editBookmark = null
-                    pluginApi.closePanel(pluginApi.panelOpenScreen)
-                }
-            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.marginM
 
-            NButton {
-                id: addButton
-                text: isEditMode ? "Save" : "Add"
-                onClicked: saveBookmark()
+                NButton {
+                    text: "Close"
+                    onClicked: {
+                        pluginApi.pluginSettings._panelMode = null
+                        pluginApi.pluginSettings._editBookmark = null
+                        pluginApi.closePanel(pluginApi.panelOpenScreen)
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                NButton {
+                    id: saveButton
+                    text: isEditMode ? "Save" : "Add"
+                    onClicked: saveBookmark()
+                }
             }
         }
     }
@@ -109,7 +116,7 @@ readonly property bool isEditMode: pluginApi?.pluginSettings?._panelMode === "ed
             return
         }
 
-        addButton.enabled = false
+        saveButton.enabled = false
 
         var apiUrl = settings.url.replace(/\/$/, "")
         var method = isEditMode ? "PUT" : "POST"
@@ -123,11 +130,13 @@ readonly property bool isEditMode: pluginApi?.pluginSettings?._panelMode === "ed
         xhr.setRequestHeader("Content-Type", "application/json")
 
         xhr.onreadystatechange = function() {
-            addButton.enabled = true
+            saveButton.enabled = true
             if (xhr.readyState !== XMLHttpRequest.DONE) return
 
             if (xhr.status === 200 || xhr.status === 201) {
                 ToastService.showNotice(isEditMode ? "Bookmark updated" : "Bookmark added")
+                pluginApi.pluginSettings._panelMode = null
+                pluginApi.pluginSettings._editBookmark = null
                 pluginApi.closePanel(pluginApi.panelOpenScreen)
             } else {
                 ToastService.showError("Failed: " + xhr.status)
