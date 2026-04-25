@@ -91,6 +91,13 @@ Item {
                 "icon": "bookmark-plus",
                 "isTablerIcon": true,
                 "onActivate": function() { openCreatePanel() }
+            },
+            {
+                "name": ">linkding edit",
+                "description": "Edit a bookmark",
+                "icon": "pencil",
+                "isTablerIcon": true,
+                "onActivate": function() { launcher.setSearchText(">linkding edit ") }
             }
         ]
     }
@@ -140,6 +147,33 @@ Item {
         if (query === "new") {
             openCreatePanel()
             return []
+        }
+
+        // "edit" mode - search for bookmark to edit
+        if (query.startsWith("edit ")) {
+            var editQuery = query.slice(5).toLowerCase()
+            var matched = []
+            for (var i = 0; i < bookmarks.length; i++) {
+                var b = bookmarks[i]
+                var haystack = ((b.title || "") + " " + (b.url || "")).toLowerCase()
+                if (fuzzyMatch(editQuery, haystack)) {
+                    matched.push(b)
+                }
+            }
+            if (matched.length === 0 && loaded) {
+                return [{
+                    "name": "No bookmarks match",
+                    "description": "Try a different search term",
+                    "icon": "search-off",
+                    "isTablerIcon": true,
+                    "onActivate": function() {}
+                }]
+            }
+            var editResults = []
+            for (var j = 0; j < Math.min(matched.length, 20); j++) {
+                editResults.push(makeEditResult(matched[j]))
+            }
+            return editResults
         }
 
         var pool = bookmarks
@@ -257,6 +291,24 @@ Item {
                     }
                 }
             ]
+        }
+    }
+
+    function makeEditResult(b) {
+        var bUrl   = b.url     || ""
+        var bTitle = b.title   || bUrl
+        var bTags  = (b.tag_names || []).join(", ")
+
+        return {
+            "name": bTitle,
+            "description": bTags || bUrl,
+            "icon": "pencil",
+            "isTablerIcon": true,
+            "provider": root,
+
+            "onActivate": function() {
+                openEditPanel(b)
+            }
         }
     }
 
