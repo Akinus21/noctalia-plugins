@@ -8,16 +8,17 @@ Item {
     id: root
 
     property var pluginApi: null
-    readonly property var geometryPlaceholder: mainContainer
+    readonly property var geometryPlaceholder: panelContainer
     property real contentPreferredWidth: 400 * Style.uiScaleRatio
     property real contentPreferredHeight: 560 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
     anchors.fill: parent
 
-    Item {
-        id: mainContainer
+    Rectangle {
+        id: panelContainer
         anchors.fill: parent
+        color: "transparent"
 
         ColumnLayout {
             anchors {
