@@ -78,6 +78,7 @@ Item {
             NButton {
                 id: addButton
                 text: "Add"
+                onClicked: {}
             }
         }
     }
