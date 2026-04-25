@@ -44,6 +44,10 @@ Item {
                 text: "Close"
                 onClicked: pluginApi.closePanel(pluginApi.panelOpenScreen)
             }
+
+            NButton {
+                text: "Add"
+            }
         }
     }
 }
