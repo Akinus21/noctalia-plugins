@@ -436,7 +436,7 @@ Item {
 
         var proc = Quickshell.execDetached([
             "sh", "-c",
-            "echo '" + password + "' | bw unlock " + urlArg + " --raw"
+            "BW_PASSWORD='" + password + "' bw unlock " + urlArg + " --passwordenv --raw"
         ])
 
         proc.Completed: {
