@@ -30,6 +30,9 @@ Item {
     property bool fetching: false        // network request in flight
     property string pendingDeleteId: ""  // bookmark id awaiting confirmation
 
+    // ── Bookmark window instance ───────────────────────────────────────
+    property var bookmarkWindow: null
+
     // ── Helpers ──────────────────────────────────────────────────────────
     readonly property string cacheFilePath:
         (pluginApi?.pluginDir || "") + "/cache.json"
@@ -452,25 +455,50 @@ Item {
         root.showsCategories = cats.length > 1
     }
 
-    // ── Panel helpers ─────────────────────────────────────────────────────
-
+// ── Panel helpers ─────────────────────────────────────────────────────
     function openCreatePanel() {
         if (!pluginApi) return
-        pluginApi.withCurrentScreen(function(screen) {
-            pluginApi.pluginSettings._panelMode = "create"
-            pluginApi.pluginSettings._editBookmark = null
-            pluginApi.openPanel(screen)
-        })
+        openBookmarkWindow("create", null)
         launcher.close()
     }
 
     function openEditPanel(bookmark) {
         if (!pluginApi) return
-        pluginApi.withCurrentScreen(function(screen) {
-            pluginApi.pluginSettings._panelMode = "edit"
-            pluginApi.pluginSettings._editBookmark = bookmark
-            pluginApi.openPanel(screen)
-        })
+        openBookmarkWindow("edit", bookmark)
+        launcher.close()
+    }
+
+    function openBookmarkWindow(mode, bookmark) {
+        if (!pluginApi) return
+        if (bookmarkWindow && typeof bookmarkWindow.close === "function") {
+            bookmarkWindow.close()
+        }
+        
+        if (!bookmarkWindow) {
+            var component = Qt.createComponent(pluginApi.pluginDir + "/BookmarkWindow.qml")
+            if (component.status === Component.Error) {
+                Logger.e("LinkdingProvider", "Failed to create BookmarkWindow:", component.errorString())
+                return
+            }
+            bookmarkWindow = component.createObject(pluginApi.mainInstance, {
+                "pluginApi": pluginApi,
+                "mode": mode,
+                "bookmark": bookmark
+            })
+        } else {
+            bookmarkWindow.mode = mode
+            bookmarkWindow.bookmark = bookmark
+            bookmarkWindow.formUrl = mode === "edit" && bookmark ? bookmark.url : ""
+            bookmarkWindow.formTags = mode === "edit" && bookmark ? (bookmark.tag_names || []).join(", ") : ""
+        }
+        
+        bookmarkWindow.show()
+        Logger.i("LinkdingProvider", "Bookmark window opened, mode:", mode)
+    }
+
+    function openEditPanel(bookmark) {
+        if (!pluginApi) return
+        openBookmarkWindow("edit", bookmark)
         launcher.close()
     }
 
@@ -489,5 +517,16 @@ Item {
         if (!found) root.bookmarks.unshift(bookmark)
         rebuildCategories()
         saveCache(root.bookmarks)
+    }
+
+    Component.onDestruction: {
+        if (bookmarkWindow) {
+            bookmarkWindow.close()
+            bookmarkWindow = null
+        }
+    }
+
+    Component.onCompleted: {
+        init()
     }
 }
