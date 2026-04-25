@@ -12,7 +12,7 @@ Item {
     property var pluginApi: null
     readonly property var geometryPlaceholder: panelContainer
     property real contentPreferredWidth: 400 * Style.uiScaleRatio
-    property real contentPreferredHeight: 300 * Style.uiScaleRatio
+    property real contentPreferredHeight: 560 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
     anchors.fill: parent
