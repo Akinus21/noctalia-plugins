@@ -9,22 +9,16 @@ Item {
 
     property var pluginApi: null
     readonly property var geometryPlaceholder: panelContainer
-    property real contentPreferredWidth: 420 * Style.uiScaleRatio
-    property real contentPreferredHeight: 400 * Style.uiScaleRatio
+    property real contentPreferredWidth: 400 * Style.uiScaleRatio
+    property real contentPreferredHeight: 600 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
     anchors.fill: parent
 
-    property string panelMode: "view"
-    property var viewItem: null
-    property var editItem: null
+    readonly property bool isEditMode: false
+    readonly property var editBookmark: null
 
     Component.onCompleted: {
-        if (pluginApi && pluginApi.pluginSettings) {
-            panelMode = pluginApi.pluginSettings._panelMode || "view"
-            viewItem = pluginApi.pluginSettings._viewItem || null
-            editItem = pluginApi.pluginSettings._editItem || null
-        }
     }
 
     Rectangle {
@@ -39,15 +33,15 @@ Item {
             }
             spacing: Style.marginL
 
-            NLabel {
+            NText {
                 text: "Bitwarden Vault"
-                font.bold: true
-                font.pixelSize: Style.fontSizeL
-                Layout.fillWidth: true
+                pointSize: Style.fontSizeXL
+                font.weight: Font.Bold
+                color: Color.mOnSurface
             }
 
             NLabel {
-                text: panelMode === "setup" ? "Setup Wizard" : "Vault Item"
+                text: "Vault Item"
                 Layout.fillWidth: true
             }
 
