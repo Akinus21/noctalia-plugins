@@ -1,16 +1,13 @@
 {
   "id": "bitwarden-provider",
-  "name": "Bitwarden Vault",
-  "version": "1.0.16",
+  "name": "Bitwarden Bookmarks",
+  "version": "1.0.76",
   "minNoctaliaVersion": "3.9.0",
+  "test": true,
   "author": "Akinus21",
   "license": "MIT",
-  "repository": "https://github.com/Akinus21/noctalia-plugins",
-  "description": "Access your Bitwarden vault from the launcher - search logins, copy usernames and passwords.",
-  "tags": [
-    "Launcher",
-    "Security"
-  ],
+  "repository": "https://github.com/Akinus21/homebrew-tap",
+  "description": "Search, browse, and manage your Bitwarden items from the launcher.",
   "entryPoints": {
     "launcherProvider": "LauncherProvider.qml",
     "panel": "Panel.qml",
@@ -22,9 +19,11 @@
   "metadata": {
     "commandPrefix": "bitwarden",
     "defaultSettings": {
-      "vaultUrl": "",
-      "sessionToken": "",
-      "bwAvailable": false
+      "bitwardenUrl": "",
+      "apiToken": "",
+      "cacheMaxAgeHours": 1,
+      "cacheMaxAgeMinutes": 0,
+      "cacheMaxAgeSeconds": 0
     }
   }
 }

@@ -11,7 +11,7 @@ ColumnLayout {
     property var cfg: pluginApi?.pluginSettings || ({})
     property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
 
-    property string linkdingUrl: cfg.linkdingUrl ?? defaults.linkdingUrl ?? ""
+    property string bitwardenUrl: cfg.bitwardenUrl ?? defaults.bitwardenUrl ?? ""
     property string apiToken: cfg.apiToken ?? defaults.apiToken ?? ""
     property int cacheMaxAgeHours: cfg.cacheMaxAgeHours ?? defaults.cacheMaxAgeHours ?? 1
     property int cacheMaxAgeMinutes: cfg.cacheMaxAgeMinutes ?? defaults.cacheMaxAgeMinutes ?? 0
@@ -23,7 +23,7 @@ ColumnLayout {
         if (!pluginApi) {
             return
         }
-        pluginApi.pluginSettings.linkdingUrl = root.linkdingUrl
+        pluginApi.pluginSettings.bitwardenUrl = root.bitwardenUrl
         pluginApi.pluginSettings.apiToken = root.apiToken
         pluginApi.pluginSettings.cacheMaxAgeHours = root.cacheMaxAgeHours
         pluginApi.pluginSettings.cacheMaxAgeMinutes = root.cacheMaxAgeMinutes
@@ -33,10 +33,10 @@ ColumnLayout {
 
     NTextInput {
         Layout.fillWidth: true
-        label: "Linkding URL"
+        label: "Bitwarden URL"
         placeholderText: "https://links.yourdomain.com"
-        text: root.linkdingUrl
-        onTextChanged: root.linkdingUrl = text
+        text: root.bitwardenUrl
+        onTextChanged: root.bitwardenUrl = text
     }
 
     NTextInput {
