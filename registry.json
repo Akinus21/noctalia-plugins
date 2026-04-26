@@ -13,16 +13,13 @@
     },
     {
       "id": "bitwarden-provider",
-      "name": "Bitwarden Vault",
-      "version": "1.0.16",
-      "description": "Access your Bitwarden vault from the launcher - search logins, copy usernames and passwords.",
-      "tags": [
-        "Launcher",
-        "Security"
-      ],
+      "name": "Bitwarden Bookmarks",
+      "version": "1.0.77",
+      "description": "Search, browse, and manage your Bitwarden items from the launcher.",
+      "tags": [],
       "author": "Akinus21",
       "license": "MIT",
-      "repository": "https://github.com/Akinus21/noctalia-plugins",
+      "repository": "https://github.com/Akinus21/homebrew-tap",
       "minNoctaliaVersion": "3.9.0"
     }
   ]
