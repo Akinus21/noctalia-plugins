@@ -71,7 +71,7 @@ Item {
             }
 
             NLabel {
-                text: viewItem && viewItem.login && viewItem.login.password ? "••••••••" : "-"
+                text: viewItem && viewItem.login && viewItem.login.password ? "********" : "-"
                 Layout.fillWidth: true
             }
 

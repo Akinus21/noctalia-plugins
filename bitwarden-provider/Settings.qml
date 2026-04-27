@@ -11,15 +11,15 @@ ColumnLayout {
     property var cfg: pluginApi?.pluginSettings || ({})
     property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
 
-    property string vaultUrl: cfg.vaultUrl ?? defaults.vaultUrl ?? ""
-    property string sessionToken: cfg.sessionToken ?? defaults.sessionToken ?? ""
+    property string editVaultUrl: cfg.vaultUrl ?? defaults.vaultUrl ?? ""
+    property string editSessionToken: cfg.sessionToken ?? defaults.sessionToken ?? ""
 
     spacing: Style.marginL
 
     function saveSettings() {
         if (!pluginApi) return
-        pluginApi.pluginSettings.vaultUrl = root.vaultUrl
-        pluginApi.pluginSettings.sessionToken = root.sessionToken
+        pluginApi.pluginSettings.vaultUrl = root.editVaultUrl
+        pluginApi.pluginSettings.sessionToken = root.editSessionToken
         pluginApi.saveSettings()
         if (pluginApi.mainInstance) {
             pluginApi.mainInstance.checkUnlockStatus()
@@ -31,8 +31,8 @@ ColumnLayout {
         label: "Vault URL"
         description: "Your Bitwarden/vaultwarden server URL"
         placeholderText: "https://bitwarden.example.com"
-        text: root.vaultUrl
-        onTextChanged: root.vaultUrl = text
+        text: root.editVaultUrl
+        onTextChanged: root.editVaultUrl = text
     }
 
     NTextInput {
@@ -40,8 +40,8 @@ ColumnLayout {
         label: "Session Token"
         description: "Output of 'bw unlock' to persist login"
         placeholderText: "Run 'bw unlock' then 'echo $BW_SESSION'"
-        text: root.sessionToken
-        onTextChanged: root.sessionToken = text
+        text: root.editSessionToken
+        onTextChanged: root.editSessionToken = text
     }
 
     NLabel {
