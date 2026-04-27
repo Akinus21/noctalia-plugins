@@ -1,13 +1,16 @@
 {
   "id": "bitwarden-provider",
   "name": "Bitwarden Vault",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minNoctaliaVersion": "3.9.0",
   "author": "Akinus21",
   "license": "MIT",
   "repository": "https://github.com/Akinus21/noctalia-plugins",
   "description": "Access your Bitwarden vault from the launcher using the bw CLI.",
-  "tags": ["Launcher", "Security"],
+  "tags": [
+    "Launcher",
+    "Security"
+  ],
   "entryPoints": {
     "launcherProvider": "LauncherProvider.qml",
     "panel": "Panel.qml",
