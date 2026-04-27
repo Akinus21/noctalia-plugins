@@ -1,7 +1,7 @@
 {
   "id": "bitwarden-provider",
   "name": "Bitwarden Bookmarks",
-  "version": "1.0.77",
+  "version": "1.0.78",
   "minNoctaliaVersion": "3.9.0",
   "test": true,
   "author": "Akinus21",
