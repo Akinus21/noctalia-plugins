@@ -38,7 +38,7 @@ Item {
 
     function checkBwInstalled() {
         var proc = Quickshell.execDetached(["which", "bw"])
-        proc.onCompleted: {
+        proc.onCompleted.connect(function() {
             if (proc.exitCode === 0) {
                 bwAvailable = true
                 pluginApi.pluginSettings.bwAvailable = true
@@ -47,12 +47,12 @@ Item {
                 bwAvailable = false
                 pluginApi.pluginSettings.bwAvailable = false
             }
-        }
+        })
     }
 
     function checkUnlockStatus() {
         var proc = Quickshell.execDetached(["bw", "status"])
-        proc.onCompleted: {
+        proc.onCompleted.connect(function() {
             try {
                 var output = proc.readAll()
                 var status = JSON.parse(String(output))
@@ -67,7 +67,7 @@ Item {
             } catch (e) {
                 unlocked = false
             }
-        }
+        })
     }
 
     function handleCommand(searchText) {
@@ -240,7 +240,7 @@ Item {
         fetching = true
 
         var proc = Quickshell.execDetached(["bw", "list", "items", "--sessionid", sessionToken])
-        proc.onCompleted: {
+        proc.onCompleted.connect(function() {
             fetching = false
             if (proc.exitCode === 0) {
                 try {
@@ -255,7 +255,7 @@ Item {
             } else {
                 unlocked = false
             }
-        }
+        })
     }
 
     function maybeRefresh() {
