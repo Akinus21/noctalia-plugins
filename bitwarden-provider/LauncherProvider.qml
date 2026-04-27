@@ -27,11 +27,8 @@ Item {
     property bool loaded: false
     property string sessionToken: ""
 
-    property string vaultUrl: ""
-
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
-        vaultUrl = pluginApi?.pluginSettings?.vaultUrl || ""
         checkBwInstalled()
     }
 
@@ -45,12 +42,10 @@ Item {
             if (proc.exitCode === 0) {
                 bwAvailable = true
                 pluginApi.pluginSettings.bwAvailable = true
-                Logger.i("BitwardenProvider", "bw CLI found")
                 checkUnlockStatus()
             } else {
                 bwAvailable = false
                 pluginApi.pluginSettings.bwAvailable = false
-                Logger.w("BitwardenProvider", "bw CLI not found")
             }
         }
     }
@@ -165,7 +160,7 @@ Item {
         if (!unlocked) {
             return [{
                 "name": "Vault is locked",
-                "description": "Run bw unlock first or add session token in settings",
+                "description": "Run bw unlock or add session token in settings",
                 "icon": "lock",
                 "isTablerIcon": true,
                 "onActivate": function() {}
@@ -194,7 +189,7 @@ Item {
                 "name": "Loading...",
                 "description": "Fetching items",
                 "icon": "loader",
-                "isTablerIcon": true,
+                "isTablerIcon": true
                 "onActivate": function() {}
             }]
         }
@@ -209,9 +204,9 @@ Item {
             }
         } else {
             var textQuery = query.toLowerCase()
-            for (var i = 0; i < pool.length && results.length < 50; i++) {
-                var item = pool[i]
-                var haystack = ((item.name || "") + " " + (item.login?.username || "") + " " + (item.login?.uri || "")).toLowerCase()
+            for (var j = 0; j < pool.length && results.length < 50; j++) {
+                var item = pool[j]
+                var haystack = ((item.name || "") + " " + (item.login ? item.login.username : "") + " " + (item.login ? item.login.uri : "")).toLowerCase()
                 if (fuzzyMatch(textQuery, haystack)) {
                     results.push(makeResult(item, mode))
                 }
@@ -258,7 +253,6 @@ Item {
                     Logger.e("BitwardenProvider", "Parse error:", e)
                 }
             } else {
-                Logger.e("BitwardenProvider", "Failed to list items:", proc.exitCode)
                 unlocked = false
             }
         }
@@ -276,13 +270,15 @@ Item {
         var name = item.name || "Untitled"
         var subtitle = item.type || "login"
 
-        if (mode === "username" && item.login?.username) {
+        if (mode === "username" && item.login && item.login.username) {
             subtitle = item.login.username
         } else if (mode === "password") {
             subtitle = "Click to copy password"
         } else if (mode === "items") {
-            subtitle = (item.login?.username || "") + (item.login?.uri ? " - " + item.login.uri : "")
-        } else if (item.login?.username) {
+            var u = item.login ? item.login.username : ""
+            var uri = item.login ? item.login.uri : ""
+            subtitle = u + (uri ? " - " + uri : "")
+        } else if (item.login && item.login.username) {
             subtitle = item.login.username
         }
 
@@ -294,11 +290,11 @@ Item {
             "provider": root,
 
             "onActivate": function() {
-                if (mode === "username" && item.login?.username) {
+                if (mode === "username" && item.login && item.login.username) {
                     copyToClipboard(item.login.username)
                     ToastService.showNotice("Username copied")
                     launcher.close()
-                } else if (mode === "password" && item.login?.password) {
+                } else if (mode === "password" && item.login && item.login.password) {
                     copyToClipboard(item.login.password)
                     ToastService.showNotice("Password copied")
                     launcher.close()
@@ -320,6 +316,7 @@ Item {
     }
 
     function copyToClipboard(text) {
-        Quickshell.execDetached(["sh", "-c", "echo -n '" + String(text).replace(/'/g, "'\\''") + "' | wl-copy"])
+        var t = String(text).replace(/'/g, "'\\''")
+        Quickshell.execDetached(["sh", "-c", "echo -n '" + t + "' | wl-copy"])
     }
 }
