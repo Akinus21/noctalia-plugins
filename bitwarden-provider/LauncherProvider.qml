@@ -189,7 +189,7 @@ Item {
                 "name": "Loading...",
                 "description": "Fetching items",
                 "icon": "loader",
-                "isTablerIcon": true
+                "isTablerIcon": true,
                 "onActivate": function() {}
             }]
         }
