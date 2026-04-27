@@ -11,39 +11,49 @@ ColumnLayout {
     property var cfg: pluginApi?.pluginSettings || ({})
     property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
 
-    property string bitwardenUrl: cfg.bitwardenUrl ?? defaults.bitwardenUrl ?? ""
-    property string apiToken: cfg.apiToken ?? defaults.apiToken ?? ""
-    property int cacheMaxAgeHours: cfg.cacheMaxAgeHours ?? defaults.cacheMaxAgeHours ?? 1
-    property int cacheMaxAgeMinutes: cfg.cacheMaxAgeMinutes ?? defaults.cacheMaxAgeMinutes ?? 0
-    property int cacheMaxAgeSeconds: cfg.cacheMaxAgeSeconds ?? defaults.cacheMaxAgeSeconds ?? 0
+    property string vaultUrl: cfg.vaultUrl ?? defaults.vaultUrl ?? ""
+    property string sessionToken: cfg.sessionToken ?? defaults.sessionToken ?? ""
 
     spacing: Style.marginL
 
     function saveSettings() {
-        if (!pluginApi) {
-            return
-        }
-        pluginApi.pluginSettings.bitwardenUrl = root.bitwardenUrl
-        pluginApi.pluginSettings.apiToken = root.apiToken
-        pluginApi.pluginSettings.cacheMaxAgeHours = root.cacheMaxAgeHours
-        pluginApi.pluginSettings.cacheMaxAgeMinutes = root.cacheMaxAgeMinutes
-        pluginApi.pluginSettings.cacheMaxAgeSeconds = root.cacheMaxAgeSeconds
+        if (!pluginApi) return
+        pluginApi.pluginSettings.vaultUrl = root.vaultUrl
+        pluginApi.pluginSettings.sessionToken = root.sessionToken
         pluginApi.saveSettings()
+        if (pluginApi.mainInstance) {
+            pluginApi.mainInstance.checkUnlockStatus()
+        }
     }
 
     NTextInput {
         Layout.fillWidth: true
-        label: "Bitwarden URL"
-        placeholderText: "https://links.yourdomain.com"
-        text: root.bitwardenUrl
-        onTextChanged: root.bitwardenUrl = text
+        label: "Vault URL"
+        description: "Your Bitwarden/vaultwarden server URL"
+        placeholderText: "https://bitwarden.example.com"
+        text: root.vaultUrl
+        onTextChanged: root.vaultUrl = text
     }
 
     NTextInput {
         Layout.fillWidth: true
-        label: "API Token"
-        placeholderText: "your-api-token-here"
-        text: root.apiToken
-        onTextChanged: root.apiToken = text
+        label: "Session Token"
+        description: "Output of 'bw unlock' to persist login"
+        placeholderText: "Run 'bw unlock' then 'echo $BW_SESSION'"
+        text: root.sessionToken
+        onTextChanged: root.sessionToken = text
+    }
+
+    NLabel {
+        text: "Make sure <b>bw CLI</b> is installed and your vault is unlocked."
+        wrapMode: Text.WordWrap
+        Layout.fillWidth: true
+    }
+
+    NButton {
+        text: "Open Bitwarden Download Page"
+        outlined: true
+        Layout.fillWidth: true
+        onClicked: Quickshell.execDetached(["xdg-open", "https://bitwarden.com/download"])
     }
 }
