@@ -19,23 +19,23 @@ Item {
         id: panelContainer
         anchors.fill: parent
         color: "red"
-    }
 
-    ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: Style.marginL
-        spacing: Style.marginM
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Style.marginL
+            spacing: Style.marginM
 
-        NLabel {
-            text: "Niri Keybinds Panel"
-            font.bold: true
-            font.pixelSize: Style.fontSizeL
-            Layout.fillWidth: true
-        }
+            NLabel {
+                text: "Niri Keybinds Panel"
+                font.bold: true
+                font.pixelSize: Style.fontSizeL
+                Layout.fillWidth: true
+            }
 
-        NLabel {
-            text: "Test panel - if you see this, QML works"
-            Layout.fillWidth: true
+            NLabel {
+                text: "Test panel - if you see this, QML works"
+                Layout.fillWidth: true
+            }
         }
     }
 }
