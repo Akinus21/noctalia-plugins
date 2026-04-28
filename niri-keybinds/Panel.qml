@@ -219,7 +219,7 @@ Item {
                     continue
                 }
 
-                var keyMatch = line.match(/^([A-Za-z0-9+_]+)\s+(?:\S+\s*=|)(?:\s*"[^"]*"\s*|)\s*\{/)
+                var keyMatch = line.match(/^([A-Za-z0-9+_]+)(?=\s)/)
                 if (keyMatch) {
                     var keyCombo = keyMatch[1]
                     var action = extractAction(line)
