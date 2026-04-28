@@ -28,8 +28,8 @@
     {
       "id": "niri-keybinds",
       "name": "Niri Keybinds",
-      "version": "1.0.3",
-      "description": "View, edit, and manage your Niri keybinds from a panel.",
+      "version": "1.0.1",
+      "description": "View and manage your Niri keybinds from a panel.",
       "tags": [
         "Panel",
         "Bar",
