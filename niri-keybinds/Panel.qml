@@ -144,6 +144,13 @@ Item {
 
         var proc = Quickshell.execDetached(["cat", configPath])
 
+        if (!proc) {
+            loading = false
+            hasError = true
+            errorMessage = "Failed to start process"
+            return
+        }
+
         proc.onCompleted.connect(function() {
             loading = false
             if (proc.exitCode === 0) {
@@ -152,6 +159,12 @@ Item {
                 hasError = true
                 errorMessage = "Failed to read config"
             }
+        })
+
+        proc.onError.connect(function(err) {
+            loading = false
+            hasError = true
+            errorMessage = "Process error: " + err
         })
     }
 
