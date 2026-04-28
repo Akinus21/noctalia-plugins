@@ -24,10 +24,7 @@ Item {
     property string configPath: ""
 
     Component.onCompleted: {
-        configPath = (Quickshell.env("HOME") || "/var/home/gabriel") + "/.config/niri/config.kdl"
-        if (pluginApi?.pluginSettings?.configPath) {
-            configPath = pluginApi.pluginSettings.configPath
-        }
+        configPath = getConfigPath()
         loadKeybinds()
     }
 
@@ -64,8 +61,7 @@ Item {
                     onClicked: {
                         loading = true
                         hasError = false
-                        cacheFile.watchChanges = true
-                        cacheFile.reload()
+                        loadKeybinds()
                     }
                 }
 
@@ -144,7 +140,6 @@ Item {
                     color: hasError ? Color.mError : Color.mOnSurfaceVariant
                     pointSize: Style.fontSizeS
                 }
-            }
             }
         }
     }
