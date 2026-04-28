@@ -79,6 +79,7 @@ Item {
             NScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.minimumHeight: 200
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -89,23 +90,23 @@ Item {
 
                         NBox {
                             Layout.fillWidth: true
-                            Layout.minimumHeight: 160
                             radius: Style.radiusM
 
-                            ColumnLayout {
+                            RowLayout {
                                 anchors.fill: parent
                                 anchors.margins: Style.marginM
                                 spacing: Style.marginM
 
                                 NTextInput {
-                                    Layout.fillWidth: true
+                                    Layout.preferredWidth: 180
+                                    Layout.fillHeight: true
                                     text: modelData.title || ""
                                     label: "Keybind"
                                 }
 
                                 NTextInput {
                                     Layout.fillWidth: true
-                                    Layout.minimumHeight: 80
+                                    Layout.fillHeight: true
                                     text: modelData.bindings || ""
                                     label: "Action"
                                     placeholderText: "action;"
@@ -122,15 +123,28 @@ Item {
                 }
             }
 
-            NText {
-                text: {
-                    if (loading) return "Loading..."
-                    if (hasError) return errorMessage
-                    if (keybinds.length === 0) return "No keybinds found"
-                    return keybinds.length + " keybinds"
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.marginM
+
+                NButton {
+                    text: "Save"
+                    onClicked: saveKeybinds()
                 }
-                color: hasError ? Color.mError : Color.mOnSurfaceVariant
-                pointSize: Style.fontSizeS
+
+                Item { Layout.fillWidth: true }
+
+                NText {
+                    text: {
+                        if (loading) return "Loading..."
+                        if (hasError) return errorMessage
+                        if (keybinds.length === 0) return "No keybinds found"
+                        return keybinds.length + " keybinds"
+                    }
+                    color: hasError ? Color.mError : Color.mOnSurfaceVariant
+                    pointSize: Style.fontSizeS
+                }
+            }
             }
         }
     }
@@ -247,30 +261,14 @@ Item {
 
     function generateConfig() {
         var lines = []
-        lines.push("// Niri Keybinds")
+        lines.push("binds {")
 
-        var byCat = {}
         for (var i = 0; i < keybinds.length; i++) {
             var kb = keybinds[i]
-            var cat = kb.category || "General"
-            if (!byCat[cat]) byCat[cat] = []
-            byCat[cat].push(kb)
+            lines.push("    " + kb.title + " { " + kb.bindings + "; }")
         }
 
-        for (var cat in byCat) {
-            lines.push("// " + cat)
-            var items = byCat[cat]
-            for (var j = 0; j < items.length; j++) {
-                var kb = items[j]
-                lines.push("keybind \"" + kb.title + "\" {")
-                var keys = kb.bindings.split(", ")
-                for (var k = 0; k < keys.length; k++) {
-                    lines.push("    key \"" + keys[k].trim() + "\"")
-                }
-                lines.push("}")
-            }
-        }
-
+        lines.push("}")
         return lines.join("\n")
     }
 }
