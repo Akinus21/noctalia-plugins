@@ -79,11 +79,11 @@ Item {
 
                         NBox {
                             Layout.fillWidth: true
-                            padding: Style.marginM
                             radius: Style.radiusM
 
                             ColumnLayout {
                                 anchors.fill: parent
+                                anchors.margins: Style.marginM
                                 spacing: Style.marginS
 
                                 RowLayout {
