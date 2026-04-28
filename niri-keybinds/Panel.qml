@@ -21,10 +21,12 @@ Item {
     property bool loading: false
     property bool hasError: false
     property string errorMessage: ""
-    property string configPath: ""
+    property string configPath: (Quickshell.env("HOME") || "/var/home/gabriel") + "/.config/niri/config.kdl"
 
     Component.onCompleted: {
-        configPath = getConfigPath()
+        if (pluginApi?.pluginSettings?.configPath) {
+            configPath = pluginApi.pluginSettings.configPath
+        }
         loadKeybinds()
     }
 
@@ -151,7 +153,7 @@ Item {
             return
         }
 
-        var proc = Quickshell.execDetached(["sh", "-c", "cat '" + configPath + "'"])
+        var proc = Quickshell.execDetached(["cat", configPath])
 
         if (!proc) {
             loading = false
