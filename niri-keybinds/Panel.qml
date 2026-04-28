@@ -151,7 +151,7 @@ Item {
             return
         }
 
-        var proc = Quickshell.execDetached(["cat", configPath])
+        var proc = Quickshell.execDetached(["sh", "-c", "cat '" + configPath + "'"])
 
         if (!proc) {
             loading = false
