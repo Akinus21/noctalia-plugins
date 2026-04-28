@@ -23,7 +23,13 @@ Item {
     property string errorMessage: ""
 
     Component.onCompleted: {
-        loadKeybinds()
+        if (pluginApi?.mainInstance) {
+            keybinds = pluginApi.mainInstance.keybinds
+            loading = pluginApi.mainInstance.loading
+            hasError = pluginApi.mainInstance.hasError
+            errorMessage = pluginApi.mainInstance.errorMessage
+        }
+        pluginApi.mainInstance.loadKeybinds()
     }
 
     Rectangle {
@@ -52,13 +58,13 @@ Item {
                 NButton {
                     text: "Reload"
                     outlined: true
-                    onClicked: loadKeybinds()
+                    onClicked: pluginApi.mainInstance.loadKeybinds()
                 }
 
                 NButton {
                     text: "Save Changes"
                     outlined: true
-                    onClicked: saveKeybinds()
+                    onClicked: pluginApi.mainInstance.saveKeybinds()
                 }
 
                 Item { Layout.fillWidth: true }
@@ -79,7 +85,7 @@ Item {
                     spacing: Style.marginS
 
                     Repeater {
-                        model: keybinds
+                        model: pluginApi?.mainInstance?.keybinds || []
 
                         NBox {
                             Layout.fillWidth: true
@@ -133,7 +139,7 @@ Item {
             }
 
             NLabel {
-                text: hasError ? errorMessage : (keybinds.length + " keybinds loaded")
+                text: hasError ? errorMessage : ((pluginApi?.mainInstance?.keybinds?.length || 0) + " keybinds loaded")
                 color: hasError ? Color.mError : Color.mOnSurfaceVariant
                 font.pixelSize: Style.fontSizeS
                 Layout.fillWidth: true
@@ -145,88 +151,6 @@ Item {
         var path = pluginApi?.pluginSettings?.configPath || ""
         if (path) return path
         return Quickshell.env("HOME") + "/.config/niri/config.kdl"
-    }
-
-    function loadKeybinds() {
-        loading = true
-        hasError = false
-
-        var configPath = getConfigPath()
-        var proc = Quickshell.execDetached(["sh", "-c", "nirictl keybinds 2>/dev/null || cat " + configPath])
-
-        proc.onCompleted.connect(function() {
-            loading = false
-            if (proc.exitCode === 0) {
-                parseKeybinds(proc.readAll())
-            } else {
-                hasError = true
-                errorMessage = "Failed to load keybinds. Is niri installed?"
-                Logger.e("NiriKeybinds", "Failed to load keybinds:", proc.exitCode)
-            }
-        })
-    }
-
-    function parseKeybinds(content) {
-        var bindings = []
-        var lines = String(content).split("\n")
-        var currentCategory = ""
-
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim()
-
-            if (line.startsWith("//") || line.startsWith("#")) {
-                if (line.toLowerCase().includes("desktop") || line.toLowerCase().includes("window")) {
-                    currentCategory = line.replace(/^[\/#\s]+/g, "").trim()
-                }
-                continue
-            }
-
-            var keybindMatch = line.match(/^keybind\s+(?:(?:"([^"]+)")|(\S+))\s*\{/)
-            if (keybindMatch) {
-                var title = keybindMatch[1] || keybindMatch[2] || ""
-                var bindings_str = extractBindings(lines, i, title)
-
-                if (bindings_str) {
-                    bindings.push({
-                        title: title,
-                        category: currentCategory || "General",
-                        bindings: bindings_str,
-                        originalLine: line
-                    })
-                }
-            }
-        }
-
-        keybinds = bindings
-        Logger.i("NiriKeybinds", "Loaded", bindings.length, "keybinds")
-    }
-
-    function extractBindings(lines, startIndex, title) {
-        var bindings = []
-        var braceCount = 0
-        var foundTitle = false
-
-        for (var i = startIndex; i < lines.length; i++) {
-            var line = lines[i]
-
-            for (var j = 0; j < line.length; j++) {
-                if (line[j] === "{") braceCount++
-                else if (line[j] === "}") braceCount--
-            }
-
-            var keyMatch = line.match(/^\s*key\s+(?:(?:"([^"]+)")|(\S+))/)
-            if (keyMatch) {
-                var key = keyMatch[1] || keyMatch[2]
-                if (key && key !== "undefined") {
-                    bindings.push(key)
-                }
-            }
-
-            if (braceCount === 0 && foundTitle) break
-            if (line.includes(title)) foundTitle = true
-        }
-
-        return bindings.join(", ")
     }
 
     function editKeybind(index) {
@@ -241,53 +165,7 @@ Item {
         if (index < 0 || index >= keybinds.length) return
         keybinds.splice(index, 1)
         keybinds = keybinds
-        saveKeybinds()
-    }
-
-    function saveKeybinds() {
-        var configPath = getConfigPath()
-        var fileView = FileView.forPath(configPath)
-
-        if (!fileView) {
-            ToastService.showError("Cannot open config file")
-            return
-        }
-
-        var newContent = generateConfigContent()
-        fileView.writeAll(newContent)
-
-        ToastService.showNotice("Keybinds saved to " + configPath)
-    }
-
-    function generateConfigContent() {
-        var lines = []
-        lines.push("// Niri Keybinds Configuration")
-        lines.push("")
-
-        var byCategory = {}
-        for (var i = 0; i < keybinds.length; i++) {
-            var kb = keybinds[i]
-            var cat = kb.category || "General"
-            if (!byCategory[cat]) byCategory[cat] = []
-            byCategory[cat].push(kb)
-        }
-
-        for (var cat in byCategory) {
-            lines.push("// " + cat)
-            var items = byCategory[cat]
-            for (var j = 0; j < items.length; j++) {
-                var kb = items[j]
-                lines.push("keybind \"" + kb.title + "\" {")
-                var keys = kb.bindings.split(", ")
-                for (var k = 0; k < keys.length; k++) {
-                    lines.push("    key \"" + keys[k] + "\"")
-                }
-                lines.push("}")
-                lines.push("")
-            }
-        }
-
-        return lines.join("\n")
+        pluginApi.mainInstance.saveKeybinds()
     }
 
     function openConfigFile() {

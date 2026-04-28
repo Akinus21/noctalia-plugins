@@ -2,6 +2,10 @@
   "widget": {
     "tooltip": "Niri Keybinds"
   },
+  "menu": {
+    "open": "Open Keybinds",
+    "settings": "Settings"
+  },
   "panel": {
     "title": "Niri Keybinds",
     "reload": "Reload",
