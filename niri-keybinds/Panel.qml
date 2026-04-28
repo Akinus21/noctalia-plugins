@@ -86,7 +86,7 @@ Item {
 
                         NBox {
                             Layout.fillWidth: true
-                            implicitHeight: rowContent.implicitHeight + Style.marginM * 2
+                            implicitHeight: rowContent.implicitHeight + Style.marginM * 2 + 60
                             radius: Style.radiusM
 
                             RowLayout {
@@ -100,14 +100,14 @@ Item {
                                 spacing: Style.marginM
 
                                 NTextInput {
-                                    Layout.preferredWidth: 140
+                                    Layout.preferredWidth: 240
                                     label: "Keybind"
                                     text: modelData.title || ""
                                 }
 
                                 NTextInput {
                                     Layout.fillWidth: true
-                                    Layout.minimumWidth: 300
+                                    Layout.minimumWidth: 500
                                     label: "Action"
                                     placeholderText: "action;"
                                     text: modelData.bindings || ""
