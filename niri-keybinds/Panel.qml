@@ -220,7 +220,7 @@ Item {
                     continue
                 }
 
-                var keyMatch = line.match(/^([A-Za-z0-9+_]+)(?=\s)/)
+                var keyMatch = line.match(/^(.+?)\s*\{/)
                 if (keyMatch) {
                     var keyCombo = keyMatch[1]
                     var action = extractAction(line)
@@ -248,6 +248,11 @@ Item {
         return parts.join(", ")
     }
 
+    function extractKeyCombo(line) {
+        var match = line.match(/^([A-Za-z0-9+_]+)/)
+        return match ? match[1] : ""
+    }
+
     function deleteKeybind(index) {
         if (index < 0 || index >= keybinds.length) return
         keybinds.splice(index, 1)
@@ -258,11 +263,20 @@ Item {
     function saveKeybinds() {
         var backupPath = configPath + ".backup"
         Quickshell.execDetached(["cp", configPath, backupPath])
-        var content = generateConfig()
-        Quickshell.execDetached(["sh", "-c", "cat > '" + configPath + "' << 'EOF'\n" + content + "\nEOF"])
+        var newContent = generateBindsSection()
+        Quickshell.execDetached(["sh", "-c", "sed -i '/^binds {/,/^}$/c\\" + newContent.replace(/'/g, "'\\''") + "' '" + configPath + "'"])
     }
 
-    function generateConfig() {
+    function replaceBindsInConfig(originalContent) {
+        var bindsContent = generateBindsSection()
+        var bindsPattern = /binds\s*\{[^}]*\}[\s\n]*/s
+        if (originalContent.match(bindsPattern)) {
+            return originalContent.replace(bindsPattern, bindsContent)
+        }
+        return originalContent
+    }
+
+    function generateBindsSection() {
         var lines = []
         lines.push("binds {")
 
@@ -272,6 +286,8 @@ Item {
         }
 
         lines.push("}")
+        lines.push("")
+        lines.push('include "./noctalia.kdl"')
         return lines.join("\n")
     }
 }
