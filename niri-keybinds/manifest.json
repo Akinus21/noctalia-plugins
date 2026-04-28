@@ -3,6 +3,7 @@
   "name": "Niri Keybinds",
   "version": "1.0.1",
   "minNoctaliaVersion": "4.4.1",
+  "test": true,
   "author": "Akinus21",
   "license": "MIT",
   "repository": "https://github.com/Akinus21/noctalia-plugins",
@@ -24,6 +25,7 @@
     "plugins": []
   },
   "metadata": {
+    "commandPrefix": "niri",
     "defaultSettings": {
       "configPath": "",
       "showDesktopBindings": true,
