@@ -82,38 +82,33 @@ Item {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    spacing: Style.marginS
+                    spacing: Style.marginM
 
                     Repeater {
                         model: keybinds
 
                         NBox {
                             Layout.fillWidth: true
+                            Layout.minimumHeight: 160
                             radius: Style.radiusM
 
                             ColumnLayout {
                                 anchors.fill: parent
                                 anchors.margins: Style.marginM
-                                spacing: Style.marginS
+                                spacing: Style.marginM
 
-                                RowLayout {
+                                NTextInput {
                                     Layout.fillWidth: true
-
-                                    NText {
-                                        text: modelData.title || "Unnamed"
-                                        font.weight: Font.Bold
-                                    }
-
-                                    NText {
-                                        text: modelData.category || ""
-                                        color: Color.mOnSurfaceVariant
-                                    }
+                                    text: modelData.title || ""
+                                    label: "Keybind"
                                 }
 
-                                NText {
+                                NTextInput {
+                                    Layout.fillWidth: true
+                                    Layout.minimumHeight: 80
                                     text: modelData.bindings || ""
-                                    color: Color.mPrimary
-                                    font.family: "monospace"
+                                    label: "Action"
+                                    placeholderText: "action;"
                                 }
 
                                 NButton {
