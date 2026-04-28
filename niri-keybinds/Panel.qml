@@ -61,7 +61,12 @@ Item {
                 NButton {
                     text: "Reload"
                     outlined: true
-                    onClicked: cacheFile.reload()
+                    onClicked: {
+                        loading = true
+                        hasError = false
+                        cacheFile.watchChanges = true
+                        cacheFile.reload()
+                    }
                 }
 
                 NButton {
@@ -170,30 +175,50 @@ Item {
     function parseKeybinds(content) {
         var bindings = []
         var lines = String(content).split("\n")
-        var currentCategory = ""
+        var currentCategory = "General"
 
         Logger.i("NiriKeybinds", "parseKeybinds called, lines:", lines.length)
+
+        var inBinds = false
+        var braceCount = 0
 
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim()
 
             if (line.startsWith("//") || line.startsWith("#")) {
-                if (line.toLowerCase().includes("desktop") || line.toLowerCase().includes("window")) {
-                    currentCategory = line.replace(/^[\/#\s]+/g, "").trim()
-                }
                 continue
             }
 
-            if (line.startsWith("keybind")) {
-                var match = line.match(/^keybind\s+(?:(?:"([^"]+)")|(\S+))\s*\{/)
-                if (match) {
-                    var title = match[1] || match[2] || ""
-                    var keys = extractKeys(lines, i)
-                    if (keys) {
+            if (line.includes("binds") && line.includes("{")) {
+                inBinds = true
+                braceCount = 1
+                continue
+            }
+
+            if (inBinds) {
+                for (var j = 0; j < line.length; j++) {
+                    if (line[j] === "{") braceCount++
+                    else if (line[j] === "}") braceCount--
+                }
+
+                if (braceCount === 0) {
+                    inBinds = false
+                    continue
+                }
+
+                if (braceCount > 0 && line.includes("=") && !line.includes("{")) {
+                    continue
+                }
+
+                var keyMatch = line.match(/^([A-Za-z0-9+_]+)\s+(?:\S+\s*=|)(?:\s*"[^"]*"\s*|)\s*\{/)
+                if (keyMatch) {
+                    var keyCombo = keyMatch[1]
+                    var action = extractAction(line)
+                    if (keyCombo && action) {
                         bindings.push({
-                            title: title,
-                            category: currentCategory || "General",
-                            bindings: keys
+                            title: keyCombo,
+                            category: currentCategory,
+                            bindings: action
                         })
                     }
                 }
@@ -204,25 +229,13 @@ Item {
         keybinds = bindings
     }
 
-    function extractKeys(lines, startIndex) {
-        var keys = []
-        var braceCount = 0
-
-        for (var i = startIndex; i < lines.length && braceCount >= 0; i++) {
-            var line = lines[i]
-            for (var j = 0; j < line.length; j++) {
-                if (line[j] === "{") braceCount++
-                else if (line[j] === "}") braceCount--
-            }
-
-            var keyMatch = line.match(/^\s*key\s+(?:(?:"([^"]+)")|(\S+))/)
-            if (keyMatch) {
-                var key = keyMatch[1] || keyMatch[2]
-                if (key && key !== "undefined") keys.push(key)
-            }
-        }
-
-        return keys.join(", ")
+    function extractAction(line) {
+        var start = line.indexOf("{")
+        var end = line.lastIndexOf("}")
+        if (start === -1 || end === -1 || end <= start) return ""
+        var actionBlock = line.substring(start + 1, end)
+        var parts = actionBlock.split(";").map(function(s) { return s.trim() }).filter(function(s) { return s && s !== "allow-when-locked=true" })
+        return parts.join(", ")
     }
 
     function deleteKeybind(index) {
