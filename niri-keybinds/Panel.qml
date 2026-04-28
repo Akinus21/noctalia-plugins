@@ -135,12 +135,21 @@ Item {
     function getConfigPath() {
         var path = pluginApi?.pluginSettings?.configPath || ""
         if (path) return path
-        return Quickshell.env("HOME") + "/.config/niri/config.kdl"
+        var home = Quickshell.env("HOME")
+        if (!home) home = "/var/home/gabriel"
+        return home + "/.config/niri/config.kdl"
     }
 
     function loadKeybinds() {
         loading = true
         hasError = false
+
+        if (!configPath) {
+            loading = false
+            hasError = true
+            errorMessage = "No config path set"
+            return
+        }
 
         var proc = Quickshell.execDetached(["cat", configPath])
 
