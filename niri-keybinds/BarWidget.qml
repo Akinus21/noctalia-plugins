@@ -29,7 +29,6 @@ Item {
 
         NIcon {
             name: "keyboard"
-            isTablerIcon: true
             width: Style.iconSizeS
             height: Style.iconSizeS
         }
