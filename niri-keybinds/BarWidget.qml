@@ -19,26 +19,21 @@ Item {
     readonly property bool isVertical: barPosition === "left" || barPosition === "right"
     readonly property real capsuleHeight: Style.getCapsuleHeightForScreen(screen?.name)
 
-    implicitWidth: isVertical ? capsuleHeight : rowLayout.implicitWidth + Style.marginS * 2
-    implicitHeight: isVertical ? rowLayout.implicitHeight + Style.marginS * 2 : capsuleHeight
+    implicitWidth: isVertical ? capsuleHeight : keyboardIcon.width + Style.marginS * 2
+    implicitHeight: isVertical ? keyboardIcon.height + Style.marginS * 2 : capsuleHeight
 
-    RowLayout {
-        id: rowLayout
+    NLabel {
+        id: keyboardIcon
         anchors.centerIn: parent
-        spacing: Style.marginS
-
-        NIcon {
-            name: "keyboard"
-            width: Style.iconSizeS
-            height: Style.iconSizeS
-        }
+        text: "[K]"
+        font.pixelSize: Style.fontSizeS
     }
 
     NPopupContextMenu {
         id: contextMenu
         model: [
-            { "label": "Open Keybinds", "action": "open", "icon": "keyboard" },
-            { "label": "Settings", "action": "settings", "icon": "settings" }
+            { "label": "Open Keybinds", "action": "open" },
+            { "label": "Settings", "action": "settings" }
         ]
         onTriggered: action => {
             contextMenu.close()
