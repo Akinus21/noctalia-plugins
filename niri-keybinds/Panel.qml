@@ -11,7 +11,7 @@ Item {
 
     property var pluginApi: null
     readonly property var geometryPlaceholder: contentRect
-    property real contentPreferredWidth: 500 * Style.uiScaleRatio
+    property real contentPreferredWidth: 650 * Style.uiScaleRatio
     property real contentPreferredHeight: 600 * Style.uiScaleRatio
     readonly property bool allowAttach: true
 
@@ -100,13 +100,14 @@ Item {
                                 spacing: Style.marginM
 
                                 NTextInput {
-                                    Layout.preferredWidth: 180
+                                    Layout.preferredWidth: 140
                                     label: "Keybind"
                                     text: modelData.title || ""
                                 }
 
                                 NTextInput {
                                     Layout.fillWidth: true
+                                    Layout.minimumWidth: 300
                                     label: "Action"
                                     placeholderText: "action;"
                                     text: modelData.bindings || ""
@@ -115,6 +116,7 @@ Item {
                                 NButton {
                                     text: "Delete"
                                     outlined: true
+                                    Layout.preferredWidth: 80
                                     onClicked: deleteKeybind(index)
                                 }
                             }
