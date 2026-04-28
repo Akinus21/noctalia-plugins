@@ -1,7 +1,7 @@
 {
   "id": "niri-keybinds",
   "name": "Niri Keybinds",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "minNoctaliaVersion": "4.4.1",
   "test": true,
   "author": "Akinus21",
