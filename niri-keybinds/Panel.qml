@@ -24,9 +24,11 @@ Item {
     property string configPath: (Quickshell.env("HOME") || "/var/home/gabriel") + "/.config/niri/config.kdl"
 
     Component.onCompleted: {
+        var finalPath = pluginApi?.pluginSettings?.configPath || configPath
         if (pluginApi?.pluginSettings?.configPath) {
             configPath = pluginApi.pluginSettings.configPath
         }
+        console.log("NiriKeybinds config path:", configPath)
         loadKeybinds()
     }
 
@@ -146,6 +148,8 @@ Item {
         loading = true
         hasError = false
 
+        console.log("NiriKeybinds loading keybinds from:", configPath)
+
         if (!configPath) {
             loading = false
             hasError = true
@@ -154,6 +158,7 @@ Item {
         }
 
         var proc = Quickshell.execDetached(["cat", configPath])
+        console.log("NiriKeybinds execDetached result:", proc)
 
         if (!proc) {
             loading = false
