@@ -5,25 +5,5 @@
   "menu": {
     "open": "Open Keybinds",
     "settings": "Settings"
-  },
-  "panel": {
-    "title": "Niri Keybinds",
-    "reload": "Reload",
-    "saveChanges": "Save Changes",
-    "openConfig": "Open Config",
-    "edit": "Edit",
-    "delete": "Delete",
-    "noKeybinds": "No keybinds found",
-    "loaded": "%1 keybinds loaded",
-    "error": "Failed to load keybinds"
-  },
-  "settings": {
-    "configPath": {
-      "label": "Config Path",
-      "desc": "Path to niri config file"
-    },
-    "showDesktop": "Show Desktop Bindings",
-    "showWindow": "Show Window Bindings",
-    "showLauncher": "Show Launcher Bindings"
   }
 }

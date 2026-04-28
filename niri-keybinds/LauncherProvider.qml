@@ -24,12 +24,6 @@ Item {
         Logger.i("NiriKeybinds", "Initializing")
     }
 
-    function onOpened() {
-        if (pluginApi?.mainInstance) {
-            pluginApi.mainInstance.loadKeybinds()
-        }
-    }
-
     function handleCommand(searchText) {
         return searchText.startsWith(">niri") || searchText.startsWith(">keybinds")
     }
@@ -49,20 +43,6 @@ Item {
                 "icon": "keyboard",
                 "isTablerIcon": true,
                 "onActivate": function() { openPanel() }
-            },
-            {
-                "name": ">niri reload",
-                "description": "Reload keybinds from config",
-                "icon": "refresh",
-                "isTablerIcon": true,
-                "onActivate": function() { reloadKeybinds() }
-            },
-            {
-                "name": ">niri save",
-                "description": "Save keybinds to config",
-                "icon": "save",
-                "isTablerIcon": true,
-                "onActivate": function() { saveKeybinds() }
             }
         ]
     }
@@ -76,22 +56,6 @@ Item {
         pluginApi.withCurrentScreen(function(screen) {
             pluginApi.openPanel(screen)
         })
-        launcher.close()
-    }
-
-    function reloadKeybinds() {
-        if (pluginApi?.mainInstance) {
-            pluginApi.mainInstance.loadKeybinds()
-            ToastService.showNotice("Keybinds reloaded")
-        }
-        launcher.close()
-    }
-
-    function saveKeybinds() {
-        if (pluginApi?.mainInstance) {
-            pluginApi.mainInstance.saveKeybinds()
-            ToastService.showNotice("Keybinds saved")
-        }
-        launcher.close()
+        if (launcher) launcher.close()
     }
 }

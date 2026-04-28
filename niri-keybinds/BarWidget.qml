@@ -13,17 +13,12 @@ Item {
     property int sectionWidgetIndex: -1
     property int sectionWidgetsCount: 0
 
-    property var cfg: pluginApi?.pluginSettings || ({})
-    property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
-
     readonly property string barPosition: Settings.getBarPositionForScreen(screen?.name)
     readonly property bool isVertical: barPosition === "left" || barPosition === "right"
     readonly property real capsuleHeight: Style.getCapsuleHeightForScreen(screen?.name)
 
     implicitWidth: isVertical ? capsuleHeight : contentWidth
     implicitHeight: isVertical ? contentHeight : capsuleHeight
-
-    readonly property int keybindCount: pluginApi?.pluginSettings?._keybindCount || 0
 
     contentWidth: rowLayout.implicitWidth + Style.marginS * 2
     contentHeight: rowLayout.implicitHeight + Style.marginS * 2
@@ -39,18 +34,13 @@ Item {
             width: Style.iconSizeS
             height: Style.iconSizeS
         }
-
-        NLabel {
-            text: keybindCount > 0 ? String(keybindCount) : ""
-            font.pixelSize: Style.fontSizeS
-        }
     }
 
     NPopupContextMenu {
         id: contextMenu
         model: [
-            { "label": pluginApi?.tr("menu.open"), "action": "open", "icon": "keyboard" },
-            { "label": pluginApi?.tr("menu.settings"), "action": "settings", "icon": "settings" }
+            { "label": "Open Keybinds", "action": "open", "icon": "keyboard" },
+            { "label": "Settings", "action": "settings", "icon": "settings" }
         ]
         onTriggered: action => {
             contextMenu.close()
