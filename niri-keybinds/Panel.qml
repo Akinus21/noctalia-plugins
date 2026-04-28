@@ -256,6 +256,8 @@ Item {
     }
 
     function saveKeybinds() {
+        var backupPath = configPath + ".backup"
+        Quickshell.execDetached(["cp", configPath, backupPath])
         var content = generateConfig()
         Quickshell.execDetached(["sh", "-c", "cat > '" + configPath + "' << 'EOF'\n" + content + "\nEOF"])
     }
