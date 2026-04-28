@@ -78,7 +78,7 @@ Item {
                 Layout.minimumHeight: 200
 
                 ColumnLayout {
-                    anchors.fill: parent
+                    width: parent.width
                     spacing: Style.marginM
 
                     Repeater {
@@ -86,26 +86,30 @@ Item {
 
                         NBox {
                             Layout.fillWidth: true
+                            implicitHeight: rowContent.implicitHeight + Style.marginM * 2
                             radius: Style.radiusM
 
                             RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: Style.marginM
+                                id: rowContent
+                                anchors {
+                                    left: parent.left
+                                    right: parent.right
+                                    top: parent.top
+                                    margins: Style.marginM
+                                }
                                 spacing: Style.marginM
 
                                 NTextInput {
                                     Layout.preferredWidth: 180
-                                    Layout.fillHeight: true
-                                    text: modelData.title || ""
                                     label: "Keybind"
+                                    text: modelData.title || ""
                                 }
 
                                 NTextInput {
                                     Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    text: modelData.bindings || ""
                                     label: "Action"
                                     placeholderText: "action;"
+                                    text: modelData.bindings || ""
                                 }
 
                                 NButton {
