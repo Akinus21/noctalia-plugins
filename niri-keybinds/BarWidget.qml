@@ -19,11 +19,8 @@ Item {
     readonly property bool isVertical: barPosition === "left" || barPosition === "right"
     readonly property real capsuleHeight: Style.getCapsuleHeightForScreen(screen?.name)
 
-    implicitWidth: isVertical ? capsuleHeight : contentWidth
-    implicitHeight: isVertical ? contentHeight : capsuleHeight
-
-    contentWidth: rowLayout.implicitWidth + Style.marginS * 2
-    contentHeight: rowLayout.implicitHeight + Style.marginS * 2
+    implicitWidth: isVertical ? capsuleHeight : rowLayout.implicitWidth + Style.marginS * 2
+    implicitHeight: isVertical ? rowLayout.implicitHeight + Style.marginS * 2 : capsuleHeight
 
     RowLayout {
         id: rowLayout
