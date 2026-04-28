@@ -21,8 +21,10 @@ Item {
     property bool loading: false
     property bool hasError: false
     property string errorMessage: ""
+    property string configPath: ""
 
     Component.onCompleted: {
+        configPath = getConfigPath()
         if (pluginApi?.mainInstance) {
             keybinds = pluginApi.mainInstance.keybinds
             loading = pluginApi.mainInstance.loading
@@ -51,6 +53,13 @@ Item {
                 Layout.fillWidth: true
             }
 
+            NLabel {
+                text: "Config: " + configPath
+                font.pixelSize: Style.fontSizeS
+                color: Color.mOnSurfaceVariant
+                Layout.fillWidth: true
+            }
+
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Style.marginM
@@ -62,7 +71,7 @@ Item {
                 }
 
                 NButton {
-                    text: "Save Changes"
+                    text: "Save"
                     outlined: true
                     onClicked: pluginApi.mainInstance.saveKeybinds()
                 }
@@ -72,7 +81,7 @@ Item {
                 NButton {
                     text: "Open Config"
                     outlined: true
-                    onClicked: openConfigFile()
+                    onClicked: Quickshell.execDetached(["xdg-open", configPath])
                 }
             }
 
@@ -85,7 +94,7 @@ Item {
                     spacing: Style.marginS
 
                     Repeater {
-                        model: pluginApi?.mainInstance?.keybinds || []
+                        model: keybinds
 
                         NBox {
                             Layout.fillWidth: true
@@ -139,7 +148,12 @@ Item {
             }
 
             NLabel {
-                text: hasError ? errorMessage : ((pluginApi?.mainInstance?.keybinds?.length || 0) + " keybinds loaded")
+                text: {
+                    if (loading) return "Loading..."
+                    if (hasError) return errorMessage
+                    if (keybinds.length === 0) return "No keybinds found in config"
+                    return keybinds.length + " keybinds loaded"
+                }
                 color: hasError ? Color.mError : Color.mOnSurfaceVariant
                 font.pixelSize: Style.fontSizeS
                 Layout.fillWidth: true
@@ -165,11 +179,7 @@ Item {
         if (index < 0 || index >= keybinds.length) return
         keybinds.splice(index, 1)
         keybinds = keybinds
+        pluginApi.mainInstance.keybinds = keybinds
         pluginApi.mainInstance.saveKeybinds()
-    }
-
-    function openConfigFile() {
-        var configPath = getConfigPath()
-        Quickshell.execDetached(["xdg-open", configPath])
     }
 }

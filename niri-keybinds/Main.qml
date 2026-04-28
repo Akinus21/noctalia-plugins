@@ -24,7 +24,7 @@ Item {
         hasError = false
 
         var configPath = getConfigPath()
-        var proc = Quickshell.execDetached(["sh", "-c", "nirictl keybinds 2>/dev/null || cat " + configPath])
+        var proc = Quickshell.execDetached(["cat", configPath])
 
         proc.onCompleted.connect(function() {
             loading = false
@@ -35,8 +35,8 @@ Item {
                 }
             } else {
                 hasError = true
-                errorMessage = "Failed to load keybinds. Is niri installed?"
-                Logger.e("NiriKeybinds", "Failed to load keybinds:", proc.exitCode)
+                errorMessage = "Failed to read config at " + configPath
+                Logger.e("NiriKeybinds", "Failed to read config:", proc.exitCode)
             }
         })
     }
@@ -45,6 +45,8 @@ Item {
         var bindings = []
         var lines = String(content).split("\n")
         var currentCategory = ""
+
+        Logger.i("NiriKeybinds", "Parsing", lines.length, "lines")
 
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim()
@@ -106,15 +108,17 @@ Item {
 
     function saveKeybinds() {
         var configPath = getConfigPath()
-        var fileView = FileView.forPath(configPath)
-
-        if (!fileView) {
-            return
-        }
-
         var newContent = generateConfigContent()
-        fileView.writeAll(newContent)
-        Logger.i("NiriKeybinds", "Saved keybinds to", configPath)
+        var escapedContent = newContent.replace(/'/g, "'\\''")
+        var proc = Quickshell.execDetached(["sh", "-c", "cat > '" + configPath + "' << 'NIRIEOF'\n" + newContent + "\nNIRIEOF"])
+
+        proc.onCompleted.connect(function() {
+            if (proc.exitCode === 0) {
+                Logger.i("NiriKeybinds", "Saved keybinds to", configPath)
+            } else {
+                Logger.e("NiriKeybinds", "Failed to save keybinds:", proc.exitCode)
+            }
+        })
     }
 
     function generateConfigContent() {
