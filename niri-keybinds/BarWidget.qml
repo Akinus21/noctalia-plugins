@@ -22,11 +22,11 @@ Item {
     implicitWidth: isVertical ? capsuleHeight : keyboardIcon.width + Style.marginS * 2
     implicitHeight: isVertical ? keyboardIcon.height + Style.marginS * 2 : capsuleHeight
 
-    NLabel {
+    NText {
         id: keyboardIcon
         anchors.centerIn: parent
         text: "[K]"
-        font.pixelSize: Style.fontSizeS
+        pointSize: Style.fontSizeS
     }
 
     NPopupContextMenu {
