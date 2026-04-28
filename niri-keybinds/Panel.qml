@@ -21,14 +21,13 @@ Item {
     property bool loading: false
     property bool hasError: false
     property string errorMessage: ""
-    property string configPath: (Quickshell.env("HOME") || "/var/home/gabriel") + "/.config/niri/config.kdl"
+    property string configPath: ""
 
     Component.onCompleted: {
-        var finalPath = pluginApi?.pluginSettings?.configPath || configPath
+        configPath = (Quickshell.env("HOME") || "/var/home/gabriel") + "/.config/niri/config.kdl"
         if (pluginApi?.pluginSettings?.configPath) {
             configPath = pluginApi.pluginSettings.configPath
         }
-        console.log("NiriKeybinds config path:", configPath)
         loadKeybinds()
     }
 
@@ -147,41 +146,24 @@ Item {
     function loadKeybinds() {
         loading = true
         hasError = false
+        cacheFile.load()
+    }
 
-        console.log("NiriKeybinds loading keybinds from:", configPath)
+    FileView {
+        id: cacheFile
+        path: configPath
+        watchChanges: false
 
-        if (!configPath) {
+        onLoaded: {
             loading = false
-            hasError = true
-            errorMessage = "No config path set"
-            return
+            parseKeybinds(text())
         }
 
-        var proc = Quickshell.execDetached(["cat", configPath])
-        console.log("NiriKeybinds execDetached result:", proc)
-
-        if (!proc) {
+        onLoadFailed: {
             loading = false
             hasError = true
-            errorMessage = "Failed to start process"
-            return
+            errorMessage = "Failed to load config"
         }
-
-        proc.onCompleted.connect(function() {
-            loading = false
-            if (proc.exitCode === 0) {
-                parseKeybinds(proc.readAll())
-            } else {
-                hasError = true
-                errorMessage = "Failed to read config"
-            }
-        })
-
-        proc.onError.connect(function(err) {
-            loading = false
-            hasError = true
-            errorMessage = "Process error: " + err
-        })
     }
 
     function parseKeybinds(content) {
