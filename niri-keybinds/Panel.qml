@@ -61,7 +61,7 @@ Item {
                 NButton {
                     text: "Reload"
                     outlined: true
-                    onClicked: loadKeybinds()
+                    onClicked: cacheFile.reload()
                 }
 
                 NButton {
@@ -155,6 +155,7 @@ Item {
         watchChanges: false
 
         onLoaded: {
+            Logger.i("NiriKeybinds", "FileView loaded, bytes:", text().length)
             loading = false
             parseKeybinds(text())
         }
@@ -170,6 +171,8 @@ Item {
         var bindings = []
         var lines = String(content).split("\n")
         var currentCategory = ""
+
+        Logger.i("NiriKeybinds", "parseKeybinds called, lines:", lines.length)
 
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim()
@@ -197,6 +200,7 @@ Item {
             }
         }
 
+        Logger.i("NiriKeybinds", "parsed keybinds:", bindings.length)
         keybinds = bindings
     }
 
