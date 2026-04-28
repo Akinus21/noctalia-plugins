@@ -8,7 +8,7 @@ Item {
     id: root
 
     property var pluginApi: null
-    readonly property var geometryPlaceholder: panelContainer
+    readonly property var geometryPlaceholder: contentRect
     property real contentPreferredWidth: 500 * Style.uiScaleRatio
     property real contentPreferredHeight: 600 * Style.uiScaleRatio
     readonly property bool allowAttach: true
@@ -16,7 +16,7 @@ Item {
     anchors.fill: parent
 
     Rectangle {
-        id: panelContainer
+        id: contentRect
         anchors.fill: parent
         color: "red"
 
@@ -33,7 +33,7 @@ Item {
             }
 
             NLabel {
-                text: "Test panel - if you see this, QML works"
+                text: "Test panel"
                 Layout.fillWidth: true
             }
         }
