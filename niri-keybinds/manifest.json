@@ -1,0 +1,26 @@
+{
+  "id": "niri-keybinds",
+  "name": "Niri Keybinds",
+  "version": "1.0.0",
+  "minNoctaliaVersion": "4.4.1",
+  "author": "Akinus21",
+  "license": "MIT",
+  "repository": "https://github.com/Akinus21/noctalia-plugins",
+  "description": "View, edit, and manage your Niri keybinds from a panel.",
+  "tags": ["Panel", "Niri"],
+  "entryPoints": {
+    "panel": "Panel.qml",
+    "settings": "Settings.qml"
+  },
+  "dependencies": {
+    "plugins": []
+  },
+  "metadata": {
+    "defaultSettings": {
+      "configPath": "",
+      "showDesktopBindings": true,
+      "showWindowBindings": true,
+      "showLauncherBindings": true
+    }
+  }
+}
