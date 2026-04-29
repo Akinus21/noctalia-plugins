@@ -115,7 +115,7 @@ Item {
             return
         }
         var escapedPw = password.replace(/'/g, "'\\''")
-        unlockCmd = ["sh", "-c", "BW_MASTER='" + escapedPw + "' flatpak run --env=BW_MASTER --command=bw com.bitwarden.desktop unlock --passwordenv BW_MASTER --raw"]
+        unlockCmd = ["sh", "-c", "echo '" + escapedPw + "' | flatpak run --command=bw com.bitwarden.desktop unlock --raw"]
         unlockProc.running = true
     }
 
