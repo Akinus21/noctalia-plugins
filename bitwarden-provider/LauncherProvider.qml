@@ -113,17 +113,21 @@ Item {
         var password = pluginApi?.pluginSettings?.password || ""
         Logger.i("BitwardenProvider", "unlockVault - vaultStatus:", vaultStatus, "password:", password ? String(password.length) : "empty")
         if (!password) return
-        var escapedPw = String(password).replace(/'/g, "'\\''")
+        var pw = JSON.stringify(password)
 
         if (vaultStatus === "unauthenticated") {
             var email = pluginApi?.pluginSettings?.email || ""
             if (!email) return
             var escapedEmail = String(email).replace(/'/g, "'\\''")
-            loginProc.command = ["sh", "-c",
-                "echo " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop login " + escapedEmail + " --raw 2>&1"]
+            loginProc.command = ["flatpak", "run",
+                "--env=BW_PASSWORD=" + password,
+                "--command=bw", "com.bitwarden.desktop",
+                "login", escapedEmail, "--passwordenv", "BW_PASSWORD", "--raw"]
         } else {
-            loginProc.command = ["sh", "-c",
-                "echo " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop unlock --raw 2>&1"]
+            loginProc.command = ["flatpak", "run",
+                "--env=BW_PASSWORD=" + password,
+                "--command=bw", "com.bitwarden.desktop",
+                "unlock", "--passwordenv", "BW_PASSWORD", "--raw"]
         }
         loginProc.running = true
     }
