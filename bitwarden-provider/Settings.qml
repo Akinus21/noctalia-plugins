@@ -27,41 +27,38 @@ ColumnLayout {
         pluginApi.saveSettings()
     }
 
-    RowLayout {
+    NTextInput {
         Layout.fillWidth: true
-        NLabel { text: "Server:" }
-        NTextInput {
-            Layout.fillWidth: true
-            placeholderText: "https://vault.bitwarden.com"
-            text: root.editServerUrl
-            onTextChanged: root.editServerUrl = text
-        }
+        label: pluginApi?.tr("settings.serverUrl.label")
+        description: pluginApi?.tr("settings.serverUrl.desc")
+        placeholderText: "https://vault.bitwarden.com"
+        text: root.editServerUrl
+        onTextChanged: root.editServerUrl = text
     }
 
-    RowLayout {
+    NTextInput {
         Layout.fillWidth: true
-        NLabel { text: "Email:" }
-        NTextInput {
-            Layout.fillWidth: true
-            placeholderText: "you@example.com"
-            text: root.editEmail
-            onTextChanged: root.editEmail = text
-        }
+        label: pluginApi?.tr("settings.email.label")
+        description: pluginApi?.tr("settings.email.desc")
+        placeholderText: "you@example.com"
+        text: root.editEmail
+        onTextChanged: root.editEmail = text
     }
 
-    RowLayout {
+    NTextInput {
         Layout.fillWidth: true
-        NLabel { text: "Password:" }
-        NTextInput {
-            Layout.fillWidth: true
-            placeholderText: "Master password"
-            text: root.editPassword
-            onTextChanged: root.editPassword = text
-        }
+        label: pluginApi?.tr("settings.password.label")
+        description: pluginApi?.tr("settings.password.desc")
+        placeholderText: "Your master password"
+        text: root.editPassword
+        onTextChanged: root.editPassword = text
     }
 
-    NLabel {
-        text: "Hint: Use Bitwarden flatpak CLI"
+    NText {
+        text: pluginApi?.tr("settings.hint")
+        wrapMode: Text.WordWrap
         Layout.fillWidth: true
+        pointSize: Style.fontSizeS
+        color: Color.mOnSurfaceVariant
     }
 }
