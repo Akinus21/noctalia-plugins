@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls
 import qs.Commons
 import qs.Widgets
 
@@ -16,10 +15,6 @@ ColumnLayout {
     property string editEmail: cfg.email ?? defaults.email ?? ""
     property string editPassword: ""
 
-    Component.onCompleted: {
-        editPassword = cfg.password || ""
-    }
-
     spacing: Style.marginL
 
     function saveSettings() {
@@ -34,8 +29,8 @@ ColumnLayout {
 
     NTextInput {
         Layout.fillWidth: true
-        label: pluginApi?.tr("settings.serverUrl.label")
-        description: pluginApi?.tr("settings.serverUrl.desc")
+        label: "Server URL"
+        description: "Your Bitwarden or Vaultwarden server URL"
         placeholderText: "https://vault.bitwarden.com"
         text: root.editServerUrl
         onTextChanged: root.editServerUrl = text
@@ -43,8 +38,8 @@ ColumnLayout {
 
     NTextInput {
         Layout.fillWidth: true
-        label: pluginApi?.tr("settings.email.label")
-        description: pluginApi?.tr("settings.email.desc")
+        label: "Email"
+        description: "Your Bitwarden account email"
         placeholderText: "you@example.com"
         text: root.editEmail
         onTextChanged: root.editEmail = text
@@ -52,8 +47,8 @@ ColumnLayout {
 
     NTextInput {
         Layout.fillWidth: true
-        label: pluginApi?.tr("settings.password.label")
-        description: pluginApi?.tr("settings.password.desc")
+        label: "Master Password"
+        description: "Your Bitwarden master password (stored locally)"
         placeholderText: "Your master password"
         echoMode: TextInput.Password
         text: root.editPassword
@@ -61,7 +56,7 @@ ColumnLayout {
     }
 
     NLabel {
-        text: pluginApi?.tr("settings.hint")
+        text: "Uses the Bitwarden Flatpak (com.bitwarden.desktop). Configure your server URL and login credentials above."
         wrapMode: Text.WordWrap
         Layout.fillWidth: true
         color: Color.mOnSurfaceVariant
