@@ -29,6 +29,7 @@ Item {
 
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
+        sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
         checkBwInstalled()
     }
 
@@ -37,37 +38,46 @@ Item {
     }
 
     function checkBwInstalled() {
-        var proc = Quickshell.execDetached(["which", "bw"])
-        proc.onCompleted.connect(function() {
-            if (proc.exitCode === 0) {
-                bwAvailable = true
-                pluginApi.pluginSettings.bwAvailable = true
+        whichProc.running = true
+    }
+
+    Process {
+        id: whichProc
+        command: ["which", "bw"]
+
+        onExited: {
+            bwAvailable = exitCode === 0
+            pluginApi.pluginSettings.bwAvailable = bwAvailable
+            if (bwAvailable) {
                 checkUnlockStatus()
-            } else {
-                bwAvailable = false
-                pluginApi.pluginSettings.bwAvailable = false
             }
-        })
+        }
     }
 
     function checkUnlockStatus() {
-        var proc = Quickshell.execDetached(["bw", "status"])
-        proc.onCompleted.connect(function() {
-            try {
-                var output = proc.readAll()
-                var status = JSON.parse(String(output))
-                if (status.status === "unlocked") {
-                    unlocked = true
-                    sessionToken = status.token || ""
-                    loadItems()
-                } else {
+        statusProc.running = true
+    }
+
+    Process {
+        id: statusProc
+        command: sessionToken ? ["bw", "status", "--session", sessionToken] : ["bw", "status"]
+
+        onExited: {
+            if (exitCode === 0) {
+                try {
+                    var output = stdout
+                    var status = JSON.parse(String(output))
+                    unlocked = status.status === "unlocked"
+                    if (unlocked && !loaded) {
+                        loadItems()
+                    }
+                } catch (e) {
                     unlocked = false
-                    sessionToken = ""
                 }
-            } catch (e) {
+            } else {
                 unlocked = false
             }
-        })
+        }
     }
 
     function handleCommand(searchText) {
@@ -238,13 +248,18 @@ Item {
     function loadItems() {
         if (fetching || !sessionToken) return
         fetching = true
+        loadProc.running = true
+    }
 
-        var proc = Quickshell.execDetached(["bw", "list", "items", "--sessionid", sessionToken])
-        proc.onCompleted.connect(function() {
+    Process {
+        id: loadProc
+        command: ["bw", "list", "items", "--session", sessionToken]
+
+        onExited: {
             fetching = false
-            if (proc.exitCode === 0) {
+            if (exitCode === 0) {
                 try {
-                    var output = proc.readAll()
+                    var output = stdout
                     items = JSON.parse(String(output))
                     loaded = true
                     if (launcher) launcher.updateResults()
@@ -255,13 +270,13 @@ Item {
             } else {
                 unlocked = false
             }
-        })
+        }
     }
 
     function maybeRefresh() {
-        if (sessionToken && !unlocked) {
+        if (!unlocked) {
             checkUnlockStatus()
-        } else if (unlocked && !loaded) {
+        } else if (!loaded) {
             loadItems()
         }
     }

@@ -21,9 +21,6 @@ ColumnLayout {
         pluginApi.pluginSettings.vaultUrl = root.editVaultUrl
         pluginApi.pluginSettings.sessionToken = root.editSessionToken
         pluginApi.saveSettings()
-        if (pluginApi.mainInstance) {
-            pluginApi.mainInstance.checkUnlockStatus()
-        }
     }
 
     NTextInput {
@@ -39,13 +36,13 @@ ColumnLayout {
         Layout.fillWidth: true
         label: "Session Token"
         description: "Output of 'bw unlock' to persist login"
-        placeholderText: "Run 'bw unlock' then 'echo $BW_SESSION'"
+        placeholderText: "Run 'bw unlock' then copy the token"
         text: root.editSessionToken
         onTextChanged: root.editSessionToken = text
     }
 
-    NLabel {
-        text: "Make sure <b>bw CLI</b> is installed and your vault is unlocked."
+    NText {
+        text: "Make sure bw CLI is installed and your vault is unlocked."
         wrapMode: Text.WordWrap
         Layout.fillWidth: true
     }

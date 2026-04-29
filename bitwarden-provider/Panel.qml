@@ -37,19 +37,19 @@ Item {
             }
             spacing: Style.marginL
 
-            NLabel {
+            NText {
                 text: viewItem ? (viewItem.name || "Vault Item") : "Vault Item"
-                font.bold: true
-                font.pixelSize: Style.fontSizeL
+                font.weight: Font.Bold
+                pointSize: Style.fontSizeL
                 Layout.fillWidth: true
             }
 
-            NLabel {
+            NText {
                 text: "Username"
-                font.bold: true
+                font.weight: Font.Bold
             }
 
-            NLabel {
+            NText {
                 text: viewItem && viewItem.login ? (viewItem.login.username || "-") : "-"
                 Layout.fillWidth: true
             }
@@ -65,12 +65,12 @@ Item {
                 }
             }
 
-            NLabel {
+            NText {
                 text: "Password"
-                font.bold: true
+                font.weight: Font.Bold
             }
 
-            NLabel {
+            NText {
                 text: viewItem && viewItem.login && viewItem.login.password ? "********" : "-"
                 Layout.fillWidth: true
             }
@@ -86,12 +86,12 @@ Item {
                 }
             }
 
-            NLabel {
+            NText {
                 text: "URL"
-                font.bold: true
+                font.weight: Font.Bold
             }
 
-            NLabel {
+            NText {
                 text: viewItem && viewItem.login ? (viewItem.login.uri || "-") : "-"
                 color: Color.mPrimary
                 Layout.fillWidth: true
@@ -112,7 +112,9 @@ Item {
         pluginApi.pluginSettings._panelMode = "view"
         pluginApi.pluginSettings._viewItem = null
         pluginApi.saveSettings()
-        pluginApi.closePanel(pluginApi.panelOpenScreen)
+        if (pluginApi.panelOpenScreen && pluginApi.togglePanel) {
+            pluginApi.togglePanel(pluginApi.panelOpenScreen)
+        }
     }
 
     function copyToClipboard(text) {
