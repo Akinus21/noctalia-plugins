@@ -30,17 +30,28 @@ Item {
 
     FileView {
         id: sessionFile
-        path: "/tmp/bw_session_output"
+        path: ""
+        onContentChanged: {
+            if (path && content) {
+                Logger.i("BitwardenProvider", "sessionFile content changed, length:", String(content).length)
+            }
+        }
     }
 
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
+        var h = Quickshell.env("HOME")
+        if (h) {
+            sessionFile.path = String(h) + "/.cache/noctalia/bw_token"
+        }
         flatpakInfoProc.command = ["flatpak", "info", "com.bitwarden.desktop"]
         flatpakInfoProc.running = true
     }
 
     function onOpened() {
+        var h = Quickshell.env("HOME")
+        if (h) sessionFile.path = String(h) + "/.cache/noctalia/bw_token"
         maybeRefresh()
     }
 
@@ -73,7 +84,6 @@ Item {
         command: []
 
         onExited: function(exitCode) {
-            Logger.i("BitwardenProvider", "config server exited:", exitCode, "stdout:", String(stdout || ""))
             checkUnlockStatus()
         }
     }
@@ -116,17 +126,21 @@ Item {
     function unlockVault() {
         var password = pluginApi?.pluginSettings?.password || ""
         var email = pluginApi?.pluginSettings?.email || ""
-        Logger.i("BitwardenProvider", "unlockVault - vaultStatus:", vaultStatus, "password:", password ? String(password.length) : "empty", "email:", email ? email : "empty")
+        Logger.i("BitwardenProvider", "unlockVault - vaultStatus:", vaultStatus, "password:", password ? String(password.length) : "empty")
         if (!password) return
+
+        var home = Quickshell.env("HOME")
+        var tokenPath = String(home || "/tmp") + "/.cache/noctalia/bw_token"
 
         if (vaultStatus === "unauthenticated") {
             if (!email) return
             loginProc.command = ["sh", "-c",
-                "flatpak run --command=bw com.bitwarden.desktop login " + JSON.stringify(email) + " " + JSON.stringify(password) + " --method 0 --raw > /tmp/bw_session_output 2>&1"]
+                "flatpak run --command=bw com.bitwarden.desktop login " + JSON.stringify(email) + " " + JSON.stringify(password) + " --method 0 --raw 2>&1 | tee " + tokenPath]
         } else {
             loginProc.command = ["sh", "-c",
-                "flatpak run --command=bw com.bitwarden.desktop unlock " + JSON.stringify(password) + " --raw > /tmp/bw_session_output 2>&1"]
+                "flatpak run --command=bw com.bitwarden.desktop unlock " + JSON.stringify(password) + " --raw 2>&1 | tee " + tokenPath]
         }
+        sessionFile.path = tokenPath
         loginProc.running = true
     }
 
@@ -142,14 +156,14 @@ Item {
             Logger.i("BitwardenProvider", "session file content length:", token.length)
             if (exitCode === 0 && token) {
                 sessionToken = token
-                Logger.i("BitwardenProvider", "Got session token:", sessionToken.substring(0, 20) + "...")
+                Logger.i("BitwardenProvider", "Got session token, first chars:", sessionToken.substring(0, 20))
                 pluginApi.pluginSettings.sessionToken = sessionToken
                 pluginApi.saveSettings()
                 unlocked = true
                 vaultStatus = "unlocked"
                 loadItems()
             } else {
-                Logger.e("BitwardenProvider", "Login/unlock failed, file content:", token.substring(0, 100))
+                Logger.e("BitwardenProvider", "Login/unlock failed")
             }
         }
     }
