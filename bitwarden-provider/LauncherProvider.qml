@@ -107,10 +107,9 @@ Item {
         var email = pluginApi?.pluginSettings?.email || ""
         var password = pluginApi?.pluginSettings?.password || ""
         if (!email || !password) return
-        var escapedPw = String(password).replace(/'/g, "'\\''")
         var escapedEmail = String(email).replace(/'/g, "'\\''")
         loginProc.command = ["sh", "-c",
-            "echo '" + escapedPw + "' | flatpak run --command=bw com.bitwarden.desktop login " + escapedEmail + " --raw"]
+            "BW_PASSWORD=" + JSON.stringify(password) + " flatpak run --command=bw com.bitwarden.desktop login " + escapedEmail + " --raw"]
         loginProc.running = true
     }
 

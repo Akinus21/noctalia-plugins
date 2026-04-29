@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import qs.Commons
 import qs.Widgets
 
@@ -14,6 +15,10 @@ ColumnLayout {
     property string editServerUrl: cfg.serverUrl ?? defaults.serverUrl ?? ""
     property string editEmail: cfg.email ?? defaults.email ?? ""
     property string editPassword: ""
+
+    Component.onCompleted: {
+        editPassword = cfg.password || ""
+    }
 
     spacing: Style.marginL
 
@@ -50,6 +55,7 @@ ColumnLayout {
         label: pluginApi?.tr("settings.password.label")
         description: pluginApi?.tr("settings.password.desc")
         placeholderText: "Your master password"
+        echoMode: TextInput.Password
         text: root.editPassword
         onTextChanged: root.editPassword = text
     }
