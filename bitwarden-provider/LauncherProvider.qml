@@ -45,7 +45,7 @@ Item {
         id: flatpakInfoProc
         command: ["flatpak", "info", "com.bitwarden.desktop"]
 
-        onExited: {
+        onExited: function(exitCode) {
             bwAvailable = exitCode === 0
             if (bwAvailable) {
                 configureServer()
@@ -69,7 +69,7 @@ Item {
         id: configProc
         command: configCmd
 
-        onExited: {
+        onExited: function(exitCode) {
             Logger.i("BitwardenProvider", "Server config exit:", exitCode)
             checkUnlockStatus()
         }
@@ -90,7 +90,7 @@ Item {
         id: statusProc
         command: statusCmd
 
-        onExited: {
+        onExited: function(exitCode) {
             if (exitCode === 0) {
                 try {
                     var status = JSON.parse(String(stdout))
@@ -125,7 +125,7 @@ Item {
         id: unlockProc
         command: unlockCmd
 
-        onExited: {
+        onExited: function(exitCode) {
             if (exitCode === 0) {
                 sessionToken = stdout.trim()
                 pluginApi.pluginSettings.sessionToken = sessionToken
@@ -223,7 +223,7 @@ Item {
         id: loadProc
         command: loadCmd
 
-        onExited: {
+        onExited: function(exitCode) {
             fetching = false
             if (exitCode === 0) {
                 try {
