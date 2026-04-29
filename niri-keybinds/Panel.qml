@@ -22,6 +22,7 @@ Item {
     property bool hasError: false
     property string errorMessage: ""
     property string configPath: ""
+    property string originalConfig: ""
 
     readonly property var niriActions: [
         "spawn", "close-window", "focus-window-or-workspace-down", "focus-window-or-workspace-up",
@@ -215,8 +216,8 @@ Item {
                                         anchors.topMargin: 2
                                         width: parent.width
                                         height: Math.min(keybindRow.keyFiltered.length, 6) * 32
-                                        color: Color.mSurface
-                                        border.color: Color.mOutlineVariant
+                                        color: Color.mOnSurfaceVariant
+                                        border.color: Color.mPrimary
                                         radius: Style.radiusS
                                         z: 100
 
@@ -229,7 +230,7 @@ Item {
                                             delegate: Rectangle {
                                                 width: parent.width
                                                 height: 30
-                                                color: suggestKeyMA.containsMouse ? Color.mSurfaceVariant : "transparent"
+                                                color: suggestKeyMA.containsMouse ? Color.mPrimary : "transparent"
                                                 radius: Style.radiusXS
 
                                                 NText {
@@ -293,8 +294,8 @@ Item {
                                         anchors.topMargin: 2
                                         width: parent.width
                                         height: Math.min(keybindRow.actionFiltered.length, 6) * 32
-                                        color: Color.mSurface
-                                        border.color: Color.mOutlineVariant
+                                        color: Color.mOnSurfaceVariant
+                                        border.color: Color.mPrimary
                                         radius: Style.radiusS
                                         z: 100
 
@@ -307,7 +308,7 @@ Item {
                                             delegate: Rectangle {
                                                 width: parent.width
                                                 height: 30
-                                                color: suggestActionMA.containsMouse ? Color.mSurfaceVariant : "transparent"
+                                                color: suggestActionMA.containsMouse ? Color.mPrimary : "transparent"
                                                 radius: Style.radiusXS
 
                                                 NText {
@@ -388,6 +389,7 @@ Item {
         onLoaded: {
             Logger.i("NiriKeybinds", "Config loaded, bytes:", text().length)
             loading = false
+            originalConfig = text()
             var result = parseKeybinds(text())
             if (result.length === 0) {
                 Logger.w("NiriKeybinds", "Parser returned 0 keybinds - raw excerpt:", text().substring(0, 300))
@@ -537,21 +539,12 @@ Item {
     }
 
     function saveKeybinds() {
-        var proc = Quickshell.execDetached(["cat", configPath])
-        proc.onCompleted.connect(function() {
-            if (proc.exitCode !== 0) {
-                ToastService.showError("Failed to read config for saving")
-                return
-            }
-            var original = String(proc.readAll ? proc.readAll() : "")
-            var updated = replaceBindsInConfig(original)
-            var escaped = updated.replace(/'/g, "'\\''")
-            Quickshell.execDetached(["sh", "-c",
-                "cp '" + configPath + "' '" + configPath + ".backup' && " +
-                "printf '%s' '" + escaped + "' > '" + configPath + "'"
-            ])
-            ToastService.showNotice("Keybinds saved (backup at " + configPath + ".backup)")
-        })
+        var updated = replaceBindsInConfig(originalConfig)
+        var escaped = updated.replace(/'/g, "'\\''")
+        Quickshell.execDetached(["sh", "-c",
+            "cp '" + configPath + "' '" + configPath + ".backup' && " +
+            "printf '%s' '" + escaped + "' > '" + configPath + "'"
+        ])
     }
 
     function replaceBindsInConfig(original) {
