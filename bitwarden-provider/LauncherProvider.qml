@@ -125,10 +125,10 @@ Item {
         if (vaultStatus === "unauthenticated") {
             if (!email) return
             loginProc.command = ["sh", "-c",
-                "mkdir -p /var/home/gabriel/.cache/noctalia && flatpak run --command=bw com.bitwarden.desktop login " + JSON.stringify(email) + " " + JSON.stringify(password) + " --method 0 --raw > " + tokenPath + " 2>&1"]
+                "mkdir -p /var/home/gabriel/.cache/noctalia && printf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop login " + JSON.stringify(email) + " --raw > " + tokenPath + " 2>" + tokenPath + ".err"]
         } else {
             loginProc.command = ["sh", "-c",
-                "mkdir -p /var/home/gabriel/.cache/noctalia && flatpak run --command=bw com.bitwarden.desktop unlock " + JSON.stringify(password) + " --raw > " + tokenPath + " 2>&1"]
+                "mkdir -p /var/home/gabriel/.cache/noctalia && printf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop unlock --raw > " + tokenPath + " 2>" + tokenPath + ".err"]
         }
         sessionFile.path = tokenPath
         loginProc.running = true
@@ -139,14 +139,21 @@ Item {
         command: []
 
         onExited: function(exitCode) {
-            Logger.i("BitwardenProvider", "login/unlock exited with code", exitCode)
-            Logger.i("BitwardenProvider", "stdout:", String(stdout || ""))
-            Logger.i("BitwardenProvider", "stderr:", String(stderr || ""))
-            var token = String(sessionFile.content || "").trim()
-            Logger.i("BitwardenProvider", "session file content length:", token.length)
+            Logger.i("BitwardenProvider", "login/unlock exited:", exitCode)
+            var token = ""
+            try {
+                // Force FileView to re-read by cycling path
+                var tp = sessionFile.path
+                sessionFile.path = ""
+                sessionFile.path = tp
+                token = String(sessionFile.content || "").trim()
+            } catch (e) {
+                Logger.e("BitwardenProvider", "FileView read error:", e)
+            }
+            Logger.i("BitwardenProvider", "session token length:", token.length)
             if (exitCode === 0 && token) {
                 sessionToken = token
-                Logger.i("BitwardenProvider", "Got session token, first chars:", sessionToken.substring(0, 20))
+                Logger.i("BitwardenProvider", "Got session token")
                 pluginApi.pluginSettings.sessionToken = sessionToken
                 pluginApi.saveSettings()
                 unlocked = true
