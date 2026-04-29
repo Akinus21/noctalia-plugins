@@ -83,10 +83,10 @@ Item {
         Logger.i("BitwardenProvider", "checkUnlockStatus called, sessionToken:", sessionToken ? "present" : "empty")
         if (sessionToken) {
             statusProc.command = ["sh", "-c",
-                "flatpak run --command=bw com.bitwarden.desktop status --session " + sessionToken]
+                "HOME=/var/home/gabriel XDG_RUNTIME_DIR=/run/user/1000 flatpak run --command=bw com.bitwarden.desktop status --session " + sessionToken]
         } else {
-            statusProc.command = ["flatpak",
-                "run", "--command=bw", "com.bitwarden.desktop", "status"]
+            statusProc.command = ["sh", "-c",
+                "HOME=/var/home/gabriel XDG_RUNTIME_DIR=/run/user/1000 flatpak run --command=bw com.bitwarden.desktop status"]
         }
         statusProc.running = true
     }
@@ -125,10 +125,10 @@ Item {
         if (vaultStatus === "unauthenticated") {
             if (!email) return
             loginProc.command = ["sh", "-c",
-                "mkdir -p /var/home/gabriel/.cache/noctalia && printf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop login " + JSON.stringify(email) + " --raw > " + tokenPath + " 2>" + tokenPath + ".err"]
+                "HOME=/var/home/gabriel XDG_RUNTIME_DIR=/run/user/1000 mkdir -p /var/home/gabriel/.cache/noctalia && printf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop login " + JSON.stringify(email) + " --raw > " + tokenPath + " 2>" + tokenPath + ".err"]
         } else {
             loginProc.command = ["sh", "-c",
-                "mkdir -p /var/home/gabriel/.cache/noctalia && printf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop unlock --raw > " + tokenPath + " 2>" + tokenPath + ".err"]
+                "HOME=/var/home/gabriel XDG_RUNTIME_DIR=/run/user/1000 mkdir -p /var/home/gabriel/.cache/noctalia && printf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop unlock --raw > " + tokenPath + " 2>" + tokenPath + ".err"]
         }
         sessionFile.path = tokenPath
         loginProc.running = true
