@@ -22,6 +22,7 @@ Item {
 
     property var items: []
     property bool unlocked: false
+    property bool authenticated: false
     property bool bwAvailable: false
     property bool fetching: false
     property bool loaded: false
@@ -48,34 +49,12 @@ Item {
         onExited: function(exitCode) {
             bwAvailable = exitCode === 0
             if (bwAvailable) {
-                configureServer()
+                checkStatus()
             }
         }
     }
 
-    function configureServer() {
-        var url = pluginApi?.pluginSettings?.serverUrl || ""
-        if (!url) {
-            Logger.w("BitwardenProvider", "No server URL configured")
-            return
-        }
-        configCmd = ["flatpak", "run", "--command=bw", "com.bitwarden.desktop", "config", "server", url]
-        configProc.running = true
-    }
-
-    property var configCmd: []
-
-    Process {
-        id: configProc
-        command: configCmd
-
-        onExited: function(exitCode) {
-            Logger.i("BitwardenProvider", "Server config exit:", exitCode)
-            checkUnlockStatus()
-        }
-    }
-
-    function checkUnlockStatus() {
+    function checkStatus() {
         if (sessionToken) {
             statusCmd = ["sh", "-c", "flatpak run --command=bw com.bitwarden.desktop status --session " + sessionToken]
         } else {
@@ -94,24 +73,65 @@ Item {
             if (exitCode === 0) {
                 try {
                     var status = JSON.parse(String(stdout))
-                    unlocked = status.status === "unlocked"
-                    if (unlocked && !loaded) {
-                        loadItems()
+                    var s = status.status
+                    if (s === "unlocked") {
+                        unlocked = true
+                        authenticated = true
+                        if (!loaded) loadItems()
+                    } else if (s === "locked") {
+                        unlocked = false
+                        authenticated = true
+                    } else if (s === "unauthenticated") {
+                        unlocked = false
+                        authenticated = false
+                    } else {
+                        unlocked = false
+                        authenticated = true
                     }
                 } catch (e) {
                     unlocked = false
+                    authenticated = false
                 }
             } else {
                 unlocked = false
+                authenticated = false
+            }
+        }
+    }
+
+    function login() {
+        var password = pluginApi?.pluginSettings?.password || ""
+        var email = pluginApi?.pluginSettings?.email || ""
+        if (!password || !email) {
+            Logger.w("BitwardenProvider", "Missing email or password for login")
+            return
+        }
+        var escapedPw = password.replace(/'/g, "'\\''")
+        loginCmd = ["sh", "-c", "echo '" + escapedPw + "' | flatpak run --command=bw com.bitwarden.desktop login " + email.replace(/'/g, "'\\''")]
+        loginProc.running = true
+    }
+
+    property var loginCmd: []
+
+    Process {
+        id: loginProc
+        command: loginCmd
+
+        onExited: function(exitCode) {
+            if (exitCode === 0) {
+                authenticated = true
+                sessionToken = ""
+                pluginApi.pluginSettings.sessionToken = ""
+                pluginApi.saveSettings()
+                unlockVault()
             }
         }
     }
 
     function unlockVault() {
         var password = pluginApi?.pluginSettings?.password || ""
-        var email = pluginApi?.pluginSettings?.email || ""
-        if (!password || !email) {
-            Logger.w("BitwardenProvider", "Missing email or password for unlock")
+        if (!password) {
+            Logger.w("BitwardenProvider", "Missing password for unlock")
             return
         }
         var escapedPw = password.replace(/'/g, "'\\''")
@@ -126,7 +146,7 @@ Item {
         command: unlockCmd
 
         onExited: function(exitCode) {
-            if (exitCode === 0) {
+            if (exitCode === 0 && stdout) {
                 sessionToken = stdout.trim()
                 pluginApi.pluginSettings.sessionToken = sessionToken
                 pluginApi.saveSettings()
@@ -165,13 +185,18 @@ Item {
             return [{ "name": "Bitwarden Flatpak not found", "description": "com.bitwarden.desktop must be installed", "icon": "alert-circle", "isTablerIcon": true, "onActivate": function() {} }]
         }
 
-        if (!unlocked) {
-            var hasCreds = (pluginApi?.pluginSettings?.email || "") && (pluginApi?.pluginSettings?.password || "")
+        var hasCreds = (pluginApi?.pluginSettings?.email || "") && (pluginApi?.pluginSettings?.password || "")
+
+        if (!authenticated) {
             if (hasCreds) {
-                return [{ "name": "Vault is locked", "description": "Click to unlock", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
+                return [{ "name": "Not logged in", "description": "Click to login", "icon": "key", "isTablerIcon": true, "onActivate": function() { login() } }]
             } else {
-                return [{ "name": "Vault is locked", "description": "Click to configure credentials", "icon": "lock", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
+                return [{ "name": "Not configured", "description": "Click to configure credentials", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
             }
+        }
+
+        if (!unlocked) {
+            return [{ "name": "Vault is locked", "description": "Click to unlock", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
         }
 
         if (query.startsWith("username ")) { mode = "username"; query = query.slice(9).trim() }
@@ -230,7 +255,7 @@ Item {
 
         onExited: function(exitCode) {
             fetching = false
-            if (exitCode === 0) {
+            if (exitCode === 0 && stdout) {
                 try {
                     items = JSON.parse(String(stdout))
                     loaded = true
@@ -246,7 +271,8 @@ Item {
     }
 
     function maybeRefresh() {
-        if (!unlocked) checkUnlockStatus()
+        if (!authenticated) checkStatus()
+        else if (!unlocked) checkStatus()
         else if (!loaded) loadItems()
     }
 
