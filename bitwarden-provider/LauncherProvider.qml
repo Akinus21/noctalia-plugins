@@ -33,7 +33,7 @@ Item {
         path: ""
         onContentChanged: {
             if (path && content) {
-                Logger.i("BitwardenProvider", "sessionFile content changed, length:", String(content).length)
+                Logger.i("BitwardenProvider", "sessionFile updated, length:", String(content).length)
             }
         }
     }
@@ -41,17 +41,13 @@ Item {
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
-        var h = Quickshell.env("HOME")
-        if (h) {
-            sessionFile.path = String(h) + "/.cache/noctalia/bw_token"
-        }
+        sessionFile.path = "/var/home/gabriel/.cache/noctalia/bw_token"
         flatpakInfoProc.command = ["flatpak", "info", "com.bitwarden.desktop"]
         flatpakInfoProc.running = true
     }
 
     function onOpened() {
-        var h = Quickshell.env("HOME")
-        if (h) sessionFile.path = String(h) + "/.cache/noctalia/bw_token"
+        sessionFile.path = "/var/home/gabriel/.cache/noctalia/bw_token"
         maybeRefresh()
     }
 
@@ -126,19 +122,18 @@ Item {
     function unlockVault() {
         var password = pluginApi?.pluginSettings?.password || ""
         var email = pluginApi?.pluginSettings?.email || ""
-        Logger.i("BitwardenProvider", "unlockVault - vaultStatus:", vaultStatus, "password:", password ? String(password.length) : "empty")
         if (!password) return
 
-        var home = Quickshell.env("HOME")
-        var tokenPath = String(home || "/tmp") + "/.cache/noctalia/bw_token"
+        var tokenPath = "/var/home/gabriel/.cache/noctalia/bw_token"
+        Logger.i("BitwardenProvider", "unlockVault - status:", vaultStatus, "pw len:", password.length)
 
         if (vaultStatus === "unauthenticated") {
             if (!email) return
             loginProc.command = ["sh", "-c",
-                "flatpak run --command=bw com.bitwarden.desktop login " + JSON.stringify(email) + " " + JSON.stringify(password) + " --method 0 --raw 2>&1 | tee " + tokenPath]
+                "mkdir -p /var/home/gabriel/.cache/noctalia && flatpak run --command=bw com.bitwarden.desktop login " + JSON.stringify(email) + " " + JSON.stringify(password) + " --method 0 --raw > " + tokenPath + " 2>&1"]
         } else {
             loginProc.command = ["sh", "-c",
-                "flatpak run --command=bw com.bitwarden.desktop unlock " + JSON.stringify(password) + " --raw 2>&1 | tee " + tokenPath]
+                "mkdir -p /var/home/gabriel/.cache/noctalia && flatpak run --command=bw com.bitwarden.desktop unlock " + JSON.stringify(password) + " --raw > " + tokenPath + " 2>&1"]
         }
         sessionFile.path = tokenPath
         loginProc.running = true
