@@ -14,8 +14,8 @@
     {
       "id": "bitwarden-provider",
       "name": "Bitwarden Vault",
-      "version": "1.0.4",
-      "description": "Access your Bitwarden vault from the launcher using the bw CLI.",
+      "version": "1.0.5",
+      "description": "Access your Bitwarden vault from the launcher using the bw CLI (flatpak).",
       "tags": [
         "Launcher",
         "Security"
@@ -23,7 +23,7 @@
       "author": "Akinus21",
       "license": "MIT",
       "repository": "https://github.com/Akinus21/noctalia-plugins",
-      "minNoctaliaVersion": "3.9.0"
+      "minNoctaliaVersion": "4.4.1"
     },
     {
       "id": "niri-keybinds",
