@@ -22,7 +22,6 @@ Item {
 
     property var items: []
     property bool unlocked: false
-    property bool authenticated: false
     property bool bwAvailable: false
     property bool fetching: false
     property bool loaded: false
@@ -31,119 +30,91 @@ Item {
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
-        checkFlatpakInstalled()
+        flatpakInfoProc.command = ["flatpak", "info", "com.bitwarden.desktop"]
+        flatpakInfoProc.running = true
     }
 
     function onOpened() {
         maybeRefresh()
     }
 
-    function checkFlatpakInstalled() {
-        flatpakInfoProc.running = true
-    }
-
     Process {
         id: flatpakInfoProc
-        command: ["flatpak", "info", "com.bitwarden.desktop"]
+        command: []
 
         onExited: function(exitCode) {
             bwAvailable = exitCode === 0
             if (bwAvailable) {
-                checkStatus()
+                setupServer()
             }
         }
     }
 
-    function checkStatus() {
+    function setupServer() {
+        var url = pluginApi?.pluginSettings?.serverUrl || ""
+        if (!url) {
+            checkUnlockStatus()
+            return
+        }
+        var escapedUrl = String(url).replace(/'/g, "'\\''")
+        configProc.command = ["sh", "-c",
+            "flatpak run --command=bw com.bitwarden.desktop config server " + escapedUrl + " 2>&1 || true"]
+        configProc.running = true
+    }
+
+    Process {
+        id: configProc
+        command: []
+
+        onExited: function(exitCode) {
+            checkUnlockStatus()
+        }
+    }
+
+    function checkUnlockStatus() {
         if (sessionToken) {
-            statusCmd = ["sh", "-c", "flatpak run --command=bw com.bitwarden.desktop status --session " + sessionToken]
+            statusProc.command = ["sh", "-c",
+                "flatpak run --command=bw com.bitwarden.desktop status --session " + sessionToken]
         } else {
-            statusCmd = ["flatpak", "run", "--command=bw", "com.bitwarden.desktop", "status"]
+            statusProc.command = ["flatpak",
+                "run", "--command=bw", "com.bitwarden.desktop", "status"]
         }
         statusProc.running = true
     }
 
-    property var statusCmd: []
-
     Process {
         id: statusProc
-        command: statusCmd
+        command: []
 
         onExited: function(exitCode) {
             if (exitCode === 0) {
                 try {
-                    var status = JSON.parse(String(stdout))
-                    var s = status.status
-                    if (s === "unlocked") {
-                        unlocked = true
-                        authenticated = true
-                        if (!loaded) loadItems()
-                    } else if (s === "locked") {
-                        unlocked = false
-                        authenticated = true
-                    } else if (s === "unauthenticated") {
-                        unlocked = false
-                        authenticated = false
-                    } else {
-                        unlocked = false
-                        authenticated = true
-                    }
+                    var s = JSON.parse(String(stdout)).status
+                    unlocked = (s === "unlocked")
+                    if (unlocked && !loaded) loadItems()
                 } catch (e) {
                     unlocked = false
-                    authenticated = false
                 }
             } else {
                 unlocked = false
-                authenticated = false
-            }
-        }
-    }
-
-    function login() {
-        var password = pluginApi?.pluginSettings?.password || ""
-        var email = pluginApi?.pluginSettings?.email || ""
-        if (!password || !email) {
-            Logger.w("BitwardenProvider", "Missing email or password for login")
-            return
-        }
-        var escapedPw = password.replace(/'/g, "'\\''")
-        loginCmd = ["sh", "-c", "echo '" + escapedPw + "' | flatpak run --command=bw com.bitwarden.desktop login " + email.replace(/'/g, "'\\''")]
-        loginProc.running = true
-    }
-
-    property var loginCmd: []
-
-    Process {
-        id: loginProc
-        command: loginCmd
-
-        onExited: function(exitCode) {
-            if (exitCode === 0) {
-                authenticated = true
-                sessionToken = ""
-                pluginApi.pluginSettings.sessionToken = ""
-                pluginApi.saveSettings()
-                unlockVault()
             }
         }
     }
 
     function unlockVault() {
+        var email = pluginApi?.pluginSettings?.email || ""
         var password = pluginApi?.pluginSettings?.password || ""
-        if (!password) {
-            Logger.w("BitwardenProvider", "Missing password for unlock")
-            return
-        }
-        var escapedPw = password.replace(/'/g, "'\\''")
-        unlockCmd = ["sh", "-c", "echo '" + escapedPw + "' | flatpak run --command=bw com.bitwarden.desktop unlock --raw"]
-        unlockProc.running = true
+        if (!email || !password) return
+        var escapedPw = String(password).replace(/'/g, "'\\''")
+        var escapedEmail = String(email).replace(/'/g, "'\\''")
+        loginProc.command = ["sh", "-c",
+            "echo '" + escapedPw + "' | flatpak run --command=bw com.bitwarden.desktop login " + escapedEmail + " --raw"]
+        loginProc.running = true
     }
 
-    property var unlockCmd: []
-
     Process {
-        id: unlockProc
-        command: unlockCmd
+        id: loginProc
+        command: []
 
         onExited: function(exitCode) {
             if (exitCode === 0 && stdout) {
@@ -182,21 +153,16 @@ Item {
         else return []
 
         if (!bwAvailable) {
-            return [{ "name": "Bitwarden Flatpak not found", "description": "com.bitwarden.desktop must be installed", "icon": "alert-circle", "isTablerIcon": true, "onActivate": function() {} }]
-        }
-
-        var hasCreds = (pluginApi?.pluginSettings?.email || "") && (pluginApi?.pluginSettings?.password || "")
-
-        if (!authenticated) {
-            if (hasCreds) {
-                return [{ "name": "Not logged in", "description": "Click to login", "icon": "key", "isTablerIcon": true, "onActivate": function() { login() } }]
-            } else {
-                return [{ "name": "Not configured", "description": "Click to configure credentials", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
-            }
+            return [{ "name": "Bitwarden Flatpak not found", "description": "com.bitwarden.desktop must be installed", "icon": "alert-circle", "isTablerIcon": true }]
         }
 
         if (!unlocked) {
-            return [{ "name": "Vault is locked", "description": "Click to unlock", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
+            var hasCreds = (pluginApi?.pluginSettings?.email || "") && (pluginApi?.pluginSettings?.password || "")
+            if (hasCreds) {
+                return [{ "name": "Vault is locked", "description": "Click to unlock", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
+            } else {
+                return [{ "name": "Not configured", "description": "Click to open plugin settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
+            }
         }
 
         if (query.startsWith("username ")) { mode = "username"; query = query.slice(9).trim() }
@@ -206,7 +172,7 @@ Item {
         else if (query === "password") { mode = "password"; query = "" }
 
         if (fetching) {
-            return [{ "name": "Loading...", "description": "Fetching items", "icon": "loader", "isTablerIcon": true, "onActivate": function() {} }]
+            return [{ "name": "Loading...", "description": "Fetching items", "icon": "loader", "isTablerIcon": true }]
         }
 
         var pool = items
@@ -225,7 +191,7 @@ Item {
         }
 
         if (results.length === 0 && loaded) {
-            return [{ "name": "No items found", "description": "Try a different search term", "icon": "search-off", "isTablerIcon": true, "onActivate": function() {} }]
+            return [{ "name": "No items found", "description": "Try a different search term", "icon": "search-off", "isTablerIcon": true }]
         }
 
         return results
@@ -243,15 +209,14 @@ Item {
     function loadItems() {
         if (fetching || !sessionToken) return
         fetching = true
-        loadCmd = ["sh", "-c", "flatpak run --command=bw com.bitwarden.desktop list items --session " + sessionToken]
+        loadProc.command = ["sh", "-c",
+            "flatpak run --command=bw com.bitwarden.desktop list items --session " + sessionToken]
         loadProc.running = true
     }
 
-    property var loadCmd: []
-
     Process {
         id: loadProc
-        command: loadCmd
+        command: []
 
         onExited: function(exitCode) {
             fetching = false
@@ -271,9 +236,7 @@ Item {
     }
 
     function maybeRefresh() {
-        if (!authenticated) checkStatus()
-        else if (!unlocked) checkStatus()
-        else if (!loaded) loadItems()
+        checkUnlockStatus()
     }
 
     function makeResult(item, mode) {
