@@ -31,11 +31,6 @@ Item {
     FileView {
         id: sessionFile
         path: ""
-        onContentChanged: {
-            if (path && content) {
-                Logger.i("BitwardenProvider", "sessionFile updated, length:", String(content).length)
-            }
-        }
     }
 
     function init() {
