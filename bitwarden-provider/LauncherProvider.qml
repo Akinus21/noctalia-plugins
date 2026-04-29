@@ -28,21 +28,26 @@ Item {
     property string sessionToken: ""
     property string vaultStatus: "locked"
 
+    property string outDir: "/var/home/gabriel/.cache/noctalia"
+
     FileView {
-        id: sessionFile
-        path: ""
+        id: tokenFile
+        path: outDir + "/bw_token"
+    }
+
+    FileView {
+        id: statusFile
+        path: outDir + "/bw_status"
     }
 
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
-        sessionFile.path = "/var/home/gabriel/.cache/noctalia/bw_token"
         flatpakInfoProc.command = ["flatpak", "info", "com.bitwarden.desktop"]
         flatpakInfoProc.running = true
     }
 
     function onOpened() {
-        sessionFile.path = "/var/home/gabriel/.cache/noctalia/bw_token"
         maybeRefresh()
     }
 
@@ -64,54 +69,31 @@ Item {
             checkUnlockStatus()
             return
         }
-        var escapedUrl = String(url).replace(/'/g, "'\\''")
-        configProc.command = ["sh", "-c",
-            "flatpak run --command=bw com.bitwarden.desktop config server " + escapedUrl + " 2>&1 || true"]
-        configProc.running = true
-    }
-
-    Process {
-        id: configProc
-        command: []
-
-        onExited: function(exitCode) {
-            checkUnlockStatus()
-        }
+        var script = "#!/bin/bash\nmkdir -p " + outDir + "\nflatpak run --command=bw com.bitwarden.desktop config server " + JSON.stringify(url) + " 2>&1\n"
+        writeAndRun(script, function() { checkUnlockStatus() })
     }
 
     function checkUnlockStatus() {
-        Logger.i("BitwardenProvider", "checkUnlockStatus called, sessionToken:", sessionToken ? "present" : "empty")
+        Logger.i("BitwardenProvider", "checkUnlockStatus, token:", sessionToken ? "present" : "empty")
+        var script
         if (sessionToken) {
-            statusProc.command = ["sh", "-c",
-                "HOME=/var/home/gabriel XDG_RUNTIME_DIR=/run/user/1000 flatpak run --command=bw com.bitwarden.desktop status --session " + sessionToken]
+            script = "#!/bin/bash\nmkdir -p " + outDir + "\nflatpak run --command=bw com.bitwarden.desktop status --session " + sessionToken + " > " + outDir + "/bw_status 2>&1\n"
         } else {
-            statusProc.command = ["sh", "-c",
-                "HOME=/var/home/gabriel XDG_RUNTIME_DIR=/run/user/1000 flatpak run --command=bw com.bitwarden.desktop status"]
+            script = "#!/bin/bash\nmkdir -p " + outDir + "\nflatpak run --command=bw com.bitwarden.desktop status > " + outDir + "/bw_status 2>&1\n"
         }
-        statusProc.running = true
-    }
-
-    Process {
-        id: statusProc
-        command: []
-
-        onExited: function(exitCode) {
-            Logger.i("BitwardenProvider", "status exited:", exitCode, "stdout:", String(stdout || ""), "stderr:", String(stderr || ""))
-            if (exitCode === 0) {
-                try {
-                    var s = JSON.parse(String(stdout)).status
-                    vaultStatus = s
-                    unlocked = (s === "unlocked")
-                    if (unlocked && !loaded) loadItems()
-                } catch (e) {
-                    vaultStatus = "unauthenticated"
-                    unlocked = false
-                }
-            } else {
+        writeAndRun(script, function() {
+            var out = String(statusFile.content || "").trim()
+            Logger.i("BitwardenProvider", "status output:", out)
+            try {
+                var s = JSON.parse(out).status
+                vaultStatus = s
+                unlocked = (s === "unlocked")
+                if (unlocked && !loaded) loadItems()
+            } catch (e) {
                 vaultStatus = "unauthenticated"
                 unlocked = false
             }
-        }
+        })
     }
 
     function unlockVault() {
@@ -119,41 +101,19 @@ Item {
         var email = pluginApi?.pluginSettings?.email || ""
         if (!password) return
 
-        var tokenPath = "/var/home/gabriel/.cache/noctalia/bw_token"
         Logger.i("BitwardenProvider", "unlockVault - status:", vaultStatus, "pw len:", password.length)
-
+        var script
         if (vaultStatus === "unauthenticated") {
             if (!email) return
-            loginProc.command = ["sh", "-c",
-                "HOME=/var/home/gabriel XDG_RUNTIME_DIR=/run/user/1000 mkdir -p /var/home/gabriel/.cache/noctalia && printf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop login " + JSON.stringify(email) + " --raw > " + tokenPath + " 2>" + tokenPath + ".err"]
+            script = "#!/bin/bash\nmkdir -p " + outDir + "\nprintf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop login " + JSON.stringify(email) + " --raw > " + outDir + "/bw_token 2>&1\n"
         } else {
-            loginProc.command = ["sh", "-c",
-                "HOME=/var/home/gabriel XDG_RUNTIME_DIR=/run/user/1000 mkdir -p /var/home/gabriel/.cache/noctalia && printf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop unlock --raw > " + tokenPath + " 2>" + tokenPath + ".err"]
+            script = "#!/bin/bash\nmkdir -p " + outDir + "\nprintf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop unlock --raw > " + outDir + "/bw_token 2>&1\n"
         }
-        sessionFile.path = tokenPath
-        loginProc.running = true
-    }
-
-    Process {
-        id: loginProc
-        command: []
-
-        onExited: function(exitCode) {
-            Logger.i("BitwardenProvider", "login/unlock exited:", exitCode)
-            var token = ""
-            try {
-                // Force FileView to re-read by cycling path
-                var tp = sessionFile.path
-                sessionFile.path = ""
-                sessionFile.path = tp
-                token = String(sessionFile.content || "").trim()
-            } catch (e) {
-                Logger.e("BitwardenProvider", "FileView read error:", e)
-            }
-            Logger.i("BitwardenProvider", "session token length:", token.length)
-            if (exitCode === 0 && token) {
+        writeAndRun(script, function() {
+            var token = String(tokenFile.content || "").trim()
+            Logger.i("BitwardenProvider", "login/unlock token len:", token.length)
+            if (token) {
                 sessionToken = token
-                Logger.i("BitwardenProvider", "Got session token")
                 pluginApi.pluginSettings.sessionToken = sessionToken
                 pluginApi.saveSettings()
                 unlocked = true
@@ -162,7 +122,27 @@ Item {
             } else {
                 Logger.e("BitwardenProvider", "Login/unlock failed")
             }
+        })
+    }
+
+    Timer {
+        id: pollTimer
+        interval: 500
+        repeat: false
+        property var callback: null
+        onTriggered: {
+            if (callback) callback()
         }
+    }
+
+    function writeAndRun(scriptContent, cb) {
+        try {
+            Quickshell.execDetached(["sh", "-c", "printf '%s' " + JSON.stringify(scriptContent) + " > " + outDir + "/script.sh && chmod +x " + outDir + "/script.sh && " + outDir + "/script.sh"])
+        } catch (e) {
+            Logger.e("BitwardenProvider", "execDetached error:", e)
+        }
+        pollTimer.callback = cb
+        pollTimer.restart()
     }
 
     function handleCommand(searchText) {
@@ -256,20 +236,13 @@ Item {
     function loadItems() {
         if (fetching || !sessionToken) return
         fetching = true
-        loadProc.command = ["sh", "-c",
-            "flatpak run --command=bw com.bitwarden.desktop list items --session " + sessionToken]
-        loadProc.running = true
-    }
-
-    Process {
-        id: loadProc
-        command: []
-
-        onExited: function(exitCode) {
+        var script = "#!/bin/bash\nmkdir -p " + outDir + "\nflatpak run --command=bw com.bitwarden.desktop list items --session " + sessionToken + " > " + outDir + "/bw_token 2>&1\n"
+        writeAndRun(script, function() {
             fetching = false
-            if (exitCode === 0 && stdout) {
+            var data = String(tokenFile.content || "").trim()
+            if (data) {
                 try {
-                    items = JSON.parse(String(stdout))
+                    items = JSON.parse(data)
                     loaded = true
                     if (launcher) launcher.updateResults()
                     Logger.i("BitwardenProvider", "Loaded", items.length, "items")
@@ -279,7 +252,7 @@ Item {
             } else {
                 unlocked = false
             }
-        }
+        })
     }
 
     function maybeRefresh() {
