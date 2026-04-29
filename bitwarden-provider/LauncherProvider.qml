@@ -67,11 +67,13 @@ Item {
         command: []
 
         onExited: function(exitCode) {
+            Logger.i("BitwardenProvider", "config server exited:", exitCode, "stdout:", String(stdout || ""))
             checkUnlockStatus()
         }
     }
 
     function checkUnlockStatus() {
+        Logger.i("BitwardenProvider", "checkUnlockStatus called, sessionToken:", sessionToken ? "present" : "empty")
         if (sessionToken) {
             statusProc.command = ["sh", "-c",
                 "flatpak run --command=bw com.bitwarden.desktop status --session " + sessionToken]
@@ -117,12 +119,17 @@ Item {
         command: []
 
         onExited: function(exitCode) {
+            Logger.i("BitwardenProvider", "login exited with code", exitCode)
+            Logger.i("BitwardenProvider", "login stdout:", String(stdout || ""))
             if (exitCode === 0 && stdout) {
                 sessionToken = stdout.trim()
+                Logger.i("BitwardenProvider", "Got session token, length:", sessionToken.length)
                 pluginApi.pluginSettings.sessionToken = sessionToken
                 pluginApi.saveSettings()
                 unlocked = true
                 loadItems()
+            } else {
+                Logger.e("BitwardenProvider", "Login failed, clearing credentials")
             }
         }
     }
