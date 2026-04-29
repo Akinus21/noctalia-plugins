@@ -60,11 +60,10 @@ ColumnLayout {
         onTextChanged: root.editPassword = text
     }
 
-    NText {
+    NLabel {
         text: pluginApi?.tr("settings.hint")
         wrapMode: Text.WordWrap
         Layout.fillWidth: true
-        pointSize: Style.fontSizeS
         color: Color.mOnSurfaceVariant
     }
 }
