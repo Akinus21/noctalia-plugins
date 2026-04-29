@@ -14,7 +14,7 @@
     {
       "id": "bitwarden-provider",
       "name": "Bitwarden Vault",
-      "version": "1.0.8",
+      "version": "1.0.9",
       "description": "Access your Bitwarden vault from the launcher using the bw CLI (flatpak).",
       "tags": [
         "Launcher",
