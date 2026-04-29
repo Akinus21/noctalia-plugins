@@ -166,7 +166,7 @@ Item {
         }
 
         if (!unlocked) {
-            return [{ "name": "Vault is locked", "description": "Configure email and password in plugin settings", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
+            return [{ "name": "Vault is locked", "description": "Click to open plugin settings", "icon": "lock", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
         }
 
         if (query.startsWith("username ")) { mode = "username"; query = query.slice(9).trim() }
@@ -281,6 +281,14 @@ Item {
             pluginApi.pluginSettings._panelMode = "view"
             pluginApi.pluginSettings._viewItem = item
             pluginApi.openPanel(screen)
+        })
+        launcher.close()
+    }
+
+    function openSettings() {
+        if (!pluginApi) return
+        pluginApi.withCurrentScreen(function(screen) {
+            BarService.openPluginSettings(screen, pluginApi.manifest)
         })
         launcher.close()
     }
