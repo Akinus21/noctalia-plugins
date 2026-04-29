@@ -15,10 +15,6 @@ ColumnLayout {
     property string editEmail: cfg.email ?? defaults.email ?? ""
     property string editPassword: cfg.password ?? ""
 
-    Component.onCompleted: {
-        editPassword = cfg.password || ""
-    }
-
     spacing: Style.marginL
 
     function saveSettings() {
@@ -54,7 +50,6 @@ ColumnLayout {
         label: pluginApi?.tr("settings.password.label")
         description: pluginApi?.tr("settings.password.desc")
         placeholderText: "Your master password"
-        echoMode: TextInput.Password
         text: root.editPassword
         onTextChanged: root.editPassword = text
     }
