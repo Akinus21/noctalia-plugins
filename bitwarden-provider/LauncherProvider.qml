@@ -166,7 +166,12 @@ Item {
         }
 
         if (!unlocked) {
-            return [{ "name": "Vault is locked", "description": "Click to open plugin settings", "icon": "lock", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
+            var hasCreds = (pluginApi?.pluginSettings?.email || "") && (pluginApi?.pluginSettings?.password || "")
+            if (hasCreds) {
+                return [{ "name": "Vault is locked", "description": "Click to unlock", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
+            } else {
+                return [{ "name": "Vault is locked", "description": "Click to configure credentials", "icon": "lock", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
+            }
         }
 
         if (query.startsWith("username ")) { mode = "username"; query = query.slice(9).trim() }
