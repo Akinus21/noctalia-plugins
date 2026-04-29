@@ -14,7 +14,7 @@
     {
       "id": "bitwarden-provider",
       "name": "Bitwarden Vault",
-      "version": "1.0.2",
+      "version": "1.0.4",
       "description": "Access your Bitwarden vault from the launcher using the bw CLI.",
       "tags": [
         "Launcher",
