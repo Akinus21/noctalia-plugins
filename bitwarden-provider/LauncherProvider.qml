@@ -146,9 +146,9 @@ Item {
             { "name": ">bitwarden username", "description": "Copy username for an item", "icon": "user", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden username ") } },
             { "name": ">bw username", "description": "Copy username for an item", "icon": "user", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw username ") } },
             { "name": ">bitwarden password", "description": "Copy password for an item", "icon": "lock", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden password ") } },
-            { "name": ">bitwarden-shortcut", "description": "Open Bitwarden settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } },
+            { "name": ">bitwarden settings", "description": "Open Bitwarden settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } },
             { "name": ">bw password", "description": "Copy password for an item", "icon": "lock", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw password ") } },
-            { "name": ">bw-shortcut", "description": "Open Bitwarden settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }
+            { "name": ">bw settings", "description": "Open Bitwarden settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }
         ]
     }
 
