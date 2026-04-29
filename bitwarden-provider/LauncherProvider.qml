@@ -106,10 +106,11 @@ Item {
     function unlockVault() {
         var email = pluginApi?.pluginSettings?.email || ""
         var password = pluginApi?.pluginSettings?.password || ""
+        Logger.i("BitwardenProvider", "unlockVault - email:", email ? "set" : "empty", "password:", password ? String(password.length) : "empty")
         if (!email || !password) return
         var escapedEmail = String(email).replace(/'/g, "'\\''")
         loginProc.command = ["sh", "-c",
-            "BW_PASSWORD=" + JSON.stringify(password) + " flatpak run --command=bw com.bitwarden.desktop login " + escapedEmail + " --raw"]
+            "BW_PASSWORD=" + JSON.stringify(password) + " flatpak run --command=bw com.bitwarden.desktop login " + escapedEmail + " --passwordenv BW_PASSWORD --raw 2>&1"]
         loginProc.running = true
     }
 

@@ -11,9 +11,15 @@ ColumnLayout {
     property var cfg: pluginApi?.pluginSettings || ({})
     property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
 
-    property string editServerUrl: cfg.serverUrl ?? defaults.serverUrl ?? ""
-    property string editEmail: cfg.email ?? defaults.email ?? ""
-    property string editPassword: cfg.password ?? ""
+    property string editServerUrl: ""
+    property string editEmail: ""
+    property string editPassword: ""
+
+    Component.onCompleted: {
+        editServerUrl = cfg.serverUrl ?? defaults.serverUrl ?? ""
+        editEmail = cfg.email ?? defaults.email ?? ""
+        editPassword = cfg.password || ""
+    }
 
     spacing: Style.marginL
 
