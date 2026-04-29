@@ -11,46 +11,54 @@ ColumnLayout {
     property var cfg: pluginApi?.pluginSettings || ({})
     property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
 
-    property string editVaultUrl: cfg.vaultUrl ?? defaults.vaultUrl ?? ""
-    property string editSessionToken: cfg.sessionToken ?? defaults.sessionToken ?? ""
+    property string editServerUrl: cfg.serverUrl ?? defaults.serverUrl ?? ""
+    property string editEmail: cfg.email ?? defaults.email ?? ""
+    property string editPassword: ""
 
     spacing: Style.marginL
 
     function saveSettings() {
         if (!pluginApi) return
-        pluginApi.pluginSettings.vaultUrl = root.editVaultUrl
-        pluginApi.pluginSettings.sessionToken = root.editSessionToken
+        pluginApi.pluginSettings.serverUrl = root.editServerUrl
+        pluginApi.pluginSettings.email = root.editEmail
+        if (root.editPassword) {
+            pluginApi.pluginSettings.password = root.editPassword
+        }
         pluginApi.saveSettings()
     }
 
     NTextInput {
         Layout.fillWidth: true
-        label: "Vault URL"
-        description: "Your Bitwarden/vaultwarden server URL"
-        placeholderText: "https://bitwarden.example.com"
-        text: root.editVaultUrl
-        onTextChanged: root.editVaultUrl = text
+        label: pluginApi?.tr("settings.serverUrl.label")
+        description: pluginApi?.tr("settings.serverUrl.desc")
+        placeholderText: "https://vault.bitwarden.com"
+        text: root.editServerUrl
+        onTextChanged: root.editServerUrl = text
     }
 
     NTextInput {
         Layout.fillWidth: true
-        label: "Session Token"
-        description: "Output of 'bw unlock' to persist login"
-        placeholderText: "Run 'bw unlock' then copy the token"
-        text: root.editSessionToken
-        onTextChanged: root.editSessionToken = text
+        label: pluginApi?.tr("settings.email.label")
+        description: pluginApi?.tr("settings.email.desc")
+        placeholderText: "you@example.com"
+        text: root.editEmail
+        onTextChanged: root.editEmail = text
+    }
+
+    NTextInput {
+        Layout.fillWidth: true
+        label: pluginApi?.tr("settings.password.label")
+        description: pluginApi?.tr("settings.password.desc")
+        placeholderText: "Your master password"
+        text: root.editPassword
+        onTextChanged: root.editPassword = text
     }
 
     NText {
-        text: "Make sure bw CLI is installed and your vault is unlocked."
+        text: pluginApi?.tr("settings.hint")
         wrapMode: Text.WordWrap
         Layout.fillWidth: true
-    }
-
-    NButton {
-        text: "Open Bitwarden Download Page"
-        outlined: true
-        Layout.fillWidth: true
-        onClicked: Quickshell.execDetached(["xdg-open", "https://bitwarden.com/download"])
+        pointSize: Style.fontSizeS
+        color: Color.mOnSurfaceVariant
     }
 }

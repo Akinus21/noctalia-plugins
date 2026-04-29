@@ -1,19 +1,17 @@
 {
-  "widget": {
-    "tooltip": "Bitwarden Vault"
-  },
-  "menu": {
-    "settings": "Settings"
-  },
   "settings": {
-    "vaultUrl": {
-      "label": "Vault URL",
-      "desc": "Your Bitwarden/vaultwarden server URL"
+    "serverUrl": {
+      "label": "Server URL",
+      "desc": "Your Bitwarden or Vaultwarden server URL"
     },
-    "sessionToken": {
-      "label": "Session Token",
-      "desc": "Output of 'bw unlock' to persist login"
+    "email": {
+      "label": "Email",
+      "desc": "Your Bitwarden account email"
     },
-    "downloadLink": "Open Bitwarden Download Page"
+    "password": {
+      "label": "Master Password",
+      "desc": "Your Bitwarden master password (stored locally)"
+    },
+    "hint": "Uses the Bitwarden Flatpak (com.bitwarden.desktop). Configure your server URL and login credentials above."
   }
 }
