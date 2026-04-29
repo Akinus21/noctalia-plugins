@@ -147,8 +147,7 @@ Item {
             { "name": ">bw username", "description": "Copy username for an item", "icon": "user", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw username ") } },
             { "name": ">bitwarden password", "description": "Copy password for an item", "icon": "lock", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden password ") } },
             { "name": ">bitwarden settings", "description": "Open Bitwarden settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } },
-            { "name": ">bw password", "description": "Copy password for an item", "icon": "lock", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw password ") } },
-            { "name": ">bw settings", "description": "Open Bitwarden settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }
+            { "name": ">bw password", "description": "Copy password for an item", "icon": "lock", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw password ") } }
         ]
     }
 
@@ -157,7 +156,11 @@ Item {
         var mode = "search"
 
         if (searchText.startsWith(">bitwarden")) query = searchText.slice(10).trim()
-        else if (searchText.startsWith(">bw")) query = searchText.slice(3).trim()
+        else if (searchText.startsWith(">bw")) {
+            var bwQuery = searchText.slice(3).trim()
+            if (bwQuery === "settings") { openSettings(); return [] }
+            query = bwQuery
+        }
         else return []
 
         if (!bwAvailable) {
@@ -178,6 +181,7 @@ Item {
         else if (query === "items") { mode = "items"; query = "" }
         else if (query === "username") { mode = "username"; query = "" }
         else if (query === "password") { mode = "password"; query = "" }
+        else if (query === "settings") { openSettings(); return [] }
 
         if (fetching) {
             return [{ "name": "Loading...", "description": "Fetching items", "icon": "loader", "isTablerIcon": true }]
