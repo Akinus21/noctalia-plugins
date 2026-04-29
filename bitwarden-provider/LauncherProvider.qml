@@ -27,6 +27,8 @@ Item {
     property bool loaded: false
     property string sessionToken: ""
 
+    property string vaultStatus: "locked"
+
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
@@ -89,28 +91,40 @@ Item {
         command: []
 
         onExited: function(exitCode) {
+            Logger.i("BitwardenProvider", "status exited:", exitCode, "stdout:", String(stdout || ""))
             if (exitCode === 0) {
                 try {
                     var s = JSON.parse(String(stdout)).status
+                    vaultStatus = s
                     unlocked = (s === "unlocked")
                     if (unlocked && !loaded) loadItems()
                 } catch (e) {
+                    vaultStatus = "unauthenticated"
                     unlocked = false
                 }
             } else {
+                vaultStatus = "unauthenticated"
                 unlocked = false
             }
         }
     }
 
     function unlockVault() {
-        var email = pluginApi?.pluginSettings?.email || ""
         var password = pluginApi?.pluginSettings?.password || ""
-        Logger.i("BitwardenProvider", "unlockVault - email:", email ? "set" : "empty", "password:", password ? String(password.length) : "empty")
-        if (!email || !password) return
-        var escapedEmail = String(email).replace(/'/g, "'\\''")
-        loginProc.command = ["sh", "-c",
-            "BW_PASSWORD=" + JSON.stringify(password) + " flatpak run --command=bw com.bitwarden.desktop login " + escapedEmail + " --passwordenv BW_PASSWORD --raw 2>&1"]
+        Logger.i("BitwardenProvider", "unlockVault - vaultStatus:", vaultStatus, "password:", password ? String(password.length) : "empty")
+        if (!password) return
+        var escapedPw = String(password).replace(/'/g, "'\\''")
+
+        if (vaultStatus === "unauthenticated") {
+            var email = pluginApi?.pluginSettings?.email || ""
+            if (!email) return
+            var escapedEmail = String(email).replace(/'/g, "'\\''")
+            loginProc.command = ["sh", "-c",
+                "echo " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop login " + escapedEmail + " --raw 2>&1"]
+        } else {
+            loginProc.command = ["sh", "-c",
+                "echo " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop unlock --raw 2>&1"]
+        }
         loginProc.running = true
     }
 
@@ -119,17 +133,19 @@ Item {
         command: []
 
         onExited: function(exitCode) {
-            Logger.i("BitwardenProvider", "login exited with code", exitCode)
-            Logger.i("BitwardenProvider", "login stdout:", String(stdout || ""))
+            Logger.i("BitwardenProvider", "login/unlock exited with code", exitCode)
+            Logger.i("BitwardenProvider", "stdout:", String(stdout || ""))
+            Logger.i("BitwardenProvider", "stderr:", String(stderr || ""))
             if (exitCode === 0 && stdout) {
                 sessionToken = stdout.trim()
                 Logger.i("BitwardenProvider", "Got session token, length:", sessionToken.length)
                 pluginApi.pluginSettings.sessionToken = sessionToken
                 pluginApi.saveSettings()
                 unlocked = true
+                vaultStatus = "unlocked"
                 loadItems()
             } else {
-                Logger.e("BitwardenProvider", "Login failed, clearing credentials")
+                Logger.e("BitwardenProvider", "Login/unlock failed")
             }
         }
     }
@@ -171,6 +187,9 @@ Item {
         if (!unlocked) {
             var hasCreds = (pluginApi?.pluginSettings?.email || "") && (pluginApi?.pluginSettings?.password || "")
             if (hasCreds) {
+                if (vaultStatus === "unauthenticated") {
+                    return [{ "name": "Not logged in", "description": "Click to login", "icon": "login", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
+                }
                 return [{ "name": "Vault is locked", "description": "Click to unlock", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
             } else {
                 return [{ "name": "Not configured", "description": "Click to open plugin settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
