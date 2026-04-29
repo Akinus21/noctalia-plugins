@@ -27,38 +27,41 @@ ColumnLayout {
         pluginApi.saveSettings()
     }
 
-    NTextInput {
+    RowLayout {
         Layout.fillWidth: true
-        label: "Server URL"
-        description: "Your Bitwarden or Vaultwarden server URL"
-        placeholderText: "https://vault.bitwarden.com"
-        text: root.editServerUrl
-        onTextChanged: root.editServerUrl = text
+        NLabel { text: "Server:" }
+        NTextInput {
+            Layout.fillWidth: true
+            placeholderText: "https://vault.bitwarden.com"
+            text: root.editServerUrl
+            onTextChanged: root.editServerUrl = text
+        }
     }
 
-    NTextInput {
+    RowLayout {
         Layout.fillWidth: true
-        label: "Email"
-        description: "Your Bitwarden account email"
-        placeholderText: "you@example.com"
-        text: root.editEmail
-        onTextChanged: root.editEmail = text
+        NLabel { text: "Email:" }
+        NTextInput {
+            Layout.fillWidth: true
+            placeholderText: "you@example.com"
+            text: root.editEmail
+            onTextChanged: root.editEmail = text
+        }
     }
 
-    NTextInput {
+    RowLayout {
         Layout.fillWidth: true
-        label: "Master Password"
-        description: "Your Bitwarden master password (stored locally)"
-        placeholderText: "Your master password"
-        echoMode: TextInput.Password
-        text: root.editPassword
-        onTextChanged: root.editPassword = text
+        NLabel { text: "Password:" }
+        NTextInput {
+            Layout.fillWidth: true
+            placeholderText: "Master password"
+            text: root.editPassword
+            onTextChanged: root.editPassword = text
+        }
     }
 
     NLabel {
-        text: "Uses the Bitwarden Flatpak (com.bitwarden.desktop). Configure your server URL and login credentials above."
-        wrapMode: Text.WordWrap
+        text: "Hint: Use Bitwarden flatpak CLI"
         Layout.fillWidth: true
-        color: Color.mOnSurfaceVariant
     }
 }
