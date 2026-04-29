@@ -138,7 +138,7 @@ Item {
 
             NText {
                 visible: !loading && !hasError && keybinds.length === 0
-                text: "No keybinds found in config. Make sure your config has a binds { ... } block."
+                text: "No keybinds found in config."
                 color: Color.mOnSurfaceVariant
                 pointSize: Style.fontSizeS
                 wrapMode: Text.WordWrap
@@ -164,11 +164,6 @@ Item {
                             implicitHeight: rowContent.implicitHeight + Style.marginM * 2
                             radius: Style.radiusM
 
-                            property bool keyPopupVisible: false
-                            property bool actionPopupVisible: false
-                            property var keyFiltered: []
-                            property var actionFiltered: []
-
                             RowLayout {
                                 id: rowContent
                                 anchors {
@@ -181,7 +176,7 @@ Item {
 
                                 Item {
                                     Layout.preferredWidth: 260
-                                    implicitHeight: keyField.implicitHeight + (keybindRow.keyPopupVisible ? Math.min(keybindRow.keyFiltered.length, 6) * 32 : 0)
+                                    implicitHeight: keyField.implicitHeight + (keyPopup.visible ? keyPopup.height : 0)
 
                                     NTextInput {
                                         id: keyField
@@ -196,41 +191,45 @@ Item {
                                             var parts = q.split("+")
                                             var last = parts[parts.length - 1]
                                             if (last.length > 0) {
-                                                keybindRow.keyFiltered = root.niriKeyNames.filter(function(k) {
+                                                keyFilterModel = root.niriKeyNames.filter(function(k) {
                                                     return k.toLowerCase().startsWith(last)
                                                 }).slice(0, 8)
-                                                keybindRow.keyPopupVisible = keybindRow.keyFiltered.length > 0
+                                                keyPopup.visible = keyFilterModel.length > 0
                                             } else {
-                                                keybindRow.keyPopupVisible = false
+                                                keyPopup.visible = false
                                             }
                                         }
                                         onActiveFocusChanged: {
-                                            if (!activeFocus) keybindRow.keyPopupVisible = false
+                                            if (!activeFocus) keyPopup.visible = false
                                         }
                                     }
 
+                                    property var keyFilterModel: []
+
                                     Rectangle {
                                         id: keyPopup
-                                        visible: keybindRow.keyPopupVisible
+                                        visible: false
                                         anchors.top: keyField.bottom
                                         anchors.topMargin: 2
                                         width: parent.width
-                                        height: Math.min(keybindRow.keyFiltered.length, 6) * 32
-                                        color: Color.mOnSurfaceVariant
-                                        border.color: Color.mPrimary
+                                        height: Math.min(keyFilterModel.length, 6) * 32
+                                        color: palette.base
+                                        border.color: palette.mid
                                         radius: Style.radiusS
                                         z: 100
+
+                                        property var keyFilterModel: keyField.keyFilterModel
 
                                         ListView {
                                             anchors.fill: parent
                                             anchors.margins: 2
-                                            model: keybindRow.keyFiltered
+                                            model: keyPopup.keyFilterModel
                                             clip: true
 
                                             delegate: Rectangle {
                                                 width: parent.width
                                                 height: 30
-                                                color: suggestKeyMA.containsMouse ? Color.mPrimary : "transparent"
+                                                color: keySugMA.containsMouse ? palette.highlight : "transparent"
                                                 radius: Style.radiusXS
 
                                                 NText {
@@ -239,11 +238,11 @@ Item {
                                                     anchors.verticalCenter: parent.verticalCenter
                                                     text: modelData
                                                     pointSize: Style.fontSizeS
-                                                    color: Color.mOnSurface
+                                                    color: keySugMA.containsMouse ? palette.highlightedText : Color.mOnSurface
                                                 }
 
                                                 MouseArea {
-                                                    id: suggestKeyMA
+                                                    id: keySugMA
                                                     anchors.fill: parent
                                                     hoverEnabled: true
                                                     onClicked: {
@@ -251,7 +250,7 @@ Item {
                                                         var plusIdx = current.lastIndexOf("+")
                                                         var prefix = plusIdx >= 0 ? current.substring(0, plusIdx + 1) : ""
                                                         keyField.text = prefix + modelData
-                                                        keybindRow.keyPopupVisible = false
+                                                        keyPopup.visible = false
                                                     }
                                                 }
                                             }
@@ -261,7 +260,7 @@ Item {
 
                                 Item {
                                     Layout.fillWidth: true
-                                    implicitHeight: actionField.implicitHeight + (keybindRow.actionPopupVisible ? Math.min(keybindRow.actionFiltered.length, 6) * 32 : 0)
+                                    implicitHeight: actionField.implicitHeight + (actionPopup.visible ? actionPopup.height : 0)
 
                                     NTextInput {
                                         id: actionField
@@ -274,41 +273,45 @@ Item {
                                             root.keybinds[index].bindings = text
                                             var q = text.toLowerCase().split(";")[0].trim()
                                             if (q.length > 0) {
-                                                keybindRow.actionFiltered = root.niriActions.filter(function(a) {
+                                                actionFilterModel = root.niriActions.filter(function(a) {
                                                     return a.toLowerCase().startsWith(q)
                                                 }).slice(0, 8)
-                                                keybindRow.actionPopupVisible = keybindRow.actionFiltered.length > 0
+                                                actionPopup.visible = actionFilterModel.length > 0
                                             } else {
-                                                keybindRow.actionPopupVisible = false
+                                                actionPopup.visible = false
                                             }
                                         }
                                         onActiveFocusChanged: {
-                                            if (!activeFocus) keybindRow.actionPopupVisible = false
+                                            if (!activeFocus) actionPopup.visible = false
                                         }
                                     }
 
+                                    property var actionFilterModel: []
+
                                     Rectangle {
                                         id: actionPopup
-                                        visible: keybindRow.actionPopupVisible
+                                        visible: false
                                         anchors.top: actionField.bottom
                                         anchors.topMargin: 2
                                         width: parent.width
-                                        height: Math.min(keybindRow.actionFiltered.length, 6) * 32
-                                        color: Color.mOnSurfaceVariant
-                                        border.color: Color.mPrimary
+                                        height: Math.min(actionFilterModel.length, 6) * 32
+                                        color: palette.base
+                                        border.color: palette.mid
                                         radius: Style.radiusS
                                         z: 100
+
+                                        property var actionFilterModel: actionField.actionFilterModel
 
                                         ListView {
                                             anchors.fill: parent
                                             anchors.margins: 2
-                                            model: keybindRow.actionFiltered
+                                            model: actionPopup.actionFilterModel
                                             clip: true
 
                                             delegate: Rectangle {
                                                 width: parent.width
                                                 height: 30
-                                                color: suggestActionMA.containsMouse ? Color.mPrimary : "transparent"
+                                                color: actSugMA.containsMouse ? palette.highlight : "transparent"
                                                 radius: Style.radiusXS
 
                                                 NText {
@@ -317,16 +320,16 @@ Item {
                                                     anchors.verticalCenter: parent.verticalCenter
                                                     text: modelData
                                                     pointSize: Style.fontSizeS
-                                                    color: Color.mOnSurface
+                                                    color: actSugMA.containsMouse ? palette.highlightedText : Color.mOnSurface
                                                 }
 
                                                 MouseArea {
-                                                    id: suggestActionMA
+                                                    id: actSugMA
                                                     anchors.fill: parent
                                                     hoverEnabled: true
                                                     onClicked: {
                                                         actionField.text = modelData
-                                                        keybindRow.actionPopupVisible = false
+                                                        actionPopup.visible = false
                                                     }
                                                 }
                                             }
@@ -481,9 +484,7 @@ Item {
             var tempPos = pos
             while (tempPos < bodyLen) {
                 if (bindsBody[tempPos] === "{") { braceOpen = tempPos; break }
-                if (bindsBody[tempPos] === "\n" && braceOpen === -1) {
-                    break
-                }
+                if (bindsBody[tempPos] === "\n" && braceOpen === -1) break
                 tempPos++
             }
 
