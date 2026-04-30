@@ -119,25 +119,36 @@ Item {
     function downloadBw() {
         if (installProc.running) return
         installState = "installing"
-        var script = [
-            "set -e",
-            "mkdir -p " + shellQuote(installDir),
-            "TMPDIR=$(mktemp -d)",
-            "trap 'rm -rf \"$TMPDIR\"' EXIT",
-            "echo 'Fetching latest release info...'",
-            "TAG=$(curl -fsSL 'https://api.github.com/repos/bitwarden/clients/releases' \\",
-            "  | grep -o '\"tag_name\": *\"cli/v[^\"]*\"' \\",
-            "  | head -1 \\",
-            "  | sed 's/.*\"cli\\/\\(v[^\"]*\\)\".*/\\1/')",
-            "if [ -z \"$TAG\" ]; then echo 'ERROR: could not determine latest version' >&2; exit 1; fi",
-            "echo \"Downloading bw $TAG...\"",
-            "URL=\"https://github.com/bitwarden/clients/releases/download/cli%2F${TAG}/bw-linux-${TAG}.zip\"",
-            "curl -fsSL --progress-bar -o \"$TMPDIR/bw.zip\" \"$URL\"",
-            "unzip -o \"$TMPDIR/bw.zip\" bw -d \"$TMPDIR\"",
-            "mv \"$TMPDIR/bw\" " + shellQuote(installTarget),
-            "chmod +x " + shellQuote(installTarget),
-            "echo 'Done'"
-        ].join("\n")
+        var script = "python3 -c \"\n" +
+            "import os, json, urllib.request, zipfile, io, stat\n" +
+            "dest = " + JSON.stringify(installTarget) + "\n" +
+            "os.makedirs(os.path.dirname(dest), exist_ok=True)\n" +
+            "print('Fetching latest release info...')\n" +
+            "api_url = 'https://api.github.com/repos/bitwarden/clients/releases?per_page=20'\n" +
+            "req = urllib.request.Request(api_url, headers={'User-Agent': 'noctalia-bw-plugin'})\n" +
+            "with urllib.request.urlopen(req, timeout=30) as resp:\n" +
+            "    data = json.loads(resp.read().decode())\n" +
+            "tag = None\n" +
+            "for rel in data:\n" +
+            "    tn = rel.get('tag_name', '')\n" +
+            "    if tn.startswith('cli/v'):\n" +
+            "        tag = tn.split('cli/')[1]\n" +
+            "        break\n" +
+            "if not tag:\n" +
+            "    print('ERROR: could not determine latest version')\n" +
+            "    exit(1)\n" +
+            "print('Downloading bw ' + tag + '...')\n" +
+            "url = 'https://github.com/bitwarden/clients/releases/download/cli%2F' + tag + '/bw-linux-' + tag + '.zip'\n" +
+            "req2 = urllib.request.Request(url, headers={'User-Agent': 'noctalia-bw-plugin'})\n" +
+            "with urllib.request.urlopen(req2, timeout=120) as resp2:\n" +
+            "    data = io.BytesIO(resp2.read())\n" +
+            "with zipfile.ZipFile(data) as zf:\n" +
+            "    content = zf.read('bw')\n" +
+            "with open(dest, 'wb') as f:\n" +
+            "    f.write(content)\n" +
+            "os.chmod(dest, os.stat(dest).st_mode | stat.S_IEXEC)\n" +
+            "print('Done')\n" +
+            "\" 2>&1"
         installProc.command = ["sh", "-c", script]
         installProc.running = true
         if (launcher) launcher.updateResults()
