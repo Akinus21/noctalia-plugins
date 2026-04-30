@@ -83,24 +83,40 @@ Item {
 
     Timer {
         id: pollTimer
-        interval: 2000
+        interval: 500
         repeat: false
         property string cmd: ""
         property var cb: null
+        property int maxTicks: 60
+        property int ticks: 0
         onTriggered: {
+            ticks++
             var out = String(outputFile.content || "")
-            if (cb) cb(out)
+            if (ticks >= maxTicks || out.length > 0) {
+                ticks = 0
+                if (cb) cb(out)
+            } else {
+                pollTimer.restart()
+            }
         }
     }
 
     Timer {
         id: quickPollTimer
-        interval: 1500
+        interval: 300
         repeat: false
         property var cb: null
+        property int maxTicks: 20
+        property int ticks: 0
         onTriggered: {
+            ticks++
             var out = String(outputFile.content || "")
-            if (cb) cb(out)
+            if (ticks >= maxTicks || out.length > 0) {
+                ticks = 0
+                if (cb) cb(out)
+            } else {
+                quickPollTimer.restart()
+            }
         }
     }
 
@@ -140,47 +156,42 @@ Item {
 
     function downloadBw() {
         installState = "installing"
-        var py = "python3 -c \"\n" +
-            "import os, json, urllib.request, zipfile, io, stat\n" +
-            "dest = " + JSON.stringify("/var/home/gabriel/.local/bin/bw") + "\n" +
-            "os.makedirs(os.path.dirname(dest), exist_ok=True)\n" +
-            "print('Finding latest bw version...')\n" +
-            "api = 'https://api.github.com/repos/bitwarden/clients/releases?per_page=20'\n" +
-            "req = urllib.request.Request(api, headers={'User-Agent': 'noctalia-bw'})\n" +
-            "with urllib.request.urlopen(req, timeout=30) as r:\n" +
-            "    releases = json.loads(r.read().decode())\n" +
-            "tag = None\n" +
-            "for rel in releases:\n" +
-            "    tn = rel.get('tag_name', '')\n" +
-            "    if tn.startswith('cli/v'):\n" +
-            "        tag = tn.split('cli/')[1]\n" +
-            "        break\n" +
-            "if not tag:\n" +
-            "    print('ERROR: no cli tag found'); exit(1)\n" +
-            "print('Downloading bw ' + tag + '...')\n" +
-            "dl = 'https://github.com/bitwarden/clients/releases/download/cli%2F' + tag + '/bw-linux-' + tag + '.zip'\n" +
-            "req2 = urllib.request.Request(dl, headers={'User-Agent': 'noctalia-bw'})\n" +
-            "with urllib.request.urlopen(req2, timeout=180) as r2:\n" +
-            "    zdata = io.BytesIO(r2.read())\n" +
-            "with zipfile.ZipFile(zdata) as zf:\n" +
-            "    content = zf.read('bw')\n" +
-            "with open(dest, 'wb') as f:\n" +
-            "    f.write(content)\n" +
-            "st = os.stat(dest)\n" +
-            "os.chmod(dest, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)\n" +
-            "print('OK')\n" +
-            "\""
-        runScript(py, function(out) {
-            Logger.i("BitwardenProvider", "download output:", out)
-            if (out.indexOf("OK") >= 0 || out.indexOf("Done") >= 0) {
-                Logger.i("BitwardenProvider", "bw installed")
-                checkBw()
-            } else {
-                installState = "failed"
-                Logger.e("BitwardenProvider", "bw download failed:", out)
-                if (launcher) launcher.updateResults()
+        runScript(
+            "curl -fsSL 'https://api.github.com/repos/bitwarden/clients/releases/latest' " +
+            "| grep -o '\"tag_name\": *\"cli/v[^"]*\"' " +
+            "| head -1 | sed 's/.*\"cli\\/v/v/;s/\".*//'",
+            function(tag) {
+                tag = tag.trim()
+                Logger.i("BitwardenProvider", "latest tag:", tag)
+                if (!tag || tag === "v") {
+                    Logger.e("BitwardenProvider", "Failed to find latest tag")
+                    installState = "failed"
+                    if (launcher) launcher.updateResults()
+                    return
+                }
+                var dest = "/var/home/gabriel/.local/bin/bw"
+                var zipDest = "/tmp/bw.zip"
+                var dlUrl = "https://github.com/bitwarden/clients/releases/download/cli%2F" + tag + "/bw-linux-" + tag + ".zip"
+                runScript(
+                    "curl -fsSL -o " + zipDest + " " + dlUrl + " && " +
+                    "unzip -o " + zipDest + " -d /tmp/bw_unzip && " +
+                    "mv /tmp/bw_unzip/bw " + dest + " && " +
+                    "chmod +x " + dest + " && " +
+                    "rm -rf " + zipDest + " /tmp/bw_unzip && " +
+                    "echo OK",
+                    function(out) {
+                        Logger.i("BitwardenProvider", "download result:", out)
+                        if (out.trim().indexOf("OK") >= 0) {
+                            checkBw()
+                        } else {
+                            installState = "failed"
+                            Logger.e("BitwardenProvider", "download failed:", out)
+                            if (launcher) launcher.updateResults()
+                        }
+                    }
+                )
             }
-        })
+        )
         if (launcher) launcher.updateResults()
     }
 
