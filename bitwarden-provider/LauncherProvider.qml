@@ -157,13 +157,11 @@ Item {
     function downloadBw() {
         installState = "installing"
         runScript(
-            "curl -fsSL 'https://api.github.com/repos/bitwarden/clients/releases/latest' " +
-            "| grep -o '\"tag_name\": *\"cli/v[^"]*\"' " +
-            "| head -1 | sed 's/.*\"cli\\/v/v/;s/\".*//'",
+            "python3 -c \"import urllib.request,json; r=urllib.request.urlopen('https://api.github.com/repos/bitwarden/clients/releases/latest',timeout=15); rel=json.loads(r.read()); print(next(x['tag_name'].split('cli/')[1] for x in rel if 'cli/' in x['tag_name']))\"",
             function(tag) {
                 tag = tag.trim()
                 Logger.i("BitwardenProvider", "latest tag:", tag)
-                if (!tag || tag === "v") {
+                if (!tag || tag.length < 3) {
                     Logger.e("BitwardenProvider", "Failed to find latest tag")
                     installState = "failed"
                     if (launcher) launcher.updateResults()
@@ -297,9 +295,7 @@ Item {
                 pluginApi.saveSettings()
 
                 runScript(
-                    "curl -fsSL 'https://api.github.com/repos/bitwarden/clients/releases?per_page=5' " +
-                    "| grep -o '\"tag_name\": *\"cli/v[^\"]*\"' | head -1 " +
-                    "| sed 's/.*\\\\\"cli\\\\/\\\\(v[^\\\\\"]*\\\\)\\\\\".*/\\\\1/'",
+                    "python3 -c \"import urllib.request,json; r=urllib.request.urlopen('https://api.github.com/repos/bitwarden/clients/releases?per_page=5',timeout=15); rels=json.loads(r.read()); print(next(x['tag_name'].split('cli/')[1] for x in rels if 'cli/' in x['tag_name']))\"",
                     function(tag) {
                         tag = tag.trim()
                         pluginApi.pluginSettings.bwLastUpdateCheck = Math.floor(Date.now()/1000)
