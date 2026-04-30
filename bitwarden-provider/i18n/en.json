@@ -2,16 +2,16 @@
   "settings": {
     "serverUrl": {
       "label": "Server URL",
-      "desc": "Your Bitwarden or Vaultwarden server URL"
+      "desc": "Your Bitwarden or Vaultwarden server URL. Leave blank for bitwarden.com."
     },
     "email": {
       "label": "Email",
-      "desc": "Your Bitwarden account email"
+      "desc": "Your Bitwarden account email address"
     },
     "password": {
       "label": "Master Password",
-      "desc": "Your Bitwarden master password (stored locally)"
+      "desc": "Your Bitwarden master password. Stored locally and used to unlock the vault."
     },
-    "hint": "Uses the Bitwarden Flatpak (com.bitwarden.desktop). Configure your server URL and login credentials above."
+    "hint": "The bw CLI will be downloaded automatically to ~/.local/bin if not already installed. Saving new credentials will clear your cached session and require re-authentication."
   }
 }

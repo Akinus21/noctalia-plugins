@@ -22,127 +22,354 @@ Item {
 
     property var items: []
     property bool unlocked: false
-    property bool bwAvailable: false
     property bool fetching: false
     property bool loaded: false
     property string sessionToken: ""
-    property string vaultStatus: "locked"
+    property string vaultStatus: "unknown"
 
-    property string outDir: "/var/home/gabriel/.cache/noctalia"
+    property string installState: "unknown"
+    property string bwPath: ""
 
-    FileView {
-        id: tokenFile
-        path: outDir + "/bw_token"
+    readonly property string installDir: {
+        var home = Quickshell.env("HOME") || "/root"
+        return home + "/.local/bin"
+    }
+    readonly property string installTarget: installDir + "/bw"
+
+    property string updateState: "idle"
+    property string installedVersion: ""
+    property string latestVersion: ""
+
+    readonly property int updateIntervalMs: 24 * 60 * 60 * 1000
+
+    Timer {
+        id: updateCheckTimer
+        interval: 60 * 1000
+        repeat: false
+        onTriggered: maybeCheckForUpdate()
     }
 
-    FileView {
-        id: statusFile
-        path: outDir + "/bw_status"
+    Timer {
+        id: updateCheckRepeatTimer
+        interval: root.updateIntervalMs
+        repeat: true
+        onTriggered: maybeCheckForUpdate()
     }
 
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
-        flatpakInfoProc.command = ["flatpak", "info", "com.bitwarden.desktop"]
-        flatpakInfoProc.running = true
+        installedVersion = pluginApi?.pluginSettings?.bwVersion || ""
+        checkBwInstalled()
     }
 
     function onOpened() {
-        maybeRefresh()
+        if (installState === "ready" && !unlocked) checkStatus()
     }
 
     Process {
-        id: flatpakInfoProc
+        id: whichProc
         command: []
 
         onExited: function(exitCode) {
-            bwAvailable = exitCode === 0
-            if (bwAvailable) {
-                setupServer()
+            var found = String(stdout || "").trim().split("\n")[0].trim()
+            if (found.length > 0) {
+                root.bwPath = found
+                root.installState = "ready"
+                Logger.i("BitwardenProvider", "bw found at:", root.bwPath)
+                checkStatus()
+                updateCheckTimer.restart()
+                updateCheckRepeatTimer.start()
+            } else {
+                root.installState = "missing"
+                Logger.w("BitwardenProvider", "bw not found, will download binary")
+                downloadBw()
+            }
+            if (root.launcher) root.launcher.updateResults()
+        }
+    }
+
+    function checkBwInstalled() {
+        if (whichProc.running) return
+        installState = "checking"
+        whichProc.command = ["sh", "-c",
+            "command -v bw 2>/dev/null || " +
+            "( [ -x " + shellQuote(root.installTarget) + " ] && echo " + shellQuote(root.installTarget) + " )"
+        ]
+        whichProc.running = true
+        if (launcher) launcher.updateResults()
+    }
+
+    Process {
+        id: installProc
+        command: []
+
+        onExited: function(exitCode) {
+            if (exitCode === 0) {
+                Logger.i("BitwardenProvider", "bw binary installed to", root.installTarget)
+                checkBwInstalled()
+            } else {
+                root.installState = "failed"
+                Logger.e("BitwardenProvider", "bw download failed, exit:", exitCode)
+            }
+            if (root.launcher) root.launcher.updateResults()
+        }
+    }
+
+    function downloadBw() {
+        if (installProc.running) return
+        installState = "installing"
+        var script = [
+            "set -e",
+            "mkdir -p " + shellQuote(installDir),
+            "TMPDIR=$(mktemp -d)",
+            "trap 'rm -rf \"$TMPDIR\"' EXIT",
+            "echo 'Fetching latest release info...'",
+            "TAG=$(curl -fsSL 'https://api.github.com/repos/bitwarden/clients/releases' \\",
+            "  | grep -o '\"tag_name\": *\"cli/v[^\"]*\"' \\",
+            "  | head -1 \\",
+            "  | sed 's/.*\"cli\\/\\(v[^\"]*\\)\".*/\\1/')",
+            "if [ -z \"$TAG\" ]; then echo 'ERROR: could not determine latest version' >&2; exit 1; fi",
+            "echo \"Downloading bw $TAG...\"",
+            "URL=\"https://github.com/bitwarden/clients/releases/download/cli%2F${TAG}/bw-linux-${TAG}.zip\"",
+            "curl -fsSL --progress-bar -o \"$TMPDIR/bw.zip\" \"$URL\"",
+            "unzip -o \"$TMPDIR/bw.zip\" bw -d \"$TMPDIR\"",
+            "mv \"$TMPDIR/bw\" " + shellQuote(installTarget),
+            "chmod +x " + shellQuote(installTarget),
+            "echo 'Done'"
+        ].join("\n")
+        installProc.command = ["sh", "-c", script]
+        installProc.running = true
+        if (launcher) launcher.updateResults()
+    }
+
+    Process {
+        id: versionProc
+        command: []
+
+        onExited: function(exitCode) {
+            var ver = String(stdout || "").trim()
+            if (exitCode === 0 && ver.length > 0) {
+                root.installedVersion = ver.startsWith("v") ? ver : "v" + ver
+                pluginApi.pluginSettings.bwVersion = root.installedVersion
+                pluginApi.saveSettings()
+                Logger.i("BitwardenProvider", "Installed bw version:", root.installedVersion)
+                fetchLatestVersion()
+            } else {
+                Logger.w("BitwardenProvider", "Could not read bw version, skipping update check")
+                root.updateState = "idle"
             }
         }
     }
 
-    function setupServer() {
-        var url = pluginApi?.pluginSettings?.serverUrl || ""
-        if (!url) {
-            checkUnlockStatus()
+    Process {
+        id: latestTagProc
+        command: []
+
+        onExited: function(exitCode) {
+            var tag = String(stdout || "").trim()
+            pluginApi.pluginSettings.bwLastUpdateCheck = Math.floor(Date.now() / 1000)
+            pluginApi.saveSettings()
+
+            if (exitCode !== 0 || tag.length === 0) {
+                Logger.w("BitwardenProvider", "Could not fetch latest bw version tag")
+                root.updateState = "idle"
+                return
+            }
+
+            root.latestVersion = tag
+            Logger.i("BitwardenProvider", "Latest bw version:", tag, "- installed:", root.installedVersion)
+
+            if (tag !== root.installedVersion) {
+                Logger.i("BitwardenProvider", "Update available:", root.installedVersion, "->", tag)
+                updateBw(tag)
+            } else {
+                Logger.i("BitwardenProvider", "bw is up to date")
+                root.updateState = "idle"
+            }
+        }
+    }
+
+    Process {
+        id: updateProc
+        command: []
+
+        onExited: function(exitCode) {
+            if (exitCode === 0) {
+                Logger.i("BitwardenProvider", "bw updated to", root.latestVersion)
+                root.installedVersion = root.latestVersion
+                pluginApi.pluginSettings.bwVersion = root.latestVersion
+                pluginApi.saveSettings()
+            } else {
+                Logger.e("BitwardenProvider", "bw update failed, exit:", exitCode)
+            }
+            root.updateState = "idle"
+        }
+    }
+
+    function maybeCheckForUpdate() {
+        if (installState !== "ready") return
+        if (updateState !== "idle") return
+        if (versionProc.running || latestTagProc.running || updateProc.running) return
+
+        var lastCheck = pluginApi?.pluginSettings?.bwLastUpdateCheck || 0
+        var age = (Date.now() / 1000) - lastCheck
+        if (age < (updateIntervalMs / 1000)) {
+            Logger.i("BitwardenProvider", "Update check skipped - checked", Math.round(age / 3600), "h ago")
             return
         }
-        var script = "#!/bin/bash\nmkdir -p " + outDir + "\nflatpak run --command=bw com.bitwarden.desktop config server " + JSON.stringify(url) + " 2>&1\n"
-        writeAndRun(script, function() { checkUnlockStatus() })
+
+        Logger.i("BitwardenProvider", "Checking for bw CLI updates...")
+        updateState = "checking"
+        versionProc.command = [root.bwPath, "--version"]
+        versionProc.running = true
     }
 
-    function checkUnlockStatus() {
-        Logger.i("BitwardenProvider", "checkUnlockStatus, token:", sessionToken ? "present" : "empty")
-        var script
-        if (sessionToken) {
-            script = "#!/bin/bash\nmkdir -p " + outDir + "\nflatpak run --command=bw com.bitwarden.desktop status --session " + sessionToken + " > " + outDir + "/bw_status 2>&1\n"
-        } else {
-            script = "#!/bin/bash\nmkdir -p " + outDir + "\nflatpak run --command=bw com.bitwarden.desktop status > " + outDir + "/bw_status 2>&1\n"
-        }
-        writeAndRun(script, function() {
-            var out = String(statusFile.content || "").trim()
-            Logger.i("BitwardenProvider", "status output:", out)
+    function fetchLatestVersion() {
+        latestTagProc.command = ["sh", "-c",
+            "curl -fsSL 'https://api.github.com/repos/bitwarden/clients/releases' " +
+            "| grep -o '\"tag_name\": *\"cli/v[^\"]*\"' " +
+            "| head -1 " +
+            "| sed 's/.*\"cli\\/\\(v[^\"]*\\)\".*/\\1/'"
+        ]
+        latestTagProc.running = true
+    }
+
+    function updateBw(tag) {
+        if (updateProc.running) return
+        updateState = "updating"
+
+        var script = [
+            "set -e",
+            "TMPDIR=$(mktemp -d)",
+            "trap 'rm -rf \"$TMPDIR\"' EXIT",
+            "URL=\"https://github.com/bitwarden/clients/releases/download/cli%2F" + tag + "/bw-linux-" + tag + ".zip\"",
+            "curl -fsSL -o \"$TMPDIR/bw.zip\" \"$URL\"",
+            "unzip -o \"$TMPDIR/bw.zip\" bw -d \"$TMPDIR\"",
+            "mv \"$TMPDIR/bw\" " + shellQuote(installTarget),
+            "chmod +x " + shellQuote(installTarget),
+            "echo 'Done'"
+        ].join("\n")
+
+        updateProc.command = ["sh", "-c", script]
+        updateProc.running = true
+    }
+
+    Process {
+        id: statusProc
+        command: []
+
+        onExited: function(exitCode) {
+            var raw = String(stdout || "").trim()
             try {
-                var s = JSON.parse(out).status
-                vaultStatus = s
-                unlocked = (s === "unlocked")
-                if (unlocked && !loaded) loadItems()
+                var parsed = JSON.parse(raw)
+                root.vaultStatus = parsed.status || "unauthenticated"
+                root.unlocked = (root.vaultStatus === "unlocked")
+                Logger.i("BitwardenProvider", "Vault status:", root.vaultStatus)
+                if (root.unlocked && !root.loaded) fetchItems()
             } catch (e) {
-                vaultStatus = "unauthenticated"
-                unlocked = false
+                Logger.w("BitwardenProvider", "Could not parse bw status:", raw)
+                root.vaultStatus = "unauthenticated"
+                root.unlocked = false
             }
-        })
+            if (root.launcher) root.launcher.updateResults()
+        }
+    }
+
+    function checkStatus() {
+        if (statusProc.running || installState !== "ready") return
+        statusProc.command = sessionToken
+            ? [root.bwPath, "status", "--session", sessionToken]
+            : [root.bwPath, "status"]
+        statusProc.running = true
+    }
+
+    Process {
+        id: unlockProc
+        command: []
+
+        onExited: function(exitCode) {
+            var token = String(stdout || "").trim()
+            if (exitCode === 0 && token.length > 20) {
+                Logger.i("BitwardenProvider", "Unlock successful")
+                root.sessionToken = token
+                pluginApi.pluginSettings.sessionToken = token
+                pluginApi.saveSettings()
+                root.unlocked = true
+                root.vaultStatus = "unlocked"
+                fetchItems()
+            } else {
+                Logger.e("BitwardenProvider", "Unlock/login failed, exit:", exitCode)
+            }
+            if (root.launcher) root.launcher.updateResults()
+        }
     }
 
     function unlockVault() {
+        if (unlockProc.running || installState !== "ready") return
+
         var password = pluginApi?.pluginSettings?.password || ""
         var email = pluginApi?.pluginSettings?.email || ""
+
         if (!password) return
 
-        Logger.i("BitwardenProvider", "unlockVault - status:", vaultStatus, "pw len:", password.length)
-        var script
         if (vaultStatus === "unauthenticated") {
             if (!email) return
-            script = "#!/bin/bash\nmkdir -p " + outDir + "\nprintf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop login " + JSON.stringify(email) + " --raw > " + outDir + "/bw_token 2>&1\n"
+            unlockProc.command = [
+                "sh", "-c",
+                "BW_PASSWORD=" + shellQuote(password) + " " +
+                shellQuote(root.bwPath) + " login " + shellQuote(email) +
+                " --passwordenv BW_PASSWORD --raw 2>&1"
+            ]
         } else {
-            script = "#!/bin/bash\nmkdir -p " + outDir + "\nprintf '%s\\n' " + JSON.stringify(password) + " | flatpak run --command=bw com.bitwarden.desktop unlock --raw > " + outDir + "/bw_token 2>&1\n"
+            unlockProc.command = [
+                "sh", "-c",
+                "BW_PASSWORD=" + shellQuote(password) + " " +
+                shellQuote(root.bwPath) + " unlock --passwordenv BW_PASSWORD --raw 2>&1"
+            ]
         }
-        writeAndRun(script, function() {
-            var token = String(tokenFile.content || "").trim()
-            Logger.i("BitwardenProvider", "login/unlock token len:", token.length)
-            if (token) {
-                sessionToken = token
-                pluginApi.pluginSettings.sessionToken = sessionToken
-                pluginApi.saveSettings()
-                unlocked = true
-                vaultStatus = "unlocked"
-                loadItems()
-            } else {
-                Logger.e("BitwardenProvider", "Login/unlock failed")
+
+        unlockProc.running = true
+        if (launcher) launcher.updateResults()
+    }
+
+    Process {
+        id: fetchProc
+        command: []
+
+        onExited: function(exitCode) {
+            root.fetching = false
+            var raw = String(stdout || "").trim()
+
+            if (exitCode !== 0 || !raw) {
+                Logger.e("BitwardenProvider", "bw list items failed, exit:", exitCode)
+                if (exitCode !== 0) {
+                    root.unlocked = false
+                    root.vaultStatus = "locked"
+                }
+                if (root.launcher) root.launcher.updateResults()
+                return
             }
-        })
-    }
 
-    Timer {
-        id: pollTimer
-        interval: 500
-        repeat: false
-        property var callback: null
-        onTriggered: {
-            if (callback) callback()
+            try {
+                var parsed = JSON.parse(raw)
+                root.items = parsed
+                root.loaded = true
+                Logger.i("BitwardenProvider", "Loaded", parsed.length, "items")
+            } catch (e) {
+                Logger.e("BitwardenProvider", "Failed to parse items JSON:", e)
+            }
+
+            if (root.launcher) root.launcher.updateResults()
         }
     }
 
-    function writeAndRun(scriptContent, cb) {
-        try {
-            Quickshell.execDetached(["sh", "-c", "printf '%s' " + JSON.stringify(scriptContent) + " > " + outDir + "/script.sh && chmod +x " + outDir + "/script.sh && " + outDir + "/script.sh"])
-        } catch (e) {
-            Logger.e("BitwardenProvider", "execDetached error:", e)
-        }
-        pollTimer.callback = cb
-        pollTimer.restart()
+    function fetchItems() {
+        if (fetching || !sessionToken || installState !== "ready") return
+        fetching = true
+        fetchProc.command = [root.bwPath, "list", "items", "--session", sessionToken]
+        fetchProc.running = true
+        if (launcher) launcher.updateResults()
     }
 
     function handleCommand(searchText) {
@@ -153,13 +380,9 @@ Item {
         return [
             { "name": ">bitwarden", "description": "Search Bitwarden vault", "icon": "key", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden ") } },
             { "name": ">bw", "description": "Search Bitwarden vault", "icon": "key", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw ") } },
-            { "name": ">bitwarden items", "description": "Browse all items", "icon": "list", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden items ") } },
-            { "name": ">bw items", "description": "Browse all items", "icon": "list", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw items ") } },
             { "name": ">bitwarden username", "description": "Copy username for an item", "icon": "user", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden username ") } },
-            { "name": ">bw username", "description": "Copy username for an item", "icon": "user", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw username ") } },
             { "name": ">bitwarden password", "description": "Copy password for an item", "icon": "lock", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden password ") } },
-            { "name": ">bitwarden settings", "description": "Open Bitwarden settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } },
-            { "name": ">bw password", "description": "Copy password for an item", "icon": "lock", "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw password ") } }
+            { "name": ">bitwarden settings", "description": "Open Bitwarden plugin settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }
         ]
     }
 
@@ -168,38 +391,73 @@ Item {
         var mode = "search"
 
         if (searchText.startsWith(">bitwarden")) query = searchText.slice(10).trim()
-        else if (searchText.startsWith(">bw")) {
-            var bwQuery = searchText.slice(3).trim()
-            if (bwQuery === "settings") { openSettings(); return [] }
-            query = bwQuery
-        }
+        else if (searchText.startsWith(">bw")) query = searchText.slice(3).trim()
         else return []
 
-        if (!bwAvailable) {
-            return [{ "name": "Bitwarden Flatpak not found", "description": "com.bitwarden.desktop must be installed", "icon": "alert-circle", "isTablerIcon": true }]
+        if (query === "settings") { openSettings(); return [] }
+
+        if (installState === "unknown" || installState === "checking") {
+            return [{ "name": "Checking for bw CLI...", "description": "Scanning PATH", "icon": "loader", "isTablerIcon": true }]
+        }
+
+        if (installState === "missing") {
+            return [{ "name": "bw CLI not found", "description": "Preparing download from GitHub...", "icon": "loader", "isTablerIcon": true }]
+        }
+
+        if (installState === "installing") {
+            return [{ "name": "Installing bw CLI...", "description": "Downloading to ~/.local/bin - please wait", "icon": "loader", "isTablerIcon": true }]
+        }
+
+        if (installState === "failed") {
+            return [{
+                "name": "bw CLI install failed",
+                "description": "Click to copy manual install command to clipboard",
+                "icon": "alert-circle", "isTablerIcon": true,
+                "onActivate": function() {
+                    copyToClipboard(
+                        "TAG=$(curl -fsSL 'https://api.github.com/repos/bitwarden/clients/releases' " +
+                        "| grep -o '\"tag_name\": *\"cli/v[^\"]*\"' | head -1 | sed 's/.*\"cli\\/\\(v[^\"]*\\)\".*/\\1/') && " +
+                        "curl -fsSL -o /tmp/bw.zip \"https://github.com/bitwarden/clients/releases/download/cli%2F${TAG}/bw-linux-${TAG}.zip\" && " +
+                        "unzip -o /tmp/bw.zip bw -d ~/.local/bin && chmod +x ~/.local/bin/bw"
+                    )
+                }
+            }]
         }
 
         if (!unlocked) {
-            var hasCreds = (pluginApi?.pluginSettings?.email || "") && (pluginApi?.pluginSettings?.password || "")
-            if (hasCreds) {
-                if (vaultStatus === "unauthenticated") {
-                    return [{ "name": "Not logged in", "description": "Click to login", "icon": "login", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
-                }
-                return [{ "name": "Vault is locked", "description": "Click to unlock", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
-            } else {
-                return [{ "name": "Not configured", "description": "Click to open plugin settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
+            if (unlockProc.running) {
+                return [{ "name": "Unlocking vault...", "description": "Please wait", "icon": "loader", "isTablerIcon": true }]
             }
+
+            var hasCreds = !!(pluginApi?.pluginSettings?.password || "")
+            if (hasCreds) {
+                var label = vaultStatus === "unauthenticated"
+                    ? "Not logged in - click to login"
+                    : "Vault locked - click to unlock"
+                var icon = vaultStatus === "unauthenticated" ? "login" : "lock"
+                return [{
+                    "name": label,
+                    "description": "Uses credentials from settings",
+                    "icon": icon, "isTablerIcon": true,
+                    "onActivate": function() { unlockVault() }
+                }]
+            }
+
+            return [{
+                "name": "Not configured",
+                "description": "Open settings to enter your email and master password",
+                "icon": "settings", "isTablerIcon": true,
+                "onActivate": function() { openSettings() }
+            }]
         }
 
         if (query.startsWith("username ")) { mode = "username"; query = query.slice(9).trim() }
         else if (query.startsWith("password ")) { mode = "password"; query = query.slice(9).trim() }
-        else if (query === "items") { mode = "items"; query = "" }
         else if (query === "username") { mode = "username"; query = "" }
         else if (query === "password") { mode = "password"; query = "" }
-        else if (query === "settings") { openSettings(); return [] }
 
         if (fetching) {
-            return [{ "name": "Loading...", "description": "Fetching items", "icon": "loader", "isTablerIcon": true }]
+            return [{ "name": "Loading vault...", "description": "Fetching items from bw", "icon": "loader", "isTablerIcon": true }]
         }
 
         var pool = items
@@ -209,11 +467,11 @@ Item {
             var limit = Math.min(pool.length, 100)
             for (var i = 0; i < limit; i++) results.push(makeResult(pool[i], mode))
         } else {
-            var textQuery = query.toLowerCase()
+            var q = query.toLowerCase()
             for (var j = 0; j < pool.length && results.length < 50; j++) {
                 var item = pool[j]
-                var haystack = ((item.name || "") + " " + (item.login ? item.login.username : "") + " " + (item.login ? item.login.uri : "")).toLowerCase()
-                if (fuzzyMatch(textQuery, haystack)) results.push(makeResult(item, mode))
+                var haystack = ((item.name || "") + " " + (item.login ? (item.login.username || "") : "") + " " + (item.login && item.login.uris ? (item.login.uris[0]?.uri || "") : "")).toLowerCase()
+                if (fuzzyMatch(q, haystack)) results.push(makeResult(item, mode))
             }
         }
 
@@ -222,6 +480,35 @@ Item {
         }
 
         return results
+    }
+
+    function makeResult(item, mode) {
+        var itemName = item.name || "Untitled"
+        var username = item.login ? (item.login.username || "") : ""
+        var password = item.login ? (item.login.password || "") : ""
+        var uri = item.login && item.login.uris ? (item.login.uris[0]?.uri || "") : ""
+
+        var subtitle = username || uri || "No username"
+        if (mode === "password") subtitle = password ? "Click to copy password" : "No password stored"
+
+        return {
+            "name": itemName,
+            "description": subtitle,
+            "icon": "key",
+            "isTablerIcon": true,
+            "provider": root,
+            "onActivate": function() {
+                if (mode === "username" && username) {
+                    copyToClipboard(username)
+                    launcher.close()
+                } else if (mode === "password" && password) {
+                    copyToClipboard(password)
+                    launcher.close()
+                } else {
+                    openItemPanel(item)
+                }
+            }
+        }
     }
 
     function fuzzyMatch(needle, haystack) {
@@ -233,60 +520,13 @@ Item {
         return ni === needle.length
     }
 
-    function loadItems() {
-        if (fetching || !sessionToken) return
-        fetching = true
-        var script = "#!/bin/bash\nmkdir -p " + outDir + "\nflatpak run --command=bw com.bitwarden.desktop list items --session " + sessionToken + " > " + outDir + "/bw_token 2>&1\n"
-        writeAndRun(script, function() {
-            fetching = false
-            var data = String(tokenFile.content || "").trim()
-            if (data) {
-                try {
-                    items = JSON.parse(data)
-                    loaded = true
-                    if (launcher) launcher.updateResults()
-                    Logger.i("BitwardenProvider", "Loaded", items.length, "items")
-                } catch (e) {
-                    Logger.e("BitwardenProvider", "Parse error:", e)
-                }
-            } else {
-                unlocked = false
-            }
-        })
+    function shellQuote(str) {
+        return "'" + String(str).replace(/'/g, "'\\''") + "'"
     }
 
-    function maybeRefresh() {
-        checkUnlockStatus()
-    }
-
-    function makeResult(item, mode) {
-        var name = item.name || "Untitled"
-        var subtitle = item.type || "login"
-
-        if (mode === "username" && item.login && item.login.username) subtitle = item.login.username
-        else if (mode === "password") subtitle = "Click to copy password"
-        else if (mode === "items") {
-            var u = item.login ? item.login.username : ""
-            var uri = item.login ? item.login.uri : ""
-            subtitle = u + (uri ? " - " + uri : "")
-        } else if (item.login && item.login.username) subtitle = item.login.username
-
-        return {
-            "name": name, "description": subtitle, "icon": "key", "isTablerIcon": true, "provider": root,
-            "onActivate": function() {
-                if (mode === "username" && item.login && item.login.username) {
-                    copyToClipboard(item.login.username)
-                    ToastService.showNotice("Username copied")
-                    launcher.close()
-                } else if (mode === "password" && item.login && item.login.password) {
-                    copyToClipboard(item.login.password)
-                    ToastService.showNotice("Password copied")
-                    launcher.close()
-                } else {
-                    openItemPanel(item)
-                }
-            }
-        }
+    function copyToClipboard(text) {
+        Quickshell.execDetached(["sh", "-c",
+            "printf '%s' " + shellQuote(text) + " | wl-copy"])
     }
 
     function openItemPanel(item) {
@@ -296,7 +536,7 @@ Item {
             pluginApi.pluginSettings._viewItem = item
             pluginApi.openPanel(screen)
         })
-        launcher.close()
+        if (launcher) launcher.close()
     }
 
     function openSettings() {
@@ -304,11 +544,6 @@ Item {
         pluginApi.withCurrentScreen(function(screen) {
             BarService.openPluginSettings(screen, pluginApi.manifest)
         })
-        launcher.close()
-    }
-
-    function copyToClipboard(text) {
-        var t = String(text).replace(/'/g, "'\\''")
-        Quickshell.execDetached(["sh", "-c", "echo -n '" + t + "' | wl-copy"])
+        if (launcher) launcher.close()
     }
 }

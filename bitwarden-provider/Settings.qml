@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import qs.Commons
 import qs.Widgets
 
@@ -27,9 +28,8 @@ ColumnLayout {
         if (!pluginApi) return
         pluginApi.pluginSettings.serverUrl = root.editServerUrl
         pluginApi.pluginSettings.email = root.editEmail
-        if (root.editPassword) {
-            pluginApi.pluginSettings.password = root.editPassword
-        }
+        pluginApi.pluginSettings.password = root.editPassword
+        pluginApi.pluginSettings.sessionToken = ""
         pluginApi.saveSettings()
     }
 
@@ -51,13 +51,66 @@ ColumnLayout {
         onTextChanged: root.editEmail = text
     }
 
-    NTextInput {
+    ColumnLayout {
         Layout.fillWidth: true
-        label: pluginApi?.tr("settings.password.label")
-        description: pluginApi?.tr("settings.password.desc")
-        placeholderText: "Your master password"
-        text: root.editPassword
-        onTextChanged: root.editPassword = text
+        spacing: Style.marginXS
+
+        NLabel {
+            text: pluginApi?.tr("settings.password.label")
+        }
+
+        NLabel {
+            text: pluginApi?.tr("settings.password.desc")
+            color: Color.mOnSurfaceVariant
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.marginS
+
+            NBox {
+                Layout.fillWidth: true
+                implicitHeight: passwordField.implicitHeight + Style.marginM * 2
+                radius: Style.radiusM
+
+                TextInput {
+                    id: passwordField
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        verticalCenter: parent.verticalCenter
+                        margins: Style.marginM
+                    }
+                    text: root.editPassword
+                    echoMode: showPassword.checked
+                        ? TextInput.Normal
+                        : TextInput.Password
+                    color: Color.mOnSurface
+                    font.pixelSize: 14
+                    selectionColor: Color.mPrimary
+                    selectedTextColor: Color.mOnPrimary
+                    onTextChanged: root.editPassword = text
+
+                    Text {
+                        anchors.fill: parent
+                        text: "Your master password"
+                        color: Color.mOnSurfaceVariant
+                        font: passwordField.font
+                        visible: passwordField.text.length === 0 && !passwordField.activeFocus
+                    }
+                }
+            }
+
+            NButton {
+                id: showPassword
+                property bool checked: false
+                text: checked ? "Hide" : "Show"
+                outlined: true
+                onClicked: checked = !checked
+            }
+        }
     }
 
     NText {
