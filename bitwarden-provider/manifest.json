@@ -1,7 +1,7 @@
 {
   "id": "bitwarden-provider",
   "name": "Bitwarden Vault",
-  "version": "1.0.37",
+  "version": "1.0.38",
   "minNoctaliaVersion": "4.4.1",
   "author": "Akinus21",
   "license": "MIT",
