@@ -14,7 +14,7 @@
     {
       "id": "bitwarden-provider",
       "name": "Bitwarden Vault",
-      "version": "1.0.41",
+      "version": "1.0.42",
       "description": "Access your Bitwarden vault from the launcher. Installs and auto-updates the bw CLI binary to ~/.local/bin — works on atomic/immutable distros.",
       "tags": [
         "Launcher",
