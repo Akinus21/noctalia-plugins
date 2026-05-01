@@ -67,7 +67,7 @@ Item {
     }
 
     function runScript(cmd, cb) {
-        var full = "mkdir -p " + cacheDir + " && rm -f " + cacheDir + "/bw_out && " + cmd + " > " + cacheDir + "/bw_out 2>&1"
+        var full = "mkdir -p " + cacheDir + " && rm -f " + cacheDir + "/bw_out && (" + cmd + ") > " + cacheDir + "/bw_out 2>&1"
         try {
             Quickshell.execDetached(["sh", "-c", full])
         } catch (e) {
