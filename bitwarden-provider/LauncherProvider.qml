@@ -40,7 +40,7 @@ Item {
         onTriggered: {
             ticks++
             var out = String(outputFile.content || "")
-            if (ticks >= 5 || out.length > 0) {
+            if (ticks >= 15 || out.length > 0) {
                 ticks = 0
                 if (cb) cb(out)
             } else {
@@ -60,9 +60,10 @@ Item {
     }
 
     function runBw(cmd, cb) {
-        var full = "export PATH='/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH' && " + cmd + " > " + outFile + " 2>&1"
+        Logger.d("BitwardenProvider", "runBw:", cmd.substring(0, 50))
         try {
-            Quickshell.execDetached(["sh", "-c", full])
+            // Use bash -l to load user's shell profiles (includes linuxbrew PATH)
+            Quickshell.execDetached(["/bin/bash", "-lc", cmd + " > " + outFile + " 2>&1"])
         } catch (e) {
             Logger.e("BitwardenProvider", "exec error:", e)
         }
