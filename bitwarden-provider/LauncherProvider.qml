@@ -72,16 +72,31 @@ Item {
     }
 
     function findBw() {
+        var cmd = "brew --prefix bitwarden-cli 2>/dev/null"
+        runBw(cmd, function(out) {
+            var prefix = out.trim()
+            if (prefix && prefix.indexOf("/") >= 0 && prefix.indexOf("Error") < 0) {
+                bwPath = prefix + "/bin/bw"
+                Logger.i("BitwardenProvider", "bw found via brew:", bwPath)
+                checkStatus()
+            } else {
+                findBwFallback()
+            }
+            if (launcher) launcher.updateResults()
+        })
+    }
+
+    function findBwFallback() {
         var cmd = 'for p in /home/linuxbrew/.linuxbrew/bin/bw /var/home/linuxbrew/.linuxbrew/bin/bw "$HOME/.linuxbrew/bin/bw" "$HOME/.local/bin/bw" /usr/local/bin/bw /usr/bin/bw; do [ -f "$p" ] && echo "$p" && exit 0; done; echo NOTFOUND'
         runBw(cmd, function(out) {
             var found = out.trim()
-            if (found && found !== "NOTFOUND" && found.indexOf("/") >= 0) {
+            if (found && found !== "NOTFOUND") {
                 bwPath = found
-                Logger.i("BitwardenProvider", "bw found:", bwPath)
+                Logger.i("BitwardenProvider", "bw found at fallback path:", bwPath)
                 checkStatus()
             } else {
                 bwPath = ""
-                Logger.w("BitwardenProvider", "bw not found")
+                Logger.w("BitwardenProvider", "bw not found via brew or fallback paths")
             }
             if (launcher) launcher.updateResults()
         })
