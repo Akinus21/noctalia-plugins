@@ -31,15 +31,6 @@ Item {
     property string outFile: "/tmp/bw_out"
     FileView { id: outputFile; path: outFile }
 
-    // Common homebrew paths to check for bw
-    property var brewPaths: [
-        "/home/linuxbrew/.linuxbrew/bin",
-        "/var/home/linuxbrew/.linuxbrew/bin",
-        "$HOME/.linuxbrew/bin",
-        "$HOME/.local/bin",
-        "/usr/local/bin"
-    ]
-
     Timer {
         id: pollTimer
         interval: 1000
@@ -60,7 +51,7 @@ Item {
 
     function runBw(cmd, cb) {
         var env = 'export PATH="/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"'
-        var full = env + " \u0026\u0026 " + cmd + " \u003e " + outFile + " 2\u003e\u00261"
+        var full = env + " && " + cmd + " > " + outFile + " 2>&1"
         try {
             Quickshell.execDetached(["sh", "-c", full])
         } catch (e) {
@@ -81,10 +72,10 @@ Item {
     }
 
     function findBw() {
-        // Check common homebrew paths directly
-        runBw("for p in /home/linuxbrew/.linuxbrew/bin/bw /var/home/linuxbrew/.linuxbrew/bin/bw $HOME/.linuxbrew/bin/bw $HOME/.local/bin/bw /usr/local/bin/bw /usr/bin/bw; do [ -f \"$p\" ] \u0026\u0026 echo \"$p\" \u0026\u0026 exit 0; done; echo NOTFOUND", function(out) {
+        var cmd = 'for p in /home/linuxbrew/.linuxbrew/bin/bw /var/home/linuxbrew/.linuxbrew/bin/bw "$HOME/.linuxbrew/bin/bw" "$HOME/.local/bin/bw" /usr/local/bin/bw /usr/bin/bw; do [ -f "$p" ] && echo "$p" && exit 0; done; echo NOTFOUND'
+        runBw(cmd, function(out) {
             var found = out.trim()
-            if (found \u0026\u0026 found !== "NOTFOUND" \u0026\u0026 found.indexOf("/") >= 0) {
+            if (found && found !== "NOTFOUND" && found.indexOf("/") >= 0) {
                 bwPath = found
                 Logger.i("BitwardenProvider", "bw found:", bwPath)
                 checkStatus()
@@ -104,7 +95,7 @@ Item {
                 vaultStatus = obj.status
                 unlocked = (obj.status === "unlocked")
                 Logger.i("BitwardenProvider", "vault:", vaultStatus)
-                if (unlocked \u0026\u0026 !loaded) fetchItems()
+                if (unlocked && !loaded) fetchItems()
             } catch (e) {
                 vaultStatus = "unauthenticated"
                 unlocked = false
@@ -119,7 +110,7 @@ Item {
         var password = pluginApi?.pluginSettings?.password || ""
         if (!password) return
         Logger.i("BitwardenProvider", "unlocking...")
-        var cmd = "BW_PASSWORD='" + password.replace(/'/g, "'\''") + "' " + bwPath + " unlock --passwordenv BW_PASSWORD --raw"
+        var cmd = "BW_PASSWORD='" + password.replace(/'/g, "'\\''") + "' " + bwPath + " unlock --passwordenv BW_PASSWORD --raw"
         runBw(cmd, function(out) {
             var token = out.trim()
             Logger.i("BitwardenProvider", "unlock token:", token ? "got token (" + token.length + " chars)" : "empty")
@@ -140,7 +131,7 @@ Item {
     function fetchItems() {
         if (fetching || !sessionToken || bwPath === "") return
         fetching = true
-        runBw(bwPath + " list items --session '" + sessionToken.replace(/'/g, "'\''") + "'", function(out) {
+        runBw(bwPath + " list items --session '" + sessionToken.replace(/'/g, "'\\''") + "'", function(out) {
             fetching = false
             if (!out) {
                 unlocked = false
@@ -215,14 +206,14 @@ Item {
             for (var i = 0; i < limit; i++) results.push(makeResult(pool[i], mode))
         } else {
             var q = query.toLowerCase()
-            for (var j = 0; j < pool.length \u0026\u0026 results.length < 50; j++) {
+            for (var j = 0; j < pool.length && results.length < 50; j++) {
                 var item = pool[j]
-                var haystack = ((item.name || "") + " " + (item.login ? (item.login.username || "") : "") + " " + (item.login \u0026\u0026 item.login.uris ? (item.login.uris[0]?.uri || "") : "")).toLowerCase()
+                var haystack = ((item.name || "") + " " + (item.login ? (item.login.username || "") : "") + " " + (item.login && item.login.uris ? (item.login.uris[0]?.uri || "") : "")).toLowerCase()
                 if (fuzzyMatch(q, haystack)) results.push(makeResult(item, mode))
             }
         }
 
-        if (results.length === 0 \u0026\u0026 loaded) {
+        if (results.length === 0 && loaded) {
             return [{ "name": "No items found", "description": "Try a different search", "icon": "search-off", "isTablerIcon": true }]
         }
 
@@ -239,8 +230,8 @@ Item {
         return {
             "name": itemName, "description": subtitle, "icon": "key", "isTablerIcon": true, "provider": root,
             "onActivate": function() {
-                if (mode === "username" \u0026\u0026 username) { copyToClipboard(username); launcher.close() }
-                else if (mode === "password" \u0026\u0026 password) { copyToClipboard(password); launcher.close() }
+                if (mode === "username" && username) { copyToClipboard(username); launcher.close() }
+                else if (mode === "password" && password) { copyToClipboard(password); launcher.close() }
                 else { openItemPanel(item) }
             }
         }
@@ -249,14 +240,14 @@ Item {
     function fuzzyMatch(needle, haystack) {
         if (needle === "") return true
         var ni = 0
-        for (var hi = 0; hi < haystack.length \u0026\u0026 ni < needle.length; hi++) {
+        for (var hi = 0; hi < haystack.length && ni < needle.length; hi++) {
             if (haystack[hi] === needle[ni]) ni++
         }
         return ni === needle.length
     }
 
     function copyToClipboard(text) {
-        Quickshell.execDetached(["sh", "-c", "printf '%s' '" + text.replace(/'/g, "'\''") + "' | wl-copy"])
+        Quickshell.execDetached(["sh", "-c", "printf '%s' '" + text.replace(/'/g, "'\\''") + "' | wl-copy"])
     }
 
     function openItemPanel(item) {
