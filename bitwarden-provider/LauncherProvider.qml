@@ -27,7 +27,7 @@ Item {
     property string sessionToken: ""
     property string vaultStatus: "unknown"
 
-    property bool bwFound: false
+    property string bwPath: ""
 
     property string cacheDir: "/var/home/gabriel/.cache/noctalia"
 
@@ -59,7 +59,7 @@ Item {
     }
 
     function onOpened() {
-        if (bwFound && !unlocked) checkStatus()
+        if (!unlocked && bwPath !== "") checkStatus()
     }
 
     function shellQuote(s) {
@@ -78,23 +78,31 @@ Item {
     }
 
     function checkBw() {
-        runScript("command -v bw 2>/dev/null || echo NOTFOUND", function(out) {
-            var found = out.trim()
-            if (found && found !== "NOTFOUND" && found.length > 0) {
-                bwFound = true
-                Logger.i("BitwardenProvider", "bw found:", found)
-                checkStatus()
-            } else {
-                bwFound = false
-                Logger.w("BitwardenProvider", "bw not found")
+        runScript("bash -lc 'command -v bw' 2>/dev/null || bash -lc 'which bw' 2>/dev/null || for p in /home/linuxbrew/.linuxbrew/bin/bw /var/home/linuxbrew/.linuxbrew/bin/bw ~/.linuxbrew/bin/bw ~/.local/bin/bw /usr/local/bin/bw /usr/bin/bw; do [ -x \"$p\" ] && echo \"$p\" && break; done; echo NOTFOUND", function(out) {
+            var lines = out.trim().split('\n')
+            var found = ''
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i].trim()
+                if (line.length > 0 && line !== 'NOTFOUND') {
+                    found = line
+                    break
+                }
             }
+                if (found.length > 0) {
+                    bwPath = found
+                    Logger.i("BitwardenProvider", "bw found:", bwPath)
+                    checkStatus()
+                } else {
+                    bwPath = ""
+                    Logger.w("BitwardenProvider", "bw not found")
+                }
             if (launcher) launcher.updateResults()
         })
     }
 
     function checkStatus() {
-        if (!bwFound) return
-        var cmd = "bw status"
+        if (bwPath === "") return
+        var cmd = bwPath + " status"
         if (sessionToken) cmd += " --session " + shellQuote(sessionToken)
         runScript(cmd, function(out) {
             Logger.i("BitwardenProvider", "status out:", out.trim())
@@ -114,7 +122,7 @@ Item {
     }
 
     function unlockVault() {
-        if (!bwFound) return
+        if (bwPath === "") return
         var password = pluginApi?.pluginSettings?.password || ""
         var email = pluginApi?.pluginSettings?.email || ""
         if (!password) return
@@ -123,9 +131,9 @@ Item {
         var cmd
         if (vaultStatus === "unauthenticated") {
             if (!email) return
-            cmd = "BW_PASSWORD=" + shellQuote(password) + " bw login " + shellQuote(email) + " --passwordenv BW_PASSWORD --raw"
+            cmd = "BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " login " + shellQuote(email) + " --passwordenv BW_PASSWORD --raw"
         } else {
-            cmd = "BW_PASSWORD=" + shellQuote(password) + " bw unlock --passwordenv BW_PASSWORD --raw"
+            cmd = "BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " unlock --passwordenv BW_PASSWORD --raw"
         }
         runScript(cmd, function(out) {
             var token = out.trim()
@@ -145,10 +153,10 @@ Item {
     }
 
     function fetchItems() {
-        if (fetching || !sessionToken || !bwFound) return
+        if (fetching || !sessionToken || bwPath === "") return
         fetching = true
         runScript(
-            "bw list items --session " + shellQuote(sessionToken),
+            bwPath + " list items --session " + shellQuote(sessionToken),
             function(out) {
                 fetching = false
                 if (!out) {
@@ -196,10 +204,10 @@ Item {
 
         if (query === "settings") { openSettings(); return [] }
 
-        if (!bwFound) {
+        if (bwPath === "") {
             return [
-                { "name": "bitwarden-cli not found", "description": "Install with: brew install bitwarden-cli", "icon": "alert-circle", "isTablerIcon": true,
-                  "onActivate": function() { copyToClipboard("brew install bitwarden-cli") } }
+                { "name": "bitwarden-cli not found", "description": "Install: brew install bitwarden-cli", "icon": "alert-circle", "isTablerIcon": true,
+                  "onActivate": function() { openSettings() } }
             ]
         }
 
