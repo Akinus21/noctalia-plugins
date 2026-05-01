@@ -78,7 +78,7 @@ Item {
     }
 
     function checkBw() {
-        runScript("[ -f \"$HOME/.linuxbrew/bin/bw\" ] && echo \"$HOME/.linuxbrew/bin/bw\" || [ -f /var/home/linuxbrew/.linuxbrew/bin/bw ] && echo /var/home/linuxbrew/.linuxbrew/bin/bw || [ -f /home/linuxbrew/.linuxbrew/bin/bw ] && echo /home/linuxbrew/.linuxbrew/bin/bw || [ -f \"$HOME/.local/bin/bw\" ] && echo \"$HOME/.local/bin/bw\" || command -v bw || which bw || echo NOTFOUND", function(out) {
+        runScript("for p in \"$HOME/.linuxbrew/bin/bw\" /home/linuxbrew/.linuxbrew/bin/bw /var/home/linuxbrew/.linuxbrew/bin/bw \"$HOME/.local/bin/bw\" ~/.local/bin/bw /usr/local/bin/bw /usr/bin/bw /bin/bw; do [ -f \"$p\" ] && [ -x \"$p\" ] && echo \"$p\" && exit 0; done; command -v bw || which bw || echo NOTFOUND", function(out) {
             var lines = out.trim().split('\n')
             var found = ''
             for (var i = 0; i < lines.length; i++) {
