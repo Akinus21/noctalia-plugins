@@ -35,10 +35,10 @@ Item {
 
     Timer {
         id: pollTimer
-        interval: 500
+        interval: 1000
         repeat: false
         property var cb: null
-        property int maxTicks: 60
+        property int maxTicks: 30
         property int ticks: 0
         onTriggered: {
             ticks++
@@ -78,15 +78,15 @@ Item {
     }
 
     function checkBw() {
-        runScript("eval home=~; for p in \"$home/.linuxbrew/bin/bw\" \"$home/.local/bin/bw\" /usr/local/bin/bw /usr/bin/bw /bin/bw; do [ -f \"$p\" ] && [ -x \"$p\" ] && echo \"$p\" && exit 0; done; echo NOTFOUND", function(out) {
-            var found = out.trim()
-            if (found.length > 0 && found !== 'NOTFOUND') {
-                bwPath = found
-                Logger.i("BitwardenProvider", "bw found:", bwPath)
+        runScript("/home/linuxbrew/.linuxbrew/bin/bw --version 2>/dev/null || /var/home/linuxbrew/.linuxbrew/bin/bw --version 2>/dev/null || ~/.linuxbrew/bin/bw --version 2>/dev/null || ~/.local/bin/bw --version 2>/dev/null || /usr/local/bin/bw --version 2>/dev/null || /usr/bin/bw --version 2>/dev/null || echo NOTFOUND", function(out) {
+            var found = out.trim().split('\n')[0].trim()
+            if (found && found !== 'NOTFOUND' && found.indexOf('NOTFOUND') < 0) {
+                bwPath = "/home/linuxbrew/.linuxbrew/bin/bw"
+                Logger.i("BitwardenProvider", "bw found")
                 checkStatus()
             } else {
                 bwPath = ""
-                Logger.w("BitwardenProvider", "bw not found")
+                Logger.w("BitwardenProvider", "bw not found, raw:", out)
             }
             if (launcher) launcher.updateResults()
         })
@@ -94,7 +94,7 @@ Item {
 
     function checkStatus() {
         if (bwPath === "") return
-        var cmd = "eval home=~; PATH=\"$home/.linuxbrew/bin:$home/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; " + bwPath + " status"
+        var cmd = bwPath + " status"
         if (sessionToken) cmd += " --session " + shellQuote(sessionToken)
         runScript(cmd, function(out) {
             Logger.i("BitwardenProvider", "status out:", out.trim())
@@ -123,9 +123,9 @@ Item {
         var cmd
         if (vaultStatus === "unauthenticated") {
             if (!email) return
-            cmd = "eval home=~; PATH=\"$home/.linuxbrew/bin:$home/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " login " + shellQuote(email) + " --passwordenv BW_PASSWORD --raw"
+            cmd = "BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " login " + shellQuote(email) + " --passwordenv BW_PASSWORD --raw"
         } else {
-            cmd = "eval home=~; PATH=\"$home/.linuxbrew/bin:$home/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " unlock --passwordenv BW_PASSWORD --raw"
+            cmd = "BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " unlock --passwordenv BW_PASSWORD --raw"
         }
         runScript(cmd, function(out) {
             var token = out.trim()
@@ -148,7 +148,7 @@ Item {
         if (fetching || !sessionToken || bwPath === "") return
         fetching = true
         runScript(
-            "eval home=~; PATH=\"$home/.linuxbrew/bin:$home/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; " + bwPath + " list items --session " + shellQuote(sessionToken),
+            bwPath + " list items --session " + shellQuote(sessionToken),
             function(out) {
                 fetching = false
                 if (!out) {
