@@ -1,4 +1,6 @@
 import QtQuick
+import Quickshell
+import Quickshell.Io
 import qs.Commons
 import qs.Services.UI
 
@@ -22,125 +24,136 @@ Item {
     property bool unlocked: false
     property bool fetching: false
     property bool loaded: false
-    property string serverUrl: "http://localhost:8087"
-    property string serverRunning: false
+    property string sessionToken: ""
+    property string vaultStatus: "unknown"
+    property string bwPath: ""
+
+    property string cacheDir: "/tmp"
+
+    FileView { id: outFile; path: cacheDir + "/bw_out" }
 
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
-        checkServer()
+        sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
+        checkBw()
     }
 
     function onOpened() {
-        if (!unlocked && serverRunning) checkStatus()
+        if (!unlocked && bwPath !== "") checkStatus()
     }
 
-    function checkServer() {
-        Logger.d("BitwardenProvider", "Checking bw serve at", serverUrl)
-        bwRequest("GET", "/status", null, function(resp, success) {
-            if (success) {
-                Logger.i("BitwardenProvider", "bw serve responding")
-                serverRunning = true
-                try {
-                    var data = JSON.parse(resp)
-                    var stat = data.data?.status || data.status || "unknown"
-                    unlocked = (stat === "unlocked")
-                    if (unlocked && !loaded) fetchItems()
-                } catch (e) {}
+    function runBw(cmd, cb) {
+        var full = "(export PATH='/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH'; " + cmd + ") > " + cacheDir + "/bw_out 2>&1"
+        Logger.d("BitwardenProvider", "exec:", full.substring(0, 120), "...")
+        try {
+            Quickshell.execDetached(["sh", "-c", full])
+            pollTimer.cb = cb
+            pollTimer.restart()
+        } catch (e) {
+            Logger.e("BitwardenProvider", "execDetached error:", e)
+        }
+    }
+
+    Timer {
+        id: pollTimer
+        interval: 1000
+        repeat: false
+        property var cb: null
+        property int ticks: 0
+        onTriggered: {
+            ticks++
+            var out = String(outFile.content || "")
+            if (ticks >= 15 || out.length > 0) {
+                ticks = 0
+                if (cb) cb(out)
             } else {
-                Logger.w("BitwardenProvider", "bw serve not responding:", resp)
-                serverRunning = false
+                pollTimer.restart()
+            }
+        }
+    }
+
+    function checkBw() {
+        runBw("command -v bw", function(out) {
+            var found = out.trim().split('\n')[0].trim()
+            if (found.indexOf('/') >= 0) {
+                bwPath = found
+                Logger.i("BitwardenProvider", "bw found:", bwPath)
+                checkStatus()
+            } else {
+                bwPath = ""
+                Logger.w("BitwardenProvider", "bw not found, raw:", JSON.stringify(out))
             }
             if (launcher) launcher.updateResults()
         })
     }
 
-    function bwRequest(method, endpoint, body, cb) {
-        var xhr = new XMLHttpRequest()
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                var ok = xhr.status >= 200 && xhr.status < 300
-                cb(xhr.responseText, ok)
-            }
-        }
-        xhr.open(method, serverUrl + endpoint)
-        xhr.setRequestHeader("Content-Type", "application/json")
-        xhr.send(body ? JSON.stringify(body) : "")
-    }
-
     function checkStatus() {
-        if (!serverRunning) return
-        bwRequest("GET", "/status", null, function(resp, success) {
-            if (!success) {
-                Logger.w("BitwardenProvider", "status request failed:", resp)
-                serverRunning = false
-                if (launcher) launcher.updateResults()
-                return
-            }
+        if (bwPath === "") return
+        runBw(bwPath + " status", function(out) {
+            Logger.d("BitwardenProvider", "status raw:", JSON.stringify(out))
             try {
-                var data = JSON.parse(resp)
-                var stat = data.data?.status || data.status
-                Logger.i("BitwardenProvider", "vault status:", stat)
-                if (stat === "unlocked") {
-                    unlocked = true
-                    if (!loaded) fetchItems()
-                } else {
-                    unlocked = false
-                }
+                var obj = JSON.parse(out.trim())
+                vaultStatus = obj.status
+                unlocked = (obj.status === "unlocked")
+                if (unlocked && !loaded) fetchItems()
             } catch (e) {
-                Logger.e("BitwardenProvider", "status parse error:", e)
+                vaultStatus = "unauthenticated"
+                unlocked = false
             }
             if (launcher) launcher.updateResults()
         })
     }
 
     function unlockVault() {
-        if (!serverRunning) return
+        if (bwPath === "") return
         var password = pluginApi?.pluginSettings?.password || ""
         if (!password) return
-
         Logger.i("BitwardenProvider", "unlocking vault...")
-        bwRequest("POST", "/unlock", { password: password }, function(resp, success) {
-            if (!success) {
-                Logger.e("BitwardenProvider", "unlock failed:", resp)
-                if (launcher) launcher.updateResults()
-                return
-            }
-            try {
-                var data = JSON.parse(resp)
-                if (data.success || data.data) {
-                    unlocked = true
-                    Logger.i("BitwardenProvider", "vault unlocked")
-                    fetchItems()
-                } else {
-                    Logger.e("BitwardenProvider", "unlock unsuccessful:", resp)
-                }
-            } catch (e) {
-                Logger.e("BitwardenProvider", "unlock parse error:", e)
+        runBw("BW_PASSWORD=" + quote(password) + " " + bwPath + " unlock --passwordenv BW_PASSWORD --raw", function(out) {
+            Logger.d("BitwardenProvider", "unlock raw:", JSON.stringify(out))
+            var token = out.trim()
+            if (token.length > 20) {
+                sessionToken = token
+                pluginApi.pluginSettings.sessionToken = token
+                pluginApi.saveSettings()
+                unlocked = true
+                vaultStatus = "unlocked"
+                fetchItems()
+            } else {
+                Logger.e("BitwardenProvider", "unlock failed:", token)
             }
             if (launcher) launcher.updateResults()
         })
     }
 
     function fetchItems() {
-        if (fetching || !serverRunning) return
+        if (fetching || !sessionToken || bwPath === "") return
         fetching = true
-        bwRequest("GET", "/list/object/items", null, function(resp, success) {
+        runBw(bwPath + " list items --session " + quote(sessionToken), function(out) {
             fetching = false
-            if (!success) {
-                Logger.e("BitwardenProvider", "fetch failed:", resp)
+            if (!out) {
+                unlocked = false
+                vaultStatus = "locked"
                 if (launcher) launcher.updateResults()
                 return
             }
             try {
-                var data = JSON.parse(resp)
-                items = data.data?.data || []
+                items = JSON.parse(out.trim())
                 loaded = true
                 Logger.i("BitwardenProvider", "Loaded", items.length, "items")
             } catch (e) {
-                Logger.e("BitwardenProvider", "fetch parse error:", e)
+                Logger.e("BitwardenProvider", "parse error:", e)
             }
             if (launcher) launcher.updateResults()
         })
+    }
+
+    function quote(s) {
+        return "'" + String(s).replace(/'/g, "'\\''") + "'"
+    }
+
+    function copyToClipboard(text) {
+        Quickshell.execDetached(["sh", "-c", "printf '%s' " + quote(text) + " | wl-copy"])
     }
 
     function handleCommand(searchText) {
@@ -167,9 +180,9 @@ Item {
 
         if (query === "settings") { openSettings(); return [] }
 
-        if (!serverRunning) {
+        if (bwPath === "") {
             return [
-                { "name": "bw serve not running", "description": "Start: bw serve --port 8087", "icon": "alert-circle", "isTablerIcon": true,
+                { "name": "bitwarden-cli not found", "description": "Install: brew install bitwarden-cli", "icon": "alert-circle", "isTablerIcon": true,
                   "onActivate": function() { openSettings() } }
             ]
         }
@@ -237,10 +250,6 @@ Item {
             if (haystack[hi] === needle[ni]) ni++
         }
         return ni === needle.length
-    }
-
-    function copyToClipboard(text) {
-        Quickshell.execDetached(["sh", "-c", "printf '%s' '" + text.replace(/'/g, "'\''") + "' | wl-copy"])
     }
 
     function openItemPanel(item) {
