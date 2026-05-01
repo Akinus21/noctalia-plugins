@@ -48,11 +48,13 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: Style.marginXS
 
-        NLabel {
+        NText {
             text: pluginApi?.tr("settings.password.label") ?? "Master Password"
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
         }
 
-        NLabel {
+        NText {
             text: pluginApi?.tr("settings.password.desc") ?? "Your Bitwarden master password"
             color: Color.mOnSurfaceVariant
             wrapMode: Text.WordWrap
