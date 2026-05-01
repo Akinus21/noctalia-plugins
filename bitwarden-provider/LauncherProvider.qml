@@ -80,17 +80,27 @@ Item {
 
     function checkBw() {
         Logger.d("BitwardenProvider", "checkBw starting")
-        runScript("/home/linuxbrew/.linuxbrew/bin/bw --version", function(out) {
-            Logger.d("BitwardenProvider", "checkBw raw output:", JSON.stringify(out))
-            if (out.length > 0 && out.indexOf("NOTFOUND") < 0) {
-                bwPath = "/home/linuxbrew/.linuxbrew/bin/bw"
-                Logger.i("BitwardenProvider", "bw found at hardcoded path, version:", out.trim())
-                checkStatus()
+        runScript("echo 'TEST_HELLO_WORLD'", function(out) {
+            Logger.d("BitwardenProvider", "echo test output:", JSON.stringify(out))
+            if (out.indexOf("TEST_HELLO_WORLD") >= 0) {
+                Logger.i("BitwardenProvider", "echo works, file reading works")
+                runScript("/home/linuxbrew/.linuxbrew/bin/bw --version", function(out2) {
+                    Logger.d("BitwardenProvider", "bw --version output:", JSON.stringify(out2))
+                    if (out2.length > 0) {
+                        bwPath = "/home/linuxbrew/.linuxbrew/bin/bw"
+                        Logger.i("BitwardenProvider", "bw found, version:", out2.trim())
+                        checkStatus()
+                    } else {
+                        bwPath = ""
+                        Logger.w("BitwardenProvider", "bw --version produced no output")
+                    }
+                    if (launcher) launcher.updateResults()
+                })
             } else {
+                Logger.e("BitwardenProvider", "even echo doesn't work, file reading broken")
                 bwPath = ""
-                Logger.w("BitwardenProvider", "bw not found at /home/linuxbrew/.linuxbrew/bin/bw, output:", out)
+                if (launcher) launcher.updateResults()
             }
-            if (launcher) launcher.updateResults()
         })
     }
 
