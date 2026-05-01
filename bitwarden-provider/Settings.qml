@@ -22,14 +22,13 @@ ColumnLayout {
         pluginApi.pluginSettings.serverUrl = root.editServerUrl
         pluginApi.pluginSettings.email = root.editEmail
         pluginApi.pluginSettings.password = root.editPassword
-        pluginApi.pluginSettings.sessionToken = ""
         pluginApi.saveSettings()
     }
 
     NTextInput {
         Layout.fillWidth: true
         label: pluginApi?.tr("settings.serverUrl.label") ?? "Server URL"
-        description: pluginApi?.tr("settings.serverUrl.desc") ?? "Your Bitwarden or Vaultwarden server URL"
+        description: pluginApi?.tr("settings.serverUrl.desc") ?? "Your Bitwarden or Vaultwarden server URL (leave empty for default)"
         placeholderText: "https://vault.bitwarden.com"
         text: root.editServerUrl
         onTextChanged: root.editServerUrl = text
@@ -38,7 +37,7 @@ ColumnLayout {
     NTextInput {
         Layout.fillWidth: true
         label: pluginApi?.tr("settings.email.label") ?? "Email"
-        description: pluginApi?.tr("settings.email.desc") ?? "Your Bitwarden account email address"
+        description: pluginApi?.tr("settings.email.desc") ?? "Saved for reference. bw serve reads from existing login session."
         placeholderText: "you@example.com"
         text: root.editEmail
         onTextChanged: root.editEmail = text
@@ -55,7 +54,7 @@ ColumnLayout {
         }
 
         NText {
-            text: pluginApi?.tr("settings.password.desc") ?? "Your Bitwarden master password"
+            text: pluginApi?.tr("settings.password.desc") ?? "Your master password for unlocking the vault"
             color: Color.mOnSurfaceVariant
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -107,7 +106,7 @@ ColumnLayout {
     }
 
     NText {
-        text: pluginApi?.tr("settings.hint") ?? "Install: brew install bitwarden-cli"
+        text: pluginApi?.tr("settings.hint") ?? "Requires: brew install bitwarden-cli && bw serve --port 8087"
         wrapMode: Text.WordWrap
         Layout.fillWidth: true
         pointSize: Style.fontSizeS
