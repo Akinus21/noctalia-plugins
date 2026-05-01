@@ -27,9 +27,26 @@ Item {
     property string sessionToken: ""
     property string vaultStatus: "unauthenticated"
     property string bwPath: "/home/linuxbrew/.linuxbrew/bin/bw"
-
     property string outFile: "/tmp/bw_out"
+    property string wrapperFile: "/tmp/bw_wrapper"
+
     FileView { id: outputFile; path: outFile }
+
+    function writeWrapper() {
+        var content = "#!/bin/bash\n" +
+            "for rc in ~/.bash_profile ~/.bashrc ~/.profile; do\n" +
+            "  [ -f \"$rc\" ] \u0026\u0026 source \"$rc\" 2\u003e/dev/null\n" +
+            "done\n" +
+            "for p in /home/linuxbrew/.linuxbrew/bin /var/home/linuxbrew/.linuxbrew/bin ~/.linuxbrew/bin ~/.local/bin /usr/local/bin; do\n" +
+            "  [ -d \"$p\" ] \u0026\u0026 export PATH=\"$p:$PATH\"\n" +
+            "done\n" +
+            "\"$@\"\n"
+        try {
+            Quickshell.execDetached(["/bin/sh", "-c", "printf '%s' '" + content.replace(/'/g, "'\"'\"'") + "' \u003e " + wrapperFile + " \u0026\u0026 chmod +x " + wrapperFile])
+        } catch (e) {
+            Logger.e("BitwardenProvider", "write wrapper error:", e)
+        }
+    }
 
     Timer {
         id: pollTimer
@@ -49,10 +66,18 @@ Item {
         }
     }
 
+    Timer {
+        id: checkTimer
+        interval: 500
+        repeat: false
+        onTriggered: checkStatus()
+    }
+
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
+        writeWrapper()
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
-        checkStatus()
+        checkTimer.restart()
     }
 
     function onOpened() {
@@ -60,10 +85,9 @@ Item {
     }
 
     function runBw(cmd, cb) {
-        Logger.d("BitwardenProvider", "runBw:", cmd.substring(0, 50))
+        Logger.d("BitwardenProvider", "runCw:", cmd.substring(0, 50))
         try {
-            // Use bash -l to load user's shell profiles (includes linuxbrew PATH)
-            Quickshell.execDetached(["/bin/bash", "-lc", cmd + " > " + outFile + " 2>&1"])
+            Quickshell.execDetached(["/bin/bash", "-lc", wrapperFile + " " + cmd + " \u003e " + outFile + " 2\u003e\u00261"])
         } catch (e) {
             Logger.e("BitwardenProvider", "exec error:", e)
         }
