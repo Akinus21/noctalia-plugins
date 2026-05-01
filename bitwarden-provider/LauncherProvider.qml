@@ -78,7 +78,7 @@ Item {
     }
 
     function checkBw() {
-        runScript("bash -lc 'command -v bw' 2>/dev/null || bash -lc 'which bw' 2>/dev/null || for p in /home/linuxbrew/.linuxbrew/bin/bw /var/home/linuxbrew/.linuxbrew/bin/bw ~/.linuxbrew/bin/bw ~/.local/bin/bw /usr/local/bin/bw /usr/bin/bw; do [ -x \"$p\" ] && echo \"$p\" && break; done; echo NOTFOUND", function(out) {
+        runScript("[ -f \"$HOME/.linuxbrew/bin/bw\" ] && echo \"$HOME/.linuxbrew/bin/bw\" || [ -f /var/home/linuxbrew/.linuxbrew/bin/bw ] && echo /var/home/linuxbrew/.linuxbrew/bin/bw || [ -f /home/linuxbrew/.linuxbrew/bin/bw ] && echo /home/linuxbrew/.linuxbrew/bin/bw || [ -f \"$HOME/.local/bin/bw\" ] && echo \"$HOME/.local/bin/bw\" || command -v bw || which bw || echo NOTFOUND", function(out) {
             var lines = out.trim().split('\n')
             var found = ''
             for (var i = 0; i < lines.length; i++) {
@@ -88,14 +88,14 @@ Item {
                     break
                 }
             }
-                if (found.length > 0) {
-                    bwPath = found
-                    Logger.i("BitwardenProvider", "bw found:", bwPath)
-                    checkStatus()
-                } else {
-                    bwPath = ""
-                    Logger.w("BitwardenProvider", "bw not found")
-                }
+            if (found.length > 0) {
+                bwPath = found
+                Logger.i("BitwardenProvider", "bw found:", bwPath)
+                checkStatus()
+            } else {
+                bwPath = ""
+                Logger.w("BitwardenProvider", "bw not found")
+            }
             if (launcher) launcher.updateResults()
         })
     }
