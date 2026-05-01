@@ -78,17 +78,9 @@ Item {
     }
 
     function checkBw() {
-        runScript("HOME=\"/var/home/gabriel\"; for p in \"$HOME/.linuxbrew/bin/bw\" /home/linuxbrew/.linuxbrew/bin/bw /var/home/linuxbrew/.linuxbrew/bin/bw \"$HOME/.local/bin/bw\" /usr/local/bin/bw /usr/bin/bw /bin/bw; do [ -f \"$p\" ] && [ -x \"$p\" ] && echo \"$p\" && exit 0; done; echo NOTFOUND", function(out) {
-            var lines = out.trim().split('\n')
-            var found = ''
-            for (var i = 0; i < lines.length; i++) {
-                var line = lines[i].trim()
-                if (line.length > 0 && line !== 'NOTFOUND') {
-                    found = line
-                    break
-                }
-            }
-            if (found.length > 0) {
+        runScript("bash -lc 'command -v bw 2>/dev/null || which bw 2>/dev/null || true'", function(out) {
+            var found = out.trim()
+            if (found.length > 0 && found.indexOf('/') >= 0) {
                 bwPath = found
                 Logger.i("BitwardenProvider", "bw found:", bwPath)
                 checkStatus()
@@ -102,8 +94,9 @@ Item {
 
     function checkStatus() {
         if (bwPath === "") return
-        var cmd = "HOME=\"/var/home/gabriel\"; PATH=\"/var/home/gabriel/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:/var/home/gabriel/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; " + bwPath + " status"
+        var cmd = "bash -lc '" + bwPath + " status"
         if (sessionToken) cmd += " --session " + shellQuote(sessionToken)
+        cmd += "'"
         runScript(cmd, function(out) {
             Logger.i("BitwardenProvider", "status out:", out.trim())
             try {
@@ -131,9 +124,9 @@ Item {
         var cmd
         if (vaultStatus === "unauthenticated") {
             if (!email) return
-            cmd = "HOME=\"/var/home/gabriel\"; PATH=\"/var/home/gabriel/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:/var/home/gabriel/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; " + "BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " login " + shellQuote(email) + " --passwordenv BW_PASSWORD --raw"
+            cmd = "bash -lc 'BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " login " + shellQuote(email) + " --passwordenv BW_PASSWORD --raw'"
         } else {
-            cmd = "HOME=\"/var/home/gabriel\"; PATH=\"/var/home/gabriel/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:/var/home/gabriel/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; " + "BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " unlock --passwordenv BW_PASSWORD --raw"
+            cmd = "bash -lc 'BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " unlock --passwordenv BW_PASSWORD --raw'"
         }
         runScript(cmd, function(out) {
             var token = out.trim()
@@ -156,7 +149,7 @@ Item {
         if (fetching || !sessionToken || bwPath === "") return
         fetching = true
         runScript(
-            "HOME=\"/var/home/gabriel\"; PATH=\"/var/home/gabriel/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:/var/home/gabriel/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; " + bwPath + " list items --session " + shellQuote(sessionToken),
+            "bash -lc '" + bwPath + " list items --session " + shellQuote(sessionToken) + "'",
             function(out) {
                 fetching = false
                 if (!out) {
