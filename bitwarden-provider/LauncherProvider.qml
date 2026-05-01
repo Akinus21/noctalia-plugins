@@ -28,9 +28,27 @@ Item {
     property string vaultStatus: "unknown"
     property string bwPath: ""
 
-    property string cacheDir: "/tmp"
+    property string outFile: "/tmp/bw_out"
 
-    FileView { id: outFile; path: cacheDir + "/bw_out" }
+    FileView { id: outputFile; path: outFile }
+
+    Timer {
+        id: pollTimer
+        interval: 1000
+        repeat: false
+        property var cb: null
+        property int ticks: 0
+        onTriggered: {
+            ticks++
+            var out = String(outputFile.content || "")
+            if (ticks >= 20 || out.length > 0) {
+                ticks = 0
+                if (cb) cb(out)
+            } else {
+                pollTimer.restart()
+            }
+        }
+    }
 
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
@@ -43,54 +61,41 @@ Item {
     }
 
     function runBw(cmd, cb) {
-        var full = "(export PATH='/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH'; " + cmd + ") > " + cacheDir + "/bw_out 2>&1"
-        Logger.d("BitwardenProvider", "exec:", full.substring(0, 120), "...")
+        var full = "echo '' > " + outFile + " && export PATH='/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH' && " + cmd + " >> " + outFile + " 2>&1 < /dev/null"
+        Logger.d("BitwardenProvider", "runBw:", full.substring(0, 80), "...")
         try {
             Quickshell.execDetached(["sh", "-c", full])
-            pollTimer.cb = cb
-            pollTimer.restart()
         } catch (e) {
             Logger.e("BitwardenProvider", "execDetached error:", e)
         }
-    }
-
-    Timer {
-        id: pollTimer
-        interval: 1000
-        repeat: false
-        property var cb: null
-        property int ticks: 0
-        onTriggered: {
-            ticks++
-            var out = String(outFile.content || "")
-            if (ticks >= 15 || out.length > 0) {
-                ticks = 0
-                if (cb) cb(out)
-            } else {
-                pollTimer.restart()
-            }
-        }
+        pollTimer.cb = cb
+        pollTimer.restart()
     }
 
     function checkBw() {
-        runBw("command -v bw", function(out) {
-            var found = out.trim().split('\n')[0].trim()
-            if (found.indexOf('/') >= 0) {
-                bwPath = found
-                Logger.i("BitwardenProvider", "bw found:", bwPath)
-                checkStatus()
-            } else {
-                bwPath = ""
-                Logger.w("BitwardenProvider", "bw not found, raw:", JSON.stringify(out))
-            }
-            if (launcher) launcher.updateResults()
+        // First check: does bw exist and what is it?
+        runBw("ls -la $(command -v bw) 2>&1; echo '---'; file $(command -v bw) 2>&1; echo '---'; env | grep -i path 2>&1", function(out) {
+            Logger.d("BitwardenProvider", "bw diagnostic:", JSON.stringify(out))
+            // Now try to run bw version
+            runBw("bw --version", function(out2) {
+                Logger.d("BitwardenProvider", "bw version:", JSON.stringify(out2))
+                if (out2.trim().length > 0) {
+                    bwPath = "bw"
+                    Logger.i("BitwardenProvider", "bw found:", out2.trim())
+                    checkStatus()
+                } else {
+                    bwPath = ""
+                    Logger.w("BitwardenProvider", "bw not found")
+                }
+                if (launcher) launcher.updateResults()
+            })
         })
     }
 
     function checkStatus() {
         if (bwPath === "") return
         runBw(bwPath + " status", function(out) {
-            Logger.d("BitwardenProvider", "status raw:", JSON.stringify(out))
+            Logger.d("BitwardenProvider", "status:", JSON.stringify(out))
             try {
                 var obj = JSON.parse(out.trim())
                 vaultStatus = obj.status
@@ -110,7 +115,7 @@ Item {
         if (!password) return
         Logger.i("BitwardenProvider", "unlocking vault...")
         runBw("BW_PASSWORD=" + quote(password) + " " + bwPath + " unlock --passwordenv BW_PASSWORD --raw", function(out) {
-            Logger.d("BitwardenProvider", "unlock raw:", JSON.stringify(out))
+            Logger.d("BitwardenProvider", "unlock:", JSON.stringify(out))
             var token = out.trim()
             if (token.length > 20) {
                 sessionToken = token
