@@ -27,65 +27,16 @@ Item {
     property string sessionToken: ""
     property string vaultStatus: "unknown"
 
-    property string installState: "unknown"
-    property string bwBinary: ""
-
-    property string updateState: "idle"
-    property string installedVersion: ""
-    property string latestVersion: ""
-    readonly property int updateIntervalMs: 24 * 60 * 60 * 1000
+    property bool bwFound: false
 
     property string cacheDir: "/var/home/gabriel/.cache/noctalia"
 
     FileView { id: outputFile; path: cacheDir + "/bw_out" }
 
     Timer {
-        id: updateCheckTimer
-        interval: 60 * 1000; repeat: false
-        onTriggered: maybeCheckForUpdate()
-    }
-    Timer {
-        id: updateCheckRepeatTimer
-        interval: root.updateIntervalMs; repeat: true
-        onTriggered: maybeCheckForUpdate()
-    }
-
-    function init() {
-        Logger.i("BitwardenProvider", "Initializing")
-        sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
-        installedVersion = pluginApi?.pluginSettings?.bwVersion || ""
-        checkBw()
-    }
-
-    function onOpened() {
-        if (installState === "ready" && !unlocked) checkStatus()
-    }
-
-    function shellQuote(s) {
-        return "'" + String(s).replace(/'/g, "'\\''") + "'"
-    }
-
-    function runScript(cmd, cb) {
-        var full = "mkdir -p " + cacheDir + " && rm -f " + cacheDir + "/bw_out && " + cmd + " > " + cacheDir + "/bw_out 2>&1"
-        pollScript(full, cb)
-    }
-
-    function pollScript(full, cb) {
-        try {
-            Quickshell.execDetached(["sh", "-c", full])
-        } catch (e) {
-            Logger.e("BitwardenProvider", "execDetached error:", e)
-        }
-        pollTimer.cmd = full
-        pollTimer.cb = cb
-        pollTimer.restart()
-    }
-
-    Timer {
         id: pollTimer
         interval: 500
         repeat: false
-        property string cmd: ""
         property var cb: null
         property int maxTicks: 60
         property int ticks: 0
@@ -101,108 +52,56 @@ Item {
         }
     }
 
-    Timer {
-        id: quickPollTimer
-        interval: 300
-        repeat: false
-        property var cb: null
-        property int maxTicks: 20
-        property int ticks: 0
-        onTriggered: {
-            ticks++
-            var out = String(outputFile.content || "")
-            if (ticks >= maxTicks || out.length > 0) {
-                ticks = 0
-                if (cb) cb(out)
-            } else {
-                quickPollTimer.restart()
-            }
-        }
+    function init() {
+        Logger.i("BitwardenProvider", "Initializing")
+        sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
+        checkBw()
     }
 
-    function quickRun(cmd, cb) {
+    function onOpened() {
+        if (bwFound && !unlocked) checkStatus()
+    }
+
+    function shellQuote(s) {
+        return "'" + String(s).replace(/'/g, "'\\''") + "'"
+    }
+
+    function runScript(cmd, cb) {
         var full = "mkdir -p " + cacheDir + " && rm -f " + cacheDir + "/bw_out && " + cmd + " > " + cacheDir + "/bw_out 2>&1"
         try {
             Quickshell.execDetached(["sh", "-c", full])
         } catch (e) {
             Logger.e("BitwardenProvider", "execDetached error:", e)
         }
-        quickPollTimer.cb = cb
-        quickPollTimer.restart()
+        pollTimer.cb = cb
+        pollTimer.restart()
     }
 
     function checkBw() {
-        installState = "checking"
-        runScript(
-            "command -v bw 2>/dev/null || " +
-            "( [ -x ~/.local/bin/bw ] && echo ~/.local/bin/bw )",
-            function(out) {
-                var found = out.trim().split("\n")[0].trim()
-                if (found.length > 0) {
-                    bwBinary = found
-                    installState = "ready"
-                    Logger.i("BitwardenProvider", "bw found:", bwBinary)
-                    checkStatus()
-                    updateCheckTimer.restart()
-                    updateCheckRepeatTimer.start()
-                } else {
-                    Logger.w("BitwardenProvider", "bw not found, will download")
-                    downloadBw()
-                }
-                if (launcher) launcher.updateResults()
+        runScript("command -v bw 2>/dev/null || echo NOTFOUND", function(out) {
+            var found = out.trim()
+            if (found && found !== "NOTFOUND" && found.length > 0) {
+                bwFound = true
+                Logger.i("BitwardenProvider", "bw found:", found)
+                checkStatus()
+            } else {
+                bwFound = false
+                Logger.w("BitwardenProvider", "bw not found")
             }
-        )
-    }
-
-    function downloadBw() {
-        installState = "installing"
-        runScript(
-            "python3 -c \"import urllib.request,json; r=urllib.request.urlopen('https://api.github.com/repos/bitwarden/clients/releases/latest',timeout=15); rel=json.loads(r.read()); print(next(x['tag_name'].split('cli/')[1] for x in rel if 'cli/' in x['tag_name']))\"",
-            function(tag) {
-                tag = tag.trim()
-                Logger.i("BitwardenProvider", "latest tag:", tag)
-                if (!tag || tag.length < 3) {
-                    Logger.e("BitwardenProvider", "Failed to find latest tag")
-                    installState = "failed"
-                    if (launcher) launcher.updateResults()
-                    return
-                }
-                var dest = "/var/home/gabriel/.local/bin/bw"
-                var zipDest = "/tmp/bw.zip"
-                var dlUrl = "https://github.com/bitwarden/clients/releases/download/cli%2F" + tag + "/bw-linux-" + tag + ".zip"
-                runScript(
-                    "curl -fsSL -o " + zipDest + " " + dlUrl + " && " +
-                    "unzip -o " + zipDest + " -d /tmp/bw_unzip && " +
-                    "mv /tmp/bw_unzip/bw " + dest + " && " +
-                    "chmod +x " + dest + " && " +
-                    "rm -rf " + zipDest + " /tmp/bw_unzip && " +
-                    "echo OK",
-                    function(out) {
-                        Logger.i("BitwardenProvider", "download result:", out)
-                        if (out.trim().indexOf("OK") >= 0) {
-                            checkBw()
-                        } else {
-                            installState = "failed"
-                            Logger.e("BitwardenProvider", "download failed:", out)
-                            if (launcher) launcher.updateResults()
-                        }
-                    }
-                )
-            }
-        )
-        if (launcher) launcher.updateResults()
+            if (launcher) launcher.updateResults()
+        })
     }
 
     function checkStatus() {
-        if (installState !== "ready") return
-        var cmd = shellQuote(bwBinary) + " status"
-        if (sessionToken) cmd += " --session " + sessionToken
-        quickRun(cmd, function(out) {
+        if (!bwFound) return
+        var cmd = "bw status"
+        if (sessionToken) cmd += " --session " + shellQuote(sessionToken)
+        runScript(cmd, function(out) {
             Logger.i("BitwardenProvider", "status out:", out.trim())
             try {
-                var s = JSON.parse(out.trim()).status
-                vaultStatus = s
-                unlocked = (s === "unlocked")
+                var obj = JSON.parse(out.trim())
+                vaultStatus = obj.status
+                unlocked = (obj.status === "unlocked")
                 Logger.i("BitwardenProvider", "vault:", vaultStatus)
                 if (unlocked && !loaded) fetchItems()
             } catch (e) {
@@ -215,7 +114,7 @@ Item {
     }
 
     function unlockVault() {
-        if (installState !== "ready") return
+        if (!bwFound) return
         var password = pluginApi?.pluginSettings?.password || ""
         var email = pluginApi?.pluginSettings?.email || ""
         if (!password) return
@@ -224,11 +123,11 @@ Item {
         var cmd
         if (vaultStatus === "unauthenticated") {
             if (!email) return
-            cmd = "BW_PASSWORD=" + shellQuote(password) + " " + shellQuote(bwBinary) + " login " + shellQuote(email) + " --passwordenv BW_PASSWORD --raw"
+            cmd = "BW_PASSWORD=" + shellQuote(password) + " bw login " + shellQuote(email) + " --passwordenv BW_PASSWORD --raw"
         } else {
-            cmd = "BW_PASSWORD=" + shellQuote(password) + " " + shellQuote(bwBinary) + " unlock --passwordenv BW_PASSWORD --raw"
+            cmd = "BW_PASSWORD=" + shellQuote(password) + " bw unlock --passwordenv BW_PASSWORD --raw"
         }
-        quickRun(cmd, function(out) {
+        runScript(cmd, function(out) {
             var token = out.trim()
             Logger.i("BitwardenProvider", "unlock token len:", token.length)
             if (token.length > 20) {
@@ -246,10 +145,10 @@ Item {
     }
 
     function fetchItems() {
-        if (fetching || !sessionToken || installState !== "ready") return
+        if (fetching || !sessionToken || !bwFound) return
         fetching = true
-        quickRun(
-            shellQuote(bwBinary) + " list items --session " + sessionToken,
+        runScript(
+            "bw list items --session " + shellQuote(sessionToken),
             function(out) {
                 fetching = false
                 if (!out) {
@@ -271,69 +170,6 @@ Item {
             }
         )
         if (launcher) launcher.updateResults()
-    }
-
-    function maybeCheckForUpdate() {
-        if (installState !== "ready") return
-        if (updateState !== "idle") return
-
-        var lastCheck = pluginApi?.pluginSettings?.bwLastUpdateCheck || 0
-        var age = (Date.now() / 1000) - lastCheck
-        if (age < (updateIntervalMs / 1000)) {
-            Logger.i("BitwardenProvider", "Update skip, checked", Math.round(age/3600), "h ago")
-            return
-        }
-
-        updateState = "checking"
-        runScript(
-            shellQuote(bwBinary) + " --version",
-            function(ver) {
-                ver = ver.trim()
-                if (!ver) { updateState = "idle"; return }
-                installedVersion = ver.startsWith("v") ? ver : "v" + ver
-                pluginApi.pluginSettings.bwVersion = installedVersion
-                pluginApi.saveSettings()
-
-                runScript(
-                    "python3 -c \"import urllib.request,json; r=urllib.request.urlopen('https://api.github.com/repos/bitwarden/clients/releases?per_page=5',timeout=15); rels=json.loads(r.read()); print(next(x['tag_name'].split('cli/')[1] for x in rels if 'cli/' in x['tag_name']))\"",
-                    function(tag) {
-                        tag = tag.trim()
-                        pluginApi.pluginSettings.bwLastUpdateCheck = Math.floor(Date.now()/1000)
-                        pluginApi.saveSettings()
-                        if (tag && tag !== installedVersion) {
-                            Logger.i("BitwardenProvider", "Update:", installedVersion, "->", tag)
-                            doUpdate(tag)
-                        } else {
-                            Logger.i("BitwardenProvider", "bw up to date")
-                            updateState = "idle"
-                        }
-                    }
-                )
-            }
-        )
-    }
-
-    function doUpdate(tag) {
-        updateState = "updating"
-        var py = "python3 -c \"\n" +
-            "import os, urllib.request, zipfile, io\n" +
-            "dest = " + JSON.stringify("/var/home/gabriel/.local/bin/bw") + "\n" +
-            "print('Updating bw to " + tag + "...')\n" +
-            "dl = 'https://github.com/bitwarden/clients/releases/download/cli%2F" + tag + "/bw-linux-" + tag + ".zip'\n" +
-            "req = urllib.request.Request(dl, headers={'User-Agent': 'noctalia-bw'})\n" +
-            "with urllib.request.urlopen(req, timeout=180) as r:\n" +
-            "    zdata = io.BytesIO(r.read())\n" +
-            "with zipfile.ZipFile(zdata) as zf:\n" +
-            "    content = zf.read('bw')\n" +
-            "with open(dest, 'wb') as f:\n" +
-            "    f.write(content)\n" +
-            "os.chmod(dest, 0o755)\n" +
-            "print('OK')\n" +
-            "\""
-        runScript(py, function(out) {
-            Logger.i("BitwardenProvider", "update output:", out)
-            updateState = "idle"
-        })
     }
 
     function handleCommand(searchText) {
@@ -360,19 +196,11 @@ Item {
 
         if (query === "settings") { openSettings(); return [] }
 
-        if (installState === "unknown" || installState === "checking") {
-            return [{ "name": "Checking for bw CLI...", "description": "Scanning PATH", "icon": "loader", "isTablerIcon": true }]
-        }
-        if (installState === "missing") {
-            return [{ "name": "bw CLI not found", "description": "Downloading from GitHub...", "icon": "loader", "isTablerIcon": true }]
-        }
-        if (installState === "installing") {
-            return [{ "name": "Installing bw CLI...", "description": "Please wait", "icon": "loader", "isTablerIcon": true }]
-        }
-        if (installState === "failed") {
-            return [{ "name": "bw install failed", "description": "Click to copy manual install command", "icon": "alert-circle", "isTablerIcon": true,
-                "onActivate": function() { copyToClipboard("pip install --user bitwarden-cli || echo 'Install from https://bitwarden.com/download/'") }
-            }]
+        if (!bwFound) {
+            return [
+                { "name": "bitwarden-cli not found", "description": "Install with: brew install bitwarden-cli", "icon": "alert-circle", "isTablerIcon": true,
+                  "onActivate": function() { copyToClipboard("brew install bitwarden-cli") } }
+            ]
         }
 
         if (!unlocked) {

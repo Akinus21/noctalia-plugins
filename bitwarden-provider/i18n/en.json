@@ -12,6 +12,6 @@
       "label": "Master Password",
       "desc": "Your Bitwarden master password. Stored locally and used to unlock the vault."
     },
-    "hint": "The bw CLI will be downloaded automatically to ~/.local/bin if not already installed. Saving new credentials will clear your cached session and require re-authentication."
+    "hint": "Install the Bitwarden CLI first: brew install bitwarden-cli. Then enter your credentials here. Saving will clear your cached session and require re-authentication."
   }
 }
