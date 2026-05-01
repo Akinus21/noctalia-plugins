@@ -78,15 +78,19 @@ Item {
     }
 
     function checkBw() {
-        runScript("PATH=\"/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; export PATH; /home/linuxbrew/.linuxbrew/bin/bw --version 2>/dev/null || /var/home/linuxbrew/.linuxbrew/bin/bw --version 2>/dev/null || $HOME/.linuxbrew/bin/bw --version 2>/dev/null || $HOME/.local/bin/bw --version 2>/dev/null || /usr/local/bin/bw --version 2>/dev/null || /usr/bin/bw --version 2>/dev/null || echo NOTFOUND", function(out) {
-            var found = out.trim().split('\n')[0].trim()
-            if (found && found !== 'NOTFOUND' && found.indexOf('NOTFOUND') < 0) {
+        Logger.d("BitwardenProvider", "checkBw starting")
+        runScript("echo \"---DEBUG START---\" && ls -la /home/linuxbrew/.linuxbrew/bin/bw 2>&1 && echo \"---DEBUG FILE EXISTS---\" && /home/linuxbrew/.linuxbrew/bin/bw --version 2>&1 && echo \"---DEBUG VERSION OK---\"", function(out) {
+            Logger.d("BitwardenProvider", "checkBw raw output:", JSON.stringify(out))
+            if (out.indexOf("---DEBUG VERSION OK---") >= 0) {
                 bwPath = "/home/linuxbrew/.linuxbrew/bin/bw"
-                Logger.i("BitwardenProvider", "bw found")
+                Logger.i("BitwardenProvider", "bw found at hardcoded path")
                 checkStatus()
-            } else {
+            } else if (out.indexOf("---DEBUG FILE EXISTS---") >= 0) {
+                Logger.e("BitwardenProvider", "bw file exists but --version failed, output:", out)
                 bwPath = ""
-                Logger.w("BitwardenProvider", "bw not found, raw:", out)
+            } else {
+                Logger.w("BitwardenProvider", "bw not found at /home/linuxbrew/.linuxbrew/bin/bw, output:", out)
+                bwPath = ""
             }
             if (launcher) launcher.updateResults()
         })
