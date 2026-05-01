@@ -26,31 +26,23 @@ Item {
     property bool loaded: false
     property string sessionToken: ""
     property string vaultStatus: "unauthenticated"
-    property string bwPath: "/home/linuxbrew/.linuxbrew/bin/bw"
-    property string outFile: "/tmp/bw_out"
-    property string wrapperFile: "/tmp/bw_wrapper"
+    property string bwPath: ""
 
+    property string outFile: "/tmp/bw_out"
     FileView { id: outputFile; path: outFile }
 
-    function writeWrapper() {
-        var content = "#!/bin/bash\n" +
-            "for rc in ~/.bash_profile ~/.bashrc ~/.profile; do\n" +
-            "  [ -f \"$rc\" ] \u0026\u0026 source \"$rc\" 2\u003e/dev/null\n" +
-            "done\n" +
-            "for p in /home/linuxbrew/.linuxbrew/bin /var/home/linuxbrew/.linuxbrew/bin ~/.linuxbrew/bin ~/.local/bin /usr/local/bin; do\n" +
-            "  [ -d \"$p\" ] \u0026\u0026 export PATH=\"$p:$PATH\"\n" +
-            "done\n" +
-            "\"$@\"\n"
-        try {
-            Quickshell.execDetached(["/bin/sh", "-c", "printf '%s' '" + content.replace(/'/g, "'\"'\"'") + "' \u003e " + wrapperFile + " \u0026\u0026 chmod +x " + wrapperFile])
-        } catch (e) {
-            Logger.e("BitwardenProvider", "write wrapper error:", e)
-        }
-    }
+    // Common homebrew paths to check for bw
+    property var brewPaths: [
+        "/home/linuxbrew/.linuxbrew/bin",
+        "/var/home/linuxbrew/.linuxbrew/bin",
+        "$HOME/.linuxbrew/bin",
+        "$HOME/.local/bin",
+        "/usr/local/bin"
+    ]
 
     Timer {
         id: pollTimer
-        interval: 2000
+        interval: 1000
         repeat: false
         property var cb: null
         property int ticks: 0
@@ -66,28 +58,11 @@ Item {
         }
     }
 
-    Timer {
-        id: checkTimer
-        interval: 500
-        repeat: false
-        onTriggered: checkStatus()
-    }
-
-    function init() {
-        Logger.i("BitwardenProvider", "Initializing")
-        writeWrapper()
-        sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
-        checkTimer.restart()
-    }
-
-    function onOpened() {
-        if (!unlocked) checkStatus()
-    }
-
     function runBw(cmd, cb) {
-        Logger.d("BitwardenProvider", "runCw:", cmd.substring(0, 50))
+        var env = 'export PATH="/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"'
+        var full = env + " \u0026\u0026 " + cmd + " \u003e " + outFile + " 2\u003e\u00261"
         try {
-            Quickshell.execDetached(["/bin/bash", "-lc", wrapperFile + " " + cmd + " \u003e " + outFile + " 2\u003e\u00261"])
+            Quickshell.execDetached(["sh", "-c", full])
         } catch (e) {
             Logger.e("BitwardenProvider", "exec error:", e)
         }
@@ -95,14 +70,41 @@ Item {
         pollTimer.restart()
     }
 
+    function init() {
+        Logger.i("BitwardenProvider", "Initializing")
+        sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
+        findBw()
+    }
+
+    function onOpened() {
+        if (!unlocked && bwPath !== "") checkStatus()
+    }
+
+    function findBw() {
+        // Check common homebrew paths directly
+        runBw("for p in /home/linuxbrew/.linuxbrew/bin/bw /var/home/linuxbrew/.linuxbrew/bin/bw $HOME/.linuxbrew/bin/bw $HOME/.local/bin/bw /usr/local/bin/bw /usr/bin/bw; do [ -f \"$p\" ] \u0026\u0026 echo \"$p\" \u0026\u0026 exit 0; done; echo NOTFOUND", function(out) {
+            var found = out.trim()
+            if (found \u0026\u0026 found !== "NOTFOUND" \u0026\u0026 found.indexOf("/") >= 0) {
+                bwPath = found
+                Logger.i("BitwardenProvider", "bw found:", bwPath)
+                checkStatus()
+            } else {
+                bwPath = ""
+                Logger.w("BitwardenProvider", "bw not found in any brew path")
+            }
+            if (launcher) launcher.updateResults()
+        })
+    }
+
     function checkStatus() {
+        if (bwPath === "") return
         runBw(bwPath + " status", function(out) {
             try {
                 var obj = JSON.parse(out.trim())
                 vaultStatus = obj.status
                 unlocked = (obj.status === "unlocked")
                 Logger.i("BitwardenProvider", "vault:", vaultStatus)
-                if (unlocked && !loaded) fetchItems()
+                if (unlocked \u0026\u0026 !loaded) fetchItems()
             } catch (e) {
                 vaultStatus = "unauthenticated"
                 unlocked = false
@@ -113,10 +115,11 @@ Item {
     }
 
     function unlockVault() {
+        if (bwPath === "") return
         var password = pluginApi?.pluginSettings?.password || ""
         if (!password) return
         Logger.i("BitwardenProvider", "unlocking...")
-        var cmd = "BW_PASSWORD='" + password.replace(/'/g, "'\\''") + "' " + bwPath + " unlock --passwordenv BW_PASSWORD --raw"
+        var cmd = "BW_PASSWORD='" + password.replace(/'/g, "'\''") + "' " + bwPath + " unlock --passwordenv BW_PASSWORD --raw"
         runBw(cmd, function(out) {
             var token = out.trim()
             Logger.i("BitwardenProvider", "unlock token:", token ? "got token (" + token.length + " chars)" : "empty")
@@ -135,9 +138,9 @@ Item {
     }
 
     function fetchItems() {
-        if (fetching || !sessionToken) return
+        if (fetching || !sessionToken || bwPath === "") return
         fetching = true
-        runBw(bwPath + " list items --session '" + sessionToken.replace(/'/g, "'\\''") + "'", function(out) {
+        runBw(bwPath + " list items --session '" + sessionToken.replace(/'/g, "'\''") + "'", function(out) {
             fetching = false
             if (!out) {
                 unlocked = false
@@ -180,11 +183,17 @@ Item {
 
         if (query === "settings") { openSettings(); return [] }
 
+        if (bwPath === "") {
+            return [
+                { "name": "bitwarden-cli not found", "description": "Install: brew install bitwarden-cli", "icon": "alert-circle", "isTablerIcon": true,
+                  "onActivate": function() { openSettings() } }
+            ]
+        }
+
         if (!unlocked) {
             var hasCreds = !!(pluginApi?.pluginSettings?.password || "")
             if (hasCreds) {
-                var label = "Vault locked - click to unlock"
-                return [{ "name": label, "description": "Uses credentials from settings", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
+                return [{ "name": "Vault locked - click to unlock", "description": "Uses credentials from settings", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
             }
             return [{ "name": "Not configured", "description": "Enter password in settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
         }
@@ -206,14 +215,14 @@ Item {
             for (var i = 0; i < limit; i++) results.push(makeResult(pool[i], mode))
         } else {
             var q = query.toLowerCase()
-            for (var j = 0; j < pool.length && results.length < 50; j++) {
+            for (var j = 0; j < pool.length \u0026\u0026 results.length < 50; j++) {
                 var item = pool[j]
-                var haystack = ((item.name || "") + " " + (item.login ? (item.login.username || "") : "") + " " + (item.login && item.login.uris ? (item.login.uris[0]?.uri || "") : "")).toLowerCase()
+                var haystack = ((item.name || "") + " " + (item.login ? (item.login.username || "") : "") + " " + (item.login \u0026\u0026 item.login.uris ? (item.login.uris[0]?.uri || "") : "")).toLowerCase()
                 if (fuzzyMatch(q, haystack)) results.push(makeResult(item, mode))
             }
         }
 
-        if (results.length === 0 && loaded) {
+        if (results.length === 0 \u0026\u0026 loaded) {
             return [{ "name": "No items found", "description": "Try a different search", "icon": "search-off", "isTablerIcon": true }]
         }
 
@@ -230,8 +239,8 @@ Item {
         return {
             "name": itemName, "description": subtitle, "icon": "key", "isTablerIcon": true, "provider": root,
             "onActivate": function() {
-                if (mode === "username" && username) { copyToClipboard(username); launcher.close() }
-                else if (mode === "password" && password) { copyToClipboard(password); launcher.close() }
+                if (mode === "username" \u0026\u0026 username) { copyToClipboard(username); launcher.close() }
+                else if (mode === "password" \u0026\u0026 password) { copyToClipboard(password); launcher.close() }
                 else { openItemPanel(item) }
             }
         }
@@ -240,14 +249,14 @@ Item {
     function fuzzyMatch(needle, haystack) {
         if (needle === "") return true
         var ni = 0
-        for (var hi = 0; hi < haystack.length && ni < needle.length; hi++) {
+        for (var hi = 0; hi < haystack.length \u0026\u0026 ni < needle.length; hi++) {
             if (haystack[hi] === needle[ni]) ni++
         }
         return ni === needle.length
     }
 
     function copyToClipboard(text) {
-        Quickshell.execDetached(["sh", "-c", "printf '%s' '" + text.replace(/'/g, "'\\''") + "' | wl-copy"])
+        Quickshell.execDetached(["sh", "-c", "printf '%s' '" + text.replace(/'/g, "'\''") + "' | wl-copy"])
     }
 
     function openItemPanel(item) {
