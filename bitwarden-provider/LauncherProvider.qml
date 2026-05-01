@@ -40,8 +40,7 @@ Item {
         onTriggered: {
             ticks++
             var out = String(outputFile.content || "")
-            if (ticks \u003e= 60 || out.length \u003e 0) {
-                Logger.d("BitwardenProvider", "Timer fired, ticks:", ticks, "out length:", out.length)
+            if (ticks >= 60 || out.length > 0) {
                 ticks = 0
                 if (cb) cb(out)
             } else {
@@ -49,20 +48,16 @@ Item {
             }
         }
     }
-        }
-    }
 
     function runBw(cmd, cb) {
         var env = 'export PATH="/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"'
         var full = env + " && " + cmd + " > " + outFile + " 2>&1"
-        Logger.d("BitwardenProvider", "Starting:", cmd.substring(0, 60))
         try {
             Quickshell.execDetached(["sh", "-c", full])
         } catch (e) {
             Logger.e("BitwardenProvider", "exec error:", e)
         }
         pollTimer.cb = cb
-        pollTimer.startTick = Date.now()
         pollTimer.restart()
     }
 
