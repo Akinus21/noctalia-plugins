@@ -72,18 +72,31 @@ Item {
     }
 
     function findBw() {
-        var cmd = 'for p in /home/linuxbrew/.linuxbrew/bin/bw /var/home/linuxbrew/.linuxbrew/bin/bw "$HOME/.linuxbrew/bin/bw" "$HOME/.local/bin/bw" /usr/local/bin/bw /usr/bin/bw; do [ -f "$p" ] && echo "$p" && exit 0; done; echo NOTFOUND'
+        // Ask homebrew where it installed bw, with fallbacks to known paths
+        var cmd = 'brew --prefix bitwarden-cli 2\u003e/dev/null | xargs -I{} echo {}/bin/bw'
         runBw(cmd, function(out) {
-            var found = out.trim()
-            if (found && found !== "NOTFOUND" && found.indexOf("/") >= 0) {
+            var found = out.trim().split('\n')[0].trim()
+            if (found \u0026\u0026 found.indexOf('/') \u003e= 0 \u0026\u0026 found.indexOf('bitwarden-cli') \u003c 0) {
                 bwPath = found
-                Logger.i("BitwardenProvider", "bw found:", bwPath)
+                Logger.i("BitwardenProvider", "bw found via brew:", bwPath)
                 checkStatus()
+                if (launcher) launcher.updateResults()
             } else {
-                bwPath = ""
-                Logger.w("BitwardenProvider", "bw not found in any brew path")
+                // Fallback: check known paths directly
+                var fallbackCmd = 'for p in /home/linuxbrew/.linuxbrew/bin/bw /var/home/linuxbrew/.linuxbrew/bin/bw "$HOME/.linuxbrew/bin/bw" "$HOME/.local/bin/bw" /usr/local/bin/bw /usr/bin/bw; do [ -f "$p" ] \u0026\u0026 echo "$p" \u0026\u0026 exit 0; done; echo NOTFOUND'
+                runBw(fallbackCmd, function(out2) {
+                    var found2 = out2.trim()
+                    if (found2 \u0026\u0026 found2 !== "NOTFOUND") {
+                        bwPath = found2
+                        Logger.i("BitwardenProvider", "bw found at fallback path:", bwPath)
+                        checkStatus()
+                    } else {
+                        bwPath = ""
+                        Logger.w("BitwardenProvider", "bw not found via brew or fallback paths")
+                    }
+                    if (launcher) launcher.updateResults()
+                })
             }
-            if (launcher) launcher.updateResults()
         })
     }
 
