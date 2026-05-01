@@ -29,29 +29,6 @@ Item {
 
     property string bwPath: ""
 
-    property string cacheDir: "/var/home/gabriel/.cache/noctalia"
-
-    FileView { id: outputFile; path: cacheDir + "/bw_out" }
-
-    Timer {
-        id: pollTimer
-        interval: 1000
-        repeat: false
-        property var cb: null
-        property int maxTicks: 30
-        property int ticks: 0
-        onTriggered: {
-            ticks++
-            var out = String(outputFile.content || "")
-            if (ticks >= maxTicks || out.length > 0) {
-                ticks = 0
-                if (cb) cb(out)
-            } else {
-                pollTimer.restart()
-            }
-        }
-    }
-
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
@@ -66,50 +43,61 @@ Item {
         return "'" + String(s).replace(/'/g, "'\\''") + "'"
     }
 
-    function runScript(cmd, cb) {
-        var full = "mkdir -p " + cacheDir + " && rm -f " + cacheDir + "/bw_out && (" + cmd + ") > " + cacheDir + "/bw_out 2>&1"
-        Logger.d("BitwardenProvider", "runScript full:", full)
-        try {
-            Quickshell.execDetached(["sh", "-c", full])
-        } catch (e) {
-            Logger.e("BitwardenProvider", "execDetached error:", e)
-        }
-        pollTimer.cb = cb
-        pollTimer.restart()
-    }
-
+    // Try direct execDetached approach
     function checkBw() {
-        Logger.d("BitwardenProvider", "checkBw starting")
-        runScript("echo 'TEST_HELLO_WORLD'", function(out) {
-            Logger.d("BitwardenProvider", "echo test output:", JSON.stringify(out))
-            if (out.indexOf("TEST_HELLO_WORLD") >= 0) {
-                Logger.i("BitwardenProvider", "echo works, file reading works")
-                runScript("/home/linuxbrew/.linuxbrew/bin/bw --version", function(out2) {
-                    Logger.d("BitwardenProvider", "bw --version output:", JSON.stringify(out2))
-                    if (out2.length > 0) {
-                        bwPath = "/home/linuxbrew/.linuxbrew/bin/bw"
-                        Logger.i("BitwardenProvider", "bw found, version:", out2.trim())
-                        checkStatus()
-                    } else {
-                        bwPath = ""
-                        Logger.w("BitwardenProvider", "bw --version produced no output")
-                    }
-                    if (launcher) launcher.updateResults()
-                })
-            } else {
-                Logger.e("BitwardenProvider", "even echo doesn't work, file reading broken")
-                bwPath = ""
+        Logger.d("BitwardenProvider", "checkBw: trying direct bw check")
+        try {
+            Quickshell.execDetached(["sh", "-c", "/home/linuxbrew/.linuxbrew/bin/bw --version > /tmp/bw_check_out 2>&1"])
+            checkTimer.cb = function() {
+                var out = String(checkFile.content || "")
+                Logger.d("BitwardenProvider", "checkBw output:", JSON.stringify(out))
+                if (out.length > 0) {
+                    bwPath = "/home/linuxbrew/.linuxbrew/bin/bw"
+                    Logger.i("BitwardenProvider", "bw found:", out.trim())
+                    checkStatus()
+                } else {
+                    bwPath = ""
+                    Logger.w("BitwardenProvider", "bw not found, output empty")
+                }
                 if (launcher) launcher.updateResults()
             }
-        })
+            checkTimer.restart()
+        } catch (e) {
+            Logger.e("BitwardenProvider", "execDetached error:", e)
+            bwPath = ""
+            if (launcher) launcher.updateResults()
+        }
+    }
+
+    FileView { id: checkFile; path: "/tmp/bw_check_out" }
+
+    Timer {
+        id: checkTimer
+        interval: 2000
+        repeat: false
+        property var cb: null
+        onTriggered: if (cb) cb()
     }
 
     function checkStatus() {
         if (bwPath === "") return
-        var cmd = "PATH=\"/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; export PATH; " + bwPath + " status"
-        if (sessionToken) cmd += " --session " + shellQuote(sessionToken)
-        runScript(cmd, function(out) {
-            Logger.i("BitwardenProvider", "status out:", out.trim())
+        try {
+            Quickshell.execDetached(["sh", "-c", bwPath + " status > /tmp/bw_status_out 2>&1"])
+            statusTimer.restart()
+        } catch (e) {
+            Logger.e("BitwardenProvider", "status error:", e)
+        }
+    }
+
+    FileView { id: statusFile; path: "/tmp/bw_status_out" }
+
+    Timer {
+        id: statusTimer
+        interval: 2000
+        repeat: false
+        onTriggered: {
+            var out = String(statusFile.content || "")
+            Logger.d("BitwardenProvider", "status output:", JSON.stringify(out))
             try {
                 var obj = JSON.parse(out.trim())
                 vaultStatus = obj.status
@@ -119,10 +107,10 @@ Item {
             } catch (e) {
                 vaultStatus = "unauthenticated"
                 unlocked = false
-                Logger.w("BitwardenProvider", "status parse error, raw:", out.trim())
+                Logger.w("BitwardenProvider", "status parse error, raw:", out)
             }
             if (launcher) launcher.updateResults()
-        })
+        }
     }
 
     function unlockVault() {
@@ -135,13 +123,28 @@ Item {
         var cmd
         if (vaultStatus === "unauthenticated") {
             if (!email) return
-            cmd = "PATH=\"/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; export PATH; BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " login " + shellQuote(email) + " --passwordenv BW_PASSWORD --raw"
+            cmd = "BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " login " + shellQuote(email) + " --passwordenv BW_PASSWORD --raw"
         } else {
-            cmd = "PATH=\"/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; export PATH; BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " unlock --passwordenv BW_PASSWORD --raw"
+            cmd = "BW_PASSWORD=" + shellQuote(password) + " " + bwPath + " unlock --passwordenv BW_PASSWORD --raw"
         }
-        runScript(cmd, function(out) {
+        try {
+            Quickshell.execDetached(["sh", "-c", cmd + " > /tmp/bw_unlock_out 2>&1"])
+            unlockTimer.restart()
+        } catch (e) {
+            Logger.e("BitwardenProvider", "unlock error:", e)
+        }
+    }
+
+    FileView { id: unlockFile; path: "/tmp/bw_unlock_out" }
+
+    Timer {
+        id: unlockTimer
+        interval: 3000
+        repeat: false
+        onTriggered: {
+            var out = String(unlockFile.content || "")
+            Logger.d("BitwardenProvider", "unlock output:", JSON.stringify(out))
             var token = out.trim()
-            Logger.i("BitwardenProvider", "unlock token len:", token.length)
             if (token.length > 20) {
                 sessionToken = token
                 pluginApi.pluginSettings.sessionToken = token
@@ -153,35 +156,49 @@ Item {
                 Logger.e("BitwardenProvider", "unlock failed, output:", token)
             }
             if (launcher) launcher.updateResults()
-        })
+        }
     }
 
     function fetchItems() {
         if (fetching || !sessionToken || bwPath === "") return
         fetching = true
-        runScript(
-            "PATH=\"/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"; export PATH; " + bwPath + " list items --session " + shellQuote(sessionToken),
-            function(out) {
-                fetching = false
-                if (!out) {
-                    unlocked = false
-                    vaultStatus = "locked"
-                    if (launcher) launcher.updateResults()
-                    return
-                }
-                try {
-                    items = JSON.parse(out.trim())
-                    loaded = true
-                    Logger.i("BitwardenProvider", "Loaded", items.length, "items")
-                } catch (e) {
-                    unlocked = false
-                    vaultStatus = "locked"
-                    Logger.e("BitwardenProvider", "Parse error:", e)
-                }
-                if (launcher) launcher.updateResults()
-            }
-        )
+        try {
+            Quickshell.execDetached(["sh", "-c", bwPath + " list items --session " + shellQuote(sessionToken) + " > /tmp/bw_items_out 2>&1"])
+            itemsTimer.restart()
+        } catch (e) {
+            Logger.e("BitwardenProvider", "fetch error:", e)
+            fetching = false
+        }
         if (launcher) launcher.updateResults()
+    }
+
+    FileView { id: itemsFile; path: "/tmp/bw_items_out" }
+
+    Timer {
+        id: itemsTimer
+        interval: 3000
+        repeat: false
+        onTriggered: {
+            fetching = false
+            var out = String(itemsFile.content || "")
+            Logger.d("BitwardenProvider", "items output length:", out.length)
+            if (!out) {
+                unlocked = false
+                vaultStatus = "locked"
+                if (launcher) launcher.updateResults()
+                return
+            }
+            try {
+                items = JSON.parse(out.trim())
+                loaded = true
+                Logger.i("BitwardenProvider", "Loaded", items.length, "items")
+            } catch (e) {
+                unlocked = false
+                vaultStatus = "locked"
+                Logger.e("BitwardenProvider", "Parse error:", e)
+            }
+            if (launcher) launcher.updateResults()
+        }
     }
 
     function handleCommand(searchText) {
