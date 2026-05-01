@@ -68,6 +68,7 @@ Item {
 
     function runScript(cmd, cb) {
         var full = "mkdir -p " + cacheDir + " && rm -f " + cacheDir + "/bw_out && (" + cmd + ") > " + cacheDir + "/bw_out 2>&1"
+        Logger.d("BitwardenProvider", "runScript full:", full)
         try {
             Quickshell.execDetached(["sh", "-c", full])
         } catch (e) {
@@ -79,18 +80,15 @@ Item {
 
     function checkBw() {
         Logger.d("BitwardenProvider", "checkBw starting")
-        runScript("echo \"---DEBUG START---\" && ls -la /home/linuxbrew/.linuxbrew/bin/bw 2>&1 && echo \"---DEBUG FILE EXISTS---\" && /home/linuxbrew/.linuxbrew/bin/bw --version 2>&1 && echo \"---DEBUG VERSION OK---\"", function(out) {
+        runScript("/home/linuxbrew/.linuxbrew/bin/bw --version", function(out) {
             Logger.d("BitwardenProvider", "checkBw raw output:", JSON.stringify(out))
-            if (out.indexOf("---DEBUG VERSION OK---") >= 0) {
+            if (out.length > 0 && out.indexOf("NOTFOUND") < 0) {
                 bwPath = "/home/linuxbrew/.linuxbrew/bin/bw"
-                Logger.i("BitwardenProvider", "bw found at hardcoded path")
+                Logger.i("BitwardenProvider", "bw found at hardcoded path, version:", out.trim())
                 checkStatus()
-            } else if (out.indexOf("---DEBUG FILE EXISTS---") >= 0) {
-                Logger.e("BitwardenProvider", "bw file exists but --version failed, output:", out)
-                bwPath = ""
             } else {
-                Logger.w("BitwardenProvider", "bw not found at /home/linuxbrew/.linuxbrew/bin/bw, output:", out)
                 bwPath = ""
+                Logger.w("BitwardenProvider", "bw not found at /home/linuxbrew/.linuxbrew/bin/bw, output:", out)
             }
             if (launcher) launcher.updateResults()
         })
