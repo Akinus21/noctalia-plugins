@@ -25,23 +25,22 @@ Item {
     property bool fetching: false
     property bool loaded: false
     property string sessionToken: ""
-    property string vaultStatus: "unknown"
-    property string bwPath: ""
+    property string vaultStatus: "unauthenticated"
+    property string bwPath: "/home/linuxbrew/.linuxbrew/bin/bw"
 
     property string outFile: "/tmp/bw_out"
-
     FileView { id: outputFile; path: outFile }
 
     Timer {
         id: pollTimer
-        interval: 1000
+        interval: 2000
         repeat: false
         property var cb: null
         property int ticks: 0
         onTriggered: {
             ticks++
             var out = String(outputFile.content || "")
-            if (ticks >= 20 || out.length > 0) {
+            if (ticks >= 5 || out.length > 0) {
                 ticks = 0
                 if (cb) cb(out)
             } else {
@@ -53,70 +52,49 @@ Item {
     function init() {
         Logger.i("BitwardenProvider", "Initializing")
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
-        checkBw()
+        checkStatus()
     }
 
     function onOpened() {
-        if (!unlocked && bwPath !== "") checkStatus()
+        if (!unlocked) checkStatus()
     }
 
     function runBw(cmd, cb) {
-        var full = "echo '' > " + outFile + " && export PATH='/home/linuxbrew/.linuxbrew/bin:/var/home/linuxbrew/.linuxbrew/bin:$HOME/.linuxbrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH' && " + cmd + " >> " + outFile + " 2>&1 < /dev/null"
-        Logger.d("BitwardenProvider", "runBw:", full.substring(0, 80), "...")
+        var full = "export PATH='/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin:$PATH' && " + cmd + " > " + outFile + " 2>&1"
         try {
             Quickshell.execDetached(["sh", "-c", full])
         } catch (e) {
-            Logger.e("BitwardenProvider", "execDetached error:", e)
+            Logger.e("BitwardenProvider", "exec error:", e)
         }
         pollTimer.cb = cb
         pollTimer.restart()
     }
 
-    function checkBw() {
-        // First check: does bw exist and what is it?
-        runBw("ls -la $(command -v bw) 2>&1; echo '---'; file $(command -v bw) 2>&1; echo '---'; env | grep -i path 2>&1", function(out) {
-            Logger.d("BitwardenProvider", "bw diagnostic:", JSON.stringify(out))
-            // Now try to run bw version
-            runBw("bw --version", function(out2) {
-                Logger.d("BitwardenProvider", "bw version:", JSON.stringify(out2))
-                if (out2.trim().length > 0) {
-                    bwPath = "bw"
-                    Logger.i("BitwardenProvider", "bw found:", out2.trim())
-                    checkStatus()
-                } else {
-                    bwPath = ""
-                    Logger.w("BitwardenProvider", "bw not found")
-                }
-                if (launcher) launcher.updateResults()
-            })
-        })
-    }
-
     function checkStatus() {
-        if (bwPath === "") return
         runBw(bwPath + " status", function(out) {
-            Logger.d("BitwardenProvider", "status:", JSON.stringify(out))
             try {
                 var obj = JSON.parse(out.trim())
                 vaultStatus = obj.status
                 unlocked = (obj.status === "unlocked")
+                Logger.i("BitwardenProvider", "vault:", vaultStatus)
                 if (unlocked && !loaded) fetchItems()
             } catch (e) {
                 vaultStatus = "unauthenticated"
                 unlocked = false
+                Logger.w("BitwardenProvider", "status parse error:", out)
             }
             if (launcher) launcher.updateResults()
         })
     }
 
     function unlockVault() {
-        if (bwPath === "") return
         var password = pluginApi?.pluginSettings?.password || ""
         if (!password) return
-        Logger.i("BitwardenProvider", "unlocking vault...")
-        runBw("BW_PASSWORD=" + quote(password) + " " + bwPath + " unlock --passwordenv BW_PASSWORD --raw", function(out) {
-            Logger.d("BitwardenProvider", "unlock:", JSON.stringify(out))
+        Logger.i("BitwardenProvider", "unlocking...")
+        var cmd = "BW_PASSWORD='" + password.replace(/'/g, "'\\''") + "' " + bwPath + " unlock --passwordenv BW_PASSWORD --raw"
+        runBw(cmd, function(out) {
             var token = out.trim()
+            Logger.i("BitwardenProvider", "unlock token:", token ? "got token (" + token.length + " chars)" : "empty")
             if (token.length > 20) {
                 sessionToken = token
                 pluginApi.pluginSettings.sessionToken = token
@@ -132,9 +110,9 @@ Item {
     }
 
     function fetchItems() {
-        if (fetching || !sessionToken || bwPath === "") return
+        if (fetching || !sessionToken) return
         fetching = true
-        runBw(bwPath + " list items --session " + quote(sessionToken), function(out) {
+        runBw(bwPath + " list items --session '" + sessionToken.replace(/'/g, "'\\''") + "'", function(out) {
             fetching = false
             if (!out) {
                 unlocked = false
@@ -147,18 +125,10 @@ Item {
                 loaded = true
                 Logger.i("BitwardenProvider", "Loaded", items.length, "items")
             } catch (e) {
-                Logger.e("BitwardenProvider", "parse error:", e)
+                Logger.e("BitwardenProvider", "parse error:", e, "raw:", out.substring(0, 100))
             }
             if (launcher) launcher.updateResults()
         })
-    }
-
-    function quote(s) {
-        return "'" + String(s).replace(/'/g, "'\\''") + "'"
-    }
-
-    function copyToClipboard(text) {
-        Quickshell.execDetached(["sh", "-c", "printf '%s' " + quote(text) + " | wl-copy"])
     }
 
     function handleCommand(searchText) {
@@ -185,17 +155,11 @@ Item {
 
         if (query === "settings") { openSettings(); return [] }
 
-        if (bwPath === "") {
-            return [
-                { "name": "bitwarden-cli not found", "description": "Install: brew install bitwarden-cli", "icon": "alert-circle", "isTablerIcon": true,
-                  "onActivate": function() { openSettings() } }
-            ]
-        }
-
         if (!unlocked) {
             var hasCreds = !!(pluginApi?.pluginSettings?.password || "")
             if (hasCreds) {
-                return [{ "name": "Vault locked - click to unlock", "description": "Uses credentials from settings", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
+                var label = "Vault locked - click to unlock"
+                return [{ "name": label, "description": "Uses credentials from settings", "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
             }
             return [{ "name": "Not configured", "description": "Enter password in settings", "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
         }
@@ -255,6 +219,10 @@ Item {
             if (haystack[hi] === needle[ni]) ni++
         }
         return ni === needle.length
+    }
+
+    function copyToClipboard(text) {
+        Quickshell.execDetached(["sh", "-c", "printf '%s' '" + text.replace(/'/g, "'\\''") + "' | wl-copy"])
     }
 
     function openItemPanel(item) {
