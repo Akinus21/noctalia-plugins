@@ -72,6 +72,24 @@ Item {
         Logger.i("BitwardenProvider", "Initializing")
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
         Logger.i("BitwardenProvider", "Using bw path:", bwPath)
+
+        var serverUrl = pluginApi?.pluginSettings?.serverUrl || ""
+        if (serverUrl) {
+            Logger.i("BitwardenProvider", "Configuring BW server:", serverUrl)
+            runBw([bwPath, "config", "server", serverUrl], function(out, exitCode) {
+                Logger.i("BitwardenProvider", "Config server result: exitCode=" + exitCode + " out:", out)
+                checkStatusThenLogin()
+            })
+        } else {
+            checkStatusThenLogin()
+        }
+    }
+
+    function onOpened() {
+        if (!unlocked) checkStatus()
+    }
+
+    function checkStatusThenLogin() {
         checkStatus(function(status) {
             if (status === "unauthenticated") {
                 Logger.i("BitwardenProvider", "Not logged in, attempting login")
@@ -82,10 +100,6 @@ Item {
                 fetchItems()
             }
         })
-    }
-
-    function onOpened() {
-        if (!unlocked) checkStatus()
     }
 
     // ── Vault management ──────────────────────────────────────────────────
@@ -161,11 +175,8 @@ Item {
         env["BW_PASSWORD"] = password
         bwProcess.environment = env
 
-        // No --quiet so we can see errors in stdout+stderr
         runBw([bwPath, "login", email, "--passwordenv", "BW_PASSWORD"], function(loginOut, loginExit) {
             Logger.i("BitwardenProvider", "Login result: exitCode=" + loginExit + " output:", loginOut)
-            // bw login prints "You are logged in!" on success, exitCode=0
-            // Already logged in also exitCode=0 with message
             if (loginExit !== 0) {
                 Logger.e("BitwardenProvider", "Login failed. exitCode=" + loginExit)
                 bwProcess.environment = {}
@@ -173,7 +184,6 @@ Item {
                 return
             }
 
-            // Login succeeded, now unlock
             runBw([bwPath, "unlock", "--passwordenv", "BW_PASSWORD", "--raw"], function(out, exitCode) {
                 bwProcess.environment = {}
                 var token = out.trim()
