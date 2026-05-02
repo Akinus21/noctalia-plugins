@@ -29,10 +29,7 @@ Item {
     property string bwPath: "/home/linuxbrew/.linuxbrew/bin/bw"
 
     // ── Process runner ────────────────────────────────────────────────────
-    // Uses Quickshell's Process component so we get proper stdout/stderr
-    // signals instead of polling a temp file.
 
-    property string _pendingStdout: ""
     property var _pendingCallback: null
 
     Process {
@@ -50,7 +47,7 @@ Item {
 
         onExited: function(exitCode, exitStatus) {
             var out = bwProcess.collectedOutput.trim()
-            Logger.d("BitwardenProvider", "Process exited code=" + exitCode + " output length=" + out.length)
+            Logger.d("BitwardenProvider", "Process exited code=" + exitCode + " outLen=" + out.length)
             var cb = root._pendingCallback
             root._pendingCallback = null
             bwProcess.collectedOutput = ""
@@ -60,10 +57,10 @@ Item {
 
     function runBw(args, cb) {
         if (bwProcess.running) {
-            Logger.w("BitwardenProvider", "runBw: previous process still running, queuing is not supported — ignoring")
+            Logger.w("BitwardenProvider", "runBw: previous process still running")
             return
         }
-        _pendingCallback = cb
+        root._pendingCallback = cb
         bwProcess.collectedOutput = ""
         bwProcess.command = args
         bwProcess.running = true
@@ -75,7 +72,16 @@ Item {
         Logger.i("BitwardenProvider", "Initializing")
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
         Logger.i("BitwardenProvider", "Using bw path:", bwPath)
-        checkStatus()
+        checkStatus(function(status) {
+            if (status === "unauthenticated") {
+                Logger.i("BitwardenProvider", "Not logged in, attempting login")
+                loginThenUnlock()
+            } else if (status === "locked") {
+                Logger.i("BitwardenProvider", "Vault locked, will unlock on request")
+            } else if (status === "unlocked" && !loaded && sessionToken) {
+                fetchItems()
+            }
+        })
     }
 
     function onOpened() {
@@ -84,68 +90,27 @@ Item {
 
     // ── Vault management ──────────────────────────────────────────────────
 
-    function checkStatus() {
+    function checkStatus(cb) {
         if (bwProcess.running) return
         Logger.i("BitwardenProvider", "Checking vault status")
         runBw([bwPath, "status"], function(out, exitCode) {
+            var parsed = "unauthenticated"
             try {
                 var jsonStart = out.indexOf("{")
-                if (jsonStart === -1) throw new Error("no JSON in output: " + out)
+                if (jsonStart === -1) throw new Error("no JSON")
                 var obj = JSON.parse(out.substring(jsonStart))
-                vaultStatus = obj.status
-                unlocked = (obj.status === "unlocked")
-                Logger.i("BitwardenProvider", "Vault status:", vaultStatus)
+                parsed = obj.status || "unauthenticated"
+                vaultStatus = parsed
+                unlocked = (parsed === "unlocked")
                 if (unlocked && !loaded) fetchItems()
+                Logger.i("BitwardenProvider", "Vault status:", parsed)
             } catch (e) {
                 vaultStatus = "unauthenticated"
                 unlocked = false
-                Logger.w("BitwardenProvider", "status parse error:", e, "raw output:", out)
+                Logger.w("BitwardenProvider", "status parse error, raw:", out)
             }
+            if (cb) cb(parsed)
             if (launcher) launcher.updateResults()
-        })
-    }
-
-    function loginAndUnlock() {
-        if (bwProcess.running) return
-        var password = pluginApi?.pluginSettings?.password || ""
-        var email    = pluginApi?.pluginSettings?.email || ""
-        if (!password || !email) {
-            Logger.w("BitwardenProvider", "No email or password configured")
-            return
-        }
-        Logger.i("BitwardenProvider", "Logging in and unlocking vault")
-
-        var env = Object.assign({}, Qt.application.environment)
-        env["BW_PASSWORD"] = password
-        bwProcess.environment = env
-
-        runBw([bwPath, "login", email, "--passwordenv", "BW_PASSWORD", "--quiet"], function(loginOut, loginExit) {
-            Logger.i("BitwardenProvider", "Login result: exitCode=" + loginExit + " output:", loginOut)
-            if (loginExit !== 0 && loginOut.indexOf("You are already logged in") === -1) {
-                Logger.e("BitwardenProvider", "Login failed. exitCode=" + loginExit + " output:", loginOut)
-                bwProcess.environment = {}
-                if (launcher) launcher.updateResults()
-                return
-            }
-            // Now unlock
-            runBw([bwPath, "unlock", "--passwordenv", "BW_PASSWORD", "--raw"], function(out, exitCode) {
-                bwProcess.environment = {}
-                var token = out.trim()
-                Logger.i("BitwardenProvider", "Unlock result: exitCode=" + exitCode + " tokenLength=" + token.length)
-                if (exitCode === 0 && token.length > 20) {
-                    sessionToken = token
-                    pluginApi.pluginSettings.sessionToken = token
-                    pluginApi.saveSettings()
-                    unlocked = true
-                    vaultStatus = "unlocked"
-                    fetchItems()
-                } else {
-                    Logger.e("BitwardenProvider", "Unlock failed. exitCode=" + exitCode + " output:", out)
-                    vaultStatus = "locked"
-                    unlocked = false
-                }
-                if (launcher) launcher.updateResults()
-            })
         })
     }
 
@@ -165,7 +130,7 @@ Item {
         runBw([bwPath, "unlock", "--passwordenv", "BW_PASSWORD", "--raw"], function(out, exitCode) {
             bwProcess.environment = {}
             var token = out.trim()
-            Logger.i("BitwardenProvider", "Unlock result: exitCode=" + exitCode + " tokenLength=" + token.length)
+            Logger.i("BitwardenProvider", "Unlock result: exitCode=" + exitCode + " tokenLen=" + token.length)
             if (exitCode === 0 && token.length > 20) {
                 sessionToken = token
                 pluginApi.pluginSettings.sessionToken = token
@@ -182,6 +147,54 @@ Item {
         })
     }
 
+    function loginThenUnlock() {
+        if (bwProcess.running) return
+        var password = pluginApi?.pluginSettings?.password || ""
+        var email    = pluginApi?.pluginSettings?.email || ""
+        if (!password || !email) {
+            Logger.w("BitwardenProvider", "No email or password configured")
+            return
+        }
+        Logger.i("BitwardenProvider", "Logging in")
+
+        var env = Object.assign({}, Qt.application.environment)
+        env["BW_PASSWORD"] = password
+        bwProcess.environment = env
+
+        // No --quiet so we can see errors in stdout+stderr
+        runBw([bwPath, "login", email, "--passwordenv", "BW_PASSWORD"], function(loginOut, loginExit) {
+            Logger.i("BitwardenProvider", "Login result: exitCode=" + loginExit + " output:", loginOut)
+            // bw login prints "You are logged in!" on success, exitCode=0
+            // Already logged in also exitCode=0 with message
+            if (loginExit !== 0) {
+                Logger.e("BitwardenProvider", "Login failed. exitCode=" + loginExit)
+                bwProcess.environment = {}
+                if (launcher) launcher.updateResults()
+                return
+            }
+
+            // Login succeeded, now unlock
+            runBw([bwPath, "unlock", "--passwordenv", "BW_PASSWORD", "--raw"], function(out, exitCode) {
+                bwProcess.environment = {}
+                var token = out.trim()
+                Logger.i("BitwardenProvider", "Unlock result: exitCode=" + exitCode + " tokenLen=" + token.length)
+                if (exitCode === 0 && token.length > 20) {
+                    sessionToken = token
+                    pluginApi.pluginSettings.sessionToken = token
+                    pluginApi.saveSettings()
+                    unlocked = true
+                    vaultStatus = "unlocked"
+                    fetchItems()
+                } else {
+                    Logger.e("BitwardenProvider", "Unlock after login failed. exitCode=" + exitCode)
+                    vaultStatus = "locked"
+                    unlocked = false
+                }
+                if (launcher) launcher.updateResults()
+            })
+        })
+    }
+
     function fetchItems() {
         if (fetching || !sessionToken || bwProcess.running) return
         fetching = true
@@ -190,7 +203,6 @@ Item {
             fetching = false
             if (exitCode !== 0 || !out) {
                 Logger.e("BitwardenProvider", "list items failed. exitCode=" + exitCode)
-                // Session may have expired — clear it
                 if (exitCode !== 0) {
                     sessionToken = ""
                     unlocked = false
@@ -208,7 +220,7 @@ Item {
                 loaded = true
                 Logger.i("BitwardenProvider", "Loaded", items.length, "items")
             } catch (e) {
-                Logger.e("BitwardenProvider", "JSON parse error:", e, "raw:", out.substring(0, 200))
+                Logger.e("BitwardenProvider", "JSON parse error:", e)
             }
             if (launcher) launcher.updateResults()
         })
@@ -222,11 +234,11 @@ Item {
 
     function commands() {
         return [
-            { "name": ">bitwarden",          "description": "Search Bitwarden vault",       "icon": "key",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden ") } },
-            { "name": ">bw",                 "description": "Search Bitwarden vault",       "icon": "key",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw ") } },
-            { "name": ">bitwarden username", "description": "Copy username for an item",    "icon": "user",     "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden username ") } },
-            { "name": ">bitwarden password", "description": "Copy password for an item",    "icon": "lock",     "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden password ") } },
-            { "name": ">bitwarden settings", "description": "Open Bitwarden plugin settings","icon": "settings","isTablerIcon": true, "onActivate": function() { openSettings() } }
+            { "name": ">bitwarden",          "description": "Search Bitwarden vault",        "icon": "key",       "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden ") } },
+            { "name": ">bw",                 "description": "Search Bitwarden vault",        "icon": "key",       "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw ") } },
+            { "name": ">bitwarden username", "description": "Copy username for an item",     "icon": "user",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden username ") } },
+            { "name": ">bitwarden password", "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden password ") } },
+            { "name": ">bitwarden settings", "description": "Open Bitwarden plugin settings", "icon": "settings",  "isTablerIcon": true, "onActivate": function() { openSettings() } }
         ]
     }
 
@@ -248,14 +260,6 @@ Item {
                       "icon": "alert-circle", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
         }
 
-    function ensureUnlocked() {
-        if (vaultStatus === "unauthenticated") {
-            loginAndUnlock()
-        } else {
-            unlockVault()
-        }
-    }
-
         // Not unlocked
         if (!unlocked) {
             if (bwProcess.running) {
@@ -264,7 +268,7 @@ Item {
             var hasCreds = !!(pluginApi?.pluginSettings?.password || "")
             if (hasCreds) {
                 return [{ "name": "Vault locked — click to unlock", "description": "Uses credentials from settings",
-                          "icon": "lock", "isTablerIcon": true, "onActivate": function() { ensureUnlocked() } }]
+                          "icon": "lock", "isTablerIcon": true, "onActivate": function() { unlockVault() } }]
             }
             return [{ "name": "Not configured", "description": "Enter password in settings",
                       "icon": "settings", "isTablerIcon": true, "onActivate": function() { openSettings() } }]
