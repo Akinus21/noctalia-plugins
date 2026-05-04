@@ -82,16 +82,26 @@ Item {
             Logger.i("BitwardenProvider", "Registered with Main")
         }
 
+        // Use ensureUnlocked to handle server config (with login) and vault unlock
         var serverUrl = pluginApi?.pluginSettings?.serverUrl || ""
         if (serverUrl) {
-            Logger.i("BitwardenProvider", "Configuring BW server:", serverUrl)
-            runBw([bwPath, "config", "server", serverUrl], function(out, exitCode) {
-                Logger.i("BitwardenProvider", "Config server result: exitCode=" + exitCode + " out:", out)
-                checkStatusThenLogin()
-            })
+            _configureServerAndUnlock(serverUrl)
         } else {
-            checkStatusThenLogin()
+            ensureUnlocked(function() {
+                Logger.i("BitwardenProvider", "Init complete, vault unlocked")
+            })
         }
+    }
+
+    function _configureServerAndUnlock(serverUrl) {
+        Logger.i("BitwardenProvider", "Configuring BW server:", serverUrl)
+        runBw([bwPath, "config", "server", serverUrl], function(out, exitCode) {
+            Logger.i("BitwardenProvider", "Config server result: exitCode=" + exitCode)
+            // If config failed (already logged in somewhere), just try to unlock anyway
+            ensureUnlocked(function() {
+                Logger.i("BitwardenProvider", "Init complete, vault unlocked")
+            })
+        })
     }
 
     function onOpened() {
