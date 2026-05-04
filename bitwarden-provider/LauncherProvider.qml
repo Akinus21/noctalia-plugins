@@ -389,16 +389,27 @@ Item {
             return
         }
         var jsonStr = JSON.stringify(itemData)
-        Logger.i("BitwardenProvider", "Creating item:", itemData.name)
-        runBw([bwPath, "create", "item", jsonStr, "--session", sessionToken], function(out, exitCode) {
-            if (exitCode === 0) {
-                Logger.i("BitwardenProvider", "Item created:", itemData.name)
-                fetchItems()
-                if (callback) callback(true, "Created")
-            } else {
-                Logger.e("BitwardenProvider", "Create failed. exitCode=" + exitCode + " output:", out)
-                if (callback) callback(false, out || "Creation failed")
+        Logger.i("BitwardenProvider", "Encoding item:", itemData.name)
+        // Step 1: encode JSON to base64
+        runBw([bwPath, "encode", jsonStr], function(encoded, encExit) {
+            if (encExit !== 0 || !encoded) {
+                Logger.e("BitwardenProvider", "Encode failed. exitCode=" + encExit + " out:", encoded)
+                if (callback) callback(false, "Encode failed")
+                return
             }
+            var b64 = encoded.trim()
+            Logger.i("BitwardenProvider", "Creating item (encoded):", itemData.name)
+            // Step 2: create with base64 data
+            runBw([bwPath, "create", "item", b64, "--session", sessionToken], function(out, exitCode) {
+                if (exitCode === 0) {
+                    Logger.i("BitwardenProvider", "Item created:", itemData.name)
+                    fetchItems()
+                    if (callback) callback(true, "Created")
+                } else {
+                    Logger.e("BitwardenProvider", "Create failed. exitCode=" + exitCode + " output:", out)
+                    if (callback) callback(false, out || "Creation failed")
+                }
+            })
         })
     }
 
