@@ -1,4 +1,29 @@
 {
+  "widget": {
+    "tooltip": "Bitwarden Vault"
+  },
+  "menu": {
+    "settings": "Vault settings"
+  },
+  "panel": {
+    "addTitle": "Add Vault Item",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. github.com",
+    "usernameLabel": "Username",
+    "usernamePlaceholder": "your@email.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "your password",
+    "urlLabel": "URL",
+    "urlPlaceholder": "https://github.com",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "saved": "Item saved",
+    "saveError": "Error: {{message}}",
+    "copyUsername": "Copy Username",
+    "copyPassword": "Copy Password",
+    "close": "Close"
+  },
   "settings": {
     "serverUrl": {
       "label": "Server URL",

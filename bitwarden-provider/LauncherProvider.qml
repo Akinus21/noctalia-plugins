@@ -73,6 +73,12 @@ Item {
         sessionToken = pluginApi?.pluginSettings?.sessionToken || ""
         Logger.i("BitwardenProvider", "Using bw path:", bwPath)
 
+        // Register with Main.qml for cross-component access
+        if (pluginApi && pluginApi.mainInstance) {
+            pluginApi.mainInstance.provider = root
+            Logger.i("BitwardenProvider", "Registered with Main")
+        }
+
         var serverUrl = pluginApi?.pluginSettings?.serverUrl || ""
         if (serverUrl) {
             Logger.i("BitwardenProvider", "Configuring BW server:", serverUrl)
@@ -236,6 +242,38 @@ Item {
         })
     }
 
+    // ── Create item ────────────────────────────────────────────────────────
+
+    function createItem(itemData, callback) {
+        if (!sessionToken || !unlocked) {
+            Logger.w("BitwardenProvider", "createItem: not unlocked")
+            if (callback) callback(false, "Vault not unlocked")
+            return
+        }
+        if (bwProcess.running) {
+            Logger.w("BitwardenProvider", "createItem: process busy")
+            if (callback) callback(false, "Process busy")
+            return
+        }
+
+        var jsonStr = JSON.stringify(itemData)
+        var delim = "BWJSON_" + Math.floor(Math.random() * 1000000000)
+        // sh heredoc: cat <<'DELIM' | bw create item --session token
+        var script = "cat <<'" + delim + "' | " + bwPath + " create item --session " + sessionToken + "\n" + jsonStr + "\n" + delim
+
+        Logger.i("BitwardenProvider", "Creating item:", itemData.name)
+        runBw(["sh", "-c", script], function(out, exitCode) {
+            if (exitCode === 0) {
+                Logger.i("BitwardenProvider", "Item created:", itemData.name)
+                fetchItems()
+                if (callback) callback(true, "Created")
+            } else {
+                Logger.e("BitwardenProvider", "Create failed. exitCode=" + exitCode + " output:", out)
+                if (callback) callback(false, out || "Creation failed")
+            }
+        })
+    }
+
     // ── Command handling ──────────────────────────────────────────────────
 
     function handleCommand(searchText) {
@@ -248,7 +286,8 @@ Item {
             { "name": ">bw",                 "description": "Search Bitwarden vault",        "icon": "key",       "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw ") } },
             { "name": ">bitwarden username", "description": "Copy username for an item",     "icon": "user",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden username ") } },
             { "name": ">bitwarden password", "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden password ") } },
-            { "name": ">bitwarden settings", "description": "Open Bitwarden plugin settings", "icon": "settings",  "isTablerIcon": true, "onActivate": function() { openSettings() } }
+            { "name": ">bitwarden add",      "description": "Add new vault item",            "icon": "plus",      "isTablerIcon": true, "onActivate": function() { openAddPanel() } },
+            { "name": ">bitwarden settings", "description": "Open Bitwarden plugin settings","icon": "settings",  "isTablerIcon": true, "onActivate": function() { openSettings() } }
         ]
     }
 
@@ -263,6 +302,7 @@ Item {
         else return []
 
         if (query === "settings") { openSettings(); return [] }
+        if (query === "add")      { openAddPanel(); return [] }
 
         // bw not found guard
         if (bwPath === "") {
@@ -295,6 +335,17 @@ Item {
 
         var pool = items
         var results = []
+
+        // Add "Add new item" shortcut when showing all items
+        if (query === "" && mode === "search") {
+            results.push({
+                "name": "Add new vault item",
+                "description": "Create a new login entry",
+                "icon": "plus",
+                "isTablerIcon": true,
+                "onActivate": function() { openAddPanel() }
+            })
+        }
 
         if (query === "") {
             var limit = Math.min(pool.length, 100)
@@ -356,6 +407,16 @@ Item {
         pluginApi.withCurrentScreen(function(screen) {
             pluginApi.pluginSettings._panelMode = "view"
             pluginApi.pluginSettings._viewItem  = item
+            pluginApi.openPanel(screen)
+        })
+        if (launcher) launcher.close()
+    }
+
+    function openAddPanel() {
+        if (!pluginApi) return
+        pluginApi.withCurrentScreen(function(screen) {
+            pluginApi.pluginSettings._panelMode = "add"
+            pluginApi.pluginSettings._viewItem  = null
             pluginApi.openPanel(screen)
         })
         if (launcher) launcher.close()

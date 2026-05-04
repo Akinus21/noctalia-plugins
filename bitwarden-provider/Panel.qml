@@ -30,12 +30,11 @@ Item {
         anchors.fill: parent
         color: "transparent"
 
+        // ── VIEW MODE ───────────────────────────────────────────────────────
         ColumnLayout {
-            anchors {
-                fill: parent
-                margins: Style.marginL
-            }
+            anchors { fill: parent; margins: Style.marginL }
             spacing: Style.marginL
+            visible: panelMode === "view"
 
             NText {
                 text: viewItem ? (viewItem.name || "Vault Item") : "Vault Item"
@@ -44,16 +43,11 @@ Item {
                 Layout.fillWidth: true
             }
 
-            NText {
-                text: "Username"
-                font.weight: Font.Bold
-            }
-
+            NText { text: "Username"; font.weight: Font.Bold }
             NText {
                 text: viewItem && viewItem.login ? (viewItem.login.username || "-") : "-"
                 Layout.fillWidth: true
             }
-
             NButton {
                 text: "Copy Username"
                 outlined: true
@@ -65,16 +59,11 @@ Item {
                 }
             }
 
-            NText {
-                text: "Password"
-                font.weight: Font.Bold
-            }
-
+            NText { text: "Password"; font.weight: Font.Bold }
             NText {
                 text: viewItem && viewItem.login && viewItem.login.password ? "********" : "-"
                 Layout.fillWidth: true
             }
-
             NButton {
                 text: "Copy Password"
                 outlined: true
@@ -86,11 +75,7 @@ Item {
                 }
             }
 
-            NText {
-                text: "URL"
-                font.weight: Font.Bold
-            }
-
+            NText { text: "URL"; font.weight: Font.Bold }
             NText {
                 text: viewItem && viewItem.login ? (viewItem.login.uri || "-") : "-"
                 color: Color.mPrimary
@@ -106,6 +91,148 @@ Item {
                 onClicked: closePanel()
             }
         }
+
+        // ── ADD MODE ────────────────────────────────────────────────────────
+        ColumnLayout {
+            id: addForm
+            anchors { fill: parent; margins: Style.marginL }
+            spacing: Style.marginL
+            visible: panelMode === "add"
+
+            property string editName: ""
+            property string editUsername: ""
+            property string editPassword: ""
+            property string editUri: ""
+            property string statusText: ""
+            property bool statusOk: true
+            property bool isSaving: false
+
+            NText {
+                text: "Add Vault Item"
+                font.weight: Font.Bold
+                pointSize: Style.fontSizeL
+                Layout.fillWidth: true
+            }
+
+            NTextInput {
+                Layout.fillWidth: true
+                label: "Name"
+                placeholderText: "e.g. github.com"
+                text: addForm.editName
+                onTextChanged: addForm.editName = text
+            }
+
+            NTextInput {
+                Layout.fillWidth: true
+                label: "Username"
+                placeholderText: "your@email.com"
+                text: addForm.editUsername
+                onTextChanged: addForm.editUsername = text
+            }
+
+            NTextInput {
+                Layout.fillWidth: true
+                label: "Password"
+                placeholderText: "your password"
+                text: addForm.editPassword
+                onTextChanged: addForm.editPassword = text
+            }
+
+            NTextInput {
+                Layout.fillWidth: true
+                label: "URL"
+                placeholderText: "https://github.com"
+                text: addForm.editUri
+                onTextChanged: addForm.editUri = text
+            }
+
+            NText {
+                visible: addForm.statusText !== ""
+                text: addForm.statusText
+                color: addForm.statusOk ? "#4CAF50" : "#F44336"
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+
+            Item { Layout.fillHeight: true; Layout.fillWidth: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.marginS
+
+                NButton {
+                    text: "Cancel"
+                    outlined: true
+                    Layout.fillWidth: true
+                    enabled: !addForm.isSaving
+                    onClicked: closePanel()
+                }
+
+                NButton {
+                    text: addForm.isSaving ? "Saving…" : "Save"
+                    Layout.fillWidth: true
+                    enabled: addForm.editName !== "" && !addForm.isSaving
+                    onClicked: saveNewItem()
+                }
+            }
+        }
+    }
+
+    // ── Actions ───────────────────────────────────────────────────────────
+
+    function saveNewItem() {
+        var name     = addForm.editName.trim()
+        var username = addForm.editUsername.trim()
+        var password = addForm.editPassword.trim()
+        var uri      = addForm.editUri.trim()
+
+        if (!name) {
+            addForm.statusText = "Name is required"
+            addForm.statusOk = false
+            return
+        }
+
+        addForm.isSaving = true
+        addForm.statusText = ""
+
+        var itemData = {
+            "type": 1,
+            "name": name,
+            "login": {
+                "username": username,
+                "password": password,
+                "uris": uri ? [{ "uri": uri, "match": null }] : []
+            }
+        }
+
+        var main = pluginApi?.mainInstance
+        if (!main || !main.createItem) {
+            addForm.statusText = "Provider not ready"
+            addForm.statusOk = false
+            addForm.isSaving = false
+            return
+        }
+
+        main.createItem(itemData, function(success, message) {
+            addForm.isSaving = false
+            if (success) {
+                addForm.statusText = "Item saved"
+                addForm.statusOk = true
+                ToastService.showNotice("Vault item created")
+                addForm.editName = ""
+                addForm.editUsername = ""
+                addForm.editPassword = ""
+                addForm.editUri = ""
+                // Stay open a moment, then close
+                Qt.callLater(function() {
+                    closePanel()
+                })
+            } else {
+                addForm.statusText = "Error: " + (message || "Failed")
+                addForm.statusOk = false
+                Logger.e("BitwardenPanel", "Save failed:", message)
+            }
+        })
     }
 
     function closePanel() {
@@ -118,6 +245,6 @@ Item {
     }
 
     function copyToClipboard(text) {
-        Quickshell.execDetached(["sh", "-c", "echo -n '" + String(text).replace(/'/g, "'\\''") + "' | wl-copy"])
+        Quickshell.execDetached(["sh", "-c", "echo -n '" + String(text).replace(/'/g, "'\''") + "' | wl-copy"])
     }
 }

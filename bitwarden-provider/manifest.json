@@ -12,6 +12,7 @@
     "Security"
   ],
   "entryPoints": {
+    "main": "Main.qml",
     "launcherProvider": "LauncherProvider.qml",
     "panel": "Panel.qml",
     "settings": "Settings.qml"
