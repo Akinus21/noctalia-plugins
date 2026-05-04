@@ -257,12 +257,9 @@ Item {
         }
 
         var jsonStr = JSON.stringify(itemData)
-        var delim = "BWJSON_" + Math.floor(Math.random() * 1000000000)
-        // sh heredoc: cat <<'DELIM' | bw create item --session token
-        var script = "cat <<'" + delim + "' | " + bwPath + " create item --session " + sessionToken + "\n" + jsonStr + "\n" + delim
-
         Logger.i("BitwardenProvider", "Creating item:", itemData.name)
-        runBw(["sh", "-c", script], function(out, exitCode) {
+        // Pass JSON directly as argv — no shell quoting needed
+        runBw([bwPath, "create", "item", jsonStr, "--session", sessionToken], function(out, exitCode) {
             if (exitCode === 0) {
                 Logger.i("BitwardenProvider", "Item created:", itemData.name)
                 fetchItems()

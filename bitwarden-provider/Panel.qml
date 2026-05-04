@@ -15,15 +15,8 @@ Item {
 
     anchors.fill: parent
 
-    property string panelMode: "view"
-    property var viewItem: null
-
-    Component.onCompleted: {
-        if (pluginApi && pluginApi.pluginSettings) {
-            panelMode = pluginApi.pluginSettings._panelMode || "view"
-            viewItem = pluginApi.pluginSettings._viewItem || null
-        }
-    }
+    property string panelMode: pluginApi?.pluginSettings?._panelMode || "view"
+    property var viewItem: pluginApi?.pluginSettings?._viewItem || null
 
     Rectangle {
         id: panelContainer
@@ -32,12 +25,10 @@ Item {
 
         // ── VIEW MODE ───────────────────────────────────────────────────────
         ColumnLayout {
-            anchors { fill: parent; margins: Style.marginL }
-            spacing: Style.marginL
-            visible: panelMode === "view"
+            id: viewLayout
 
             NText {
-                text: viewItem ? (viewItem.name || "Vault Item") : "Vault Item"
+                text: root.viewItem ? (root.viewItem.name || "Vault Item") : "Vault Item"
                 font.weight: Font.Bold
                 pointSize: Style.fontSizeL
                 Layout.fillWidth: true
@@ -45,39 +36,39 @@ Item {
 
             NText { text: "Username"; font.weight: Font.Bold }
             NText {
-                text: viewItem && viewItem.login ? (viewItem.login.username || "-") : "-"
+                text: root.viewItem && root.viewItem.login ? (root.viewItem.login.username || "-") : "-"
                 Layout.fillWidth: true
             }
             NButton {
                 text: "Copy Username"
                 outlined: true
                 Layout.fillWidth: true
-                visible: viewItem && viewItem.login && viewItem.login.username
+                visible: root.viewItem && root.viewItem.login && root.viewItem.login.username
                 onClicked: {
-                    copyToClipboard(viewItem.login.username)
+                    copyToClipboard(root.viewItem.login.username)
                     ToastService.showNotice("Username copied")
                 }
             }
 
             NText { text: "Password"; font.weight: Font.Bold }
             NText {
-                text: viewItem && viewItem.login && viewItem.login.password ? "********" : "-"
+                text: root.viewItem && root.viewItem.login && root.viewItem.login.password ? "********" : "-"
                 Layout.fillWidth: true
             }
             NButton {
                 text: "Copy Password"
                 outlined: true
                 Layout.fillWidth: true
-                visible: viewItem && viewItem.login && viewItem.login.password
+                visible: root.viewItem && root.viewItem.login && root.viewItem.login.password
                 onClicked: {
-                    copyToClipboard(viewItem.login.password)
+                    copyToClipboard(root.viewItem.login.password)
                     ToastService.showNotice("Password copied")
                 }
             }
 
             NText { text: "URL"; font.weight: Font.Bold }
             NText {
-                text: viewItem && viewItem.login ? (viewItem.login.uri || "-") : "-"
+                text: root.viewItem && root.viewItem.login ? (root.viewItem.login.uri || "-") : "-"
                 color: Color.mPrimary
                 Layout.fillWidth: true
             }
@@ -95,17 +86,6 @@ Item {
         // ── ADD MODE ────────────────────────────────────────────────────────
         ColumnLayout {
             id: addForm
-            anchors { fill: parent; margins: Style.marginL }
-            spacing: Style.marginL
-            visible: panelMode === "add"
-
-            property string editName: ""
-            property string editUsername: ""
-            property string editPassword: ""
-            property string editUri: ""
-            property string statusText: ""
-            property bool statusOk: true
-            property bool isSaving: false
 
             NText {
                 text: "Add Vault Item"
@@ -121,7 +101,6 @@ Item {
                 text: addForm.editName
                 onTextChanged: addForm.editName = text
             }
-
             NTextInput {
                 Layout.fillWidth: true
                 label: "Username"
@@ -129,7 +108,6 @@ Item {
                 text: addForm.editUsername
                 onTextChanged: addForm.editUsername = text
             }
-
             NTextInput {
                 Layout.fillWidth: true
                 label: "Password"
@@ -137,7 +115,6 @@ Item {
                 text: addForm.editPassword
                 onTextChanged: addForm.editPassword = text
             }
-
             NTextInput {
                 Layout.fillWidth: true
                 label: "URL"
@@ -167,7 +144,6 @@ Item {
                     enabled: !addForm.isSaving
                     onClicked: closePanel()
                 }
-
                 NButton {
                     text: addForm.isSaving ? "Saving…" : "Save"
                     Layout.fillWidth: true
@@ -177,6 +153,31 @@ Item {
             }
         }
     }
+
+    states: [
+        State {
+            name: "view"
+            when: root.panelMode === "view"
+            PropertyChanges {
+                target: viewLayout
+                anchors.fill: parent
+                anchors.margins: Style.marginL
+                visible: true
+            }
+            PropertyChanges { target: addForm; visible: false }
+        },
+        State {
+            name: "add"
+            when: root.panelMode === "add"
+            PropertyChanges {
+                target: addForm
+                anchors.fill: parent
+                anchors.margins: Style.marginL
+                visible: true
+            }
+            PropertyChanges { target: viewLayout; visible: false }
+        }
+    ]
 
     // ── Actions ───────────────────────────────────────────────────────────
 
@@ -195,16 +196,6 @@ Item {
         addForm.isSaving = true
         addForm.statusText = ""
 
-        var itemData = {
-            "type": 1,
-            "name": name,
-            "login": {
-                "username": username,
-                "password": password,
-                "uris": uri ? [{ "uri": uri, "match": null }] : []
-            }
-        }
-
         var main = pluginApi?.mainInstance
         if (!main || !main.createItem) {
             addForm.statusText = "Provider not ready"
@@ -213,7 +204,15 @@ Item {
             return
         }
 
-        main.createItem(itemData, function(success, message) {
+        main.createItem({
+            type: 1,
+            name: name,
+            login: {
+                username: username,
+                password: password,
+                uris: uri ? [{ uri: uri, match: null }] : []
+            }
+        }, function(success, message) {
             addForm.isSaving = false
             if (success) {
                 addForm.statusText = "Item saved"
@@ -223,10 +222,7 @@ Item {
                 addForm.editUsername = ""
                 addForm.editPassword = ""
                 addForm.editUri = ""
-                // Stay open a moment, then close
-                Qt.callLater(function() {
-                    closePanel()
-                })
+                Qt.callLater(closePanel)
             } else {
                 addForm.statusText = "Error: " + (message || "Failed")
                 addForm.statusOk = false
