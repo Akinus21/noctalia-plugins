@@ -282,9 +282,13 @@ Item {
             { "name": ">bitwarden",          "description": "Search Bitwarden vault",        "icon": "key",       "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden ") } },
             { "name": ">bw",                 "description": "Search Bitwarden vault",        "icon": "key",       "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw ") } },
             { "name": ">bitwarden username", "description": "Copy username for an item",     "icon": "user",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden username ") } },
+            { "name": ">bw username",        "description": "Copy username for an item",     "icon": "user",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw username ") } },
             { "name": ">bitwarden password", "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden password ") } },
+            { "name": ">bw password",        "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw password ") } },
             { "name": ">bitwarden add",      "description": "Add new vault item",            "icon": "plus",      "isTablerIcon": true, "onActivate": function() { openAddPanel() } },
-            { "name": ">bitwarden settings", "description": "Open Bitwarden plugin settings","icon": "settings",  "isTablerIcon": true, "onActivate": function() { openSettings() } }
+            { "name": ">bw add",             "description": "Add new vault item",            "icon": "plus",      "isTablerIcon": true, "onActivate": function() { openAddPanel() } },
+            { "name": ">bitwarden settings", "description": "Open Bitwarden plugin settings", "icon": "settings",  "isTablerIcon": true, "onActivate": function() { openSettings() } },
+            { "name": ">bw settings",        "description": "Open Bitwarden plugin settings", "icon": "settings",  "isTablerIcon": true, "onActivate": function() { openSettings() } }
         ]
     }
 
@@ -410,10 +414,13 @@ Item {
     }
 
     function openAddPanel() {
-        if (!pluginApi) return
+        Logger.i("BitwardenProvider", "openAddPanel called")
+        if (!pluginApi) { Logger.w("BitwardenProvider", "openAddPanel: no pluginApi"); return }
         pluginApi.withCurrentScreen(function(screen) {
             pluginApi.pluginSettings._panelMode = "add"
             pluginApi.pluginSettings._viewItem  = null
+            pluginApi.saveSettings()
+            Logger.i("BitwardenProvider", "Opening add panel on screen:", screen?.name)
             pluginApi.openPanel(screen)
         })
         if (launcher) launcher.close()

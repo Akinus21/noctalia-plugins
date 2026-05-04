@@ -18,6 +18,14 @@ Item {
     property string panelMode: pluginApi?.pluginSettings?._panelMode || "view"
     property var viewItem: pluginApi?.pluginSettings?._viewItem || null
 
+    onVisibleChanged: {
+        if (visible && pluginApi) {
+            panelMode = pluginApi.pluginSettings._panelMode || "view"
+            viewItem  = pluginApi.pluginSettings._viewItem || null
+            Logger.d("BitwardenPanel", "Visible changed, mode:", panelMode)
+        }
+    }
+
     Rectangle {
         id: panelContainer
         anchors.fill: parent
@@ -26,6 +34,9 @@ Item {
         // ── VIEW MODE ───────────────────────────────────────────────────────
         ColumnLayout {
             id: viewLayout
+            anchors { fill: parent; margins: Style.marginL }
+            spacing: Style.marginL
+            visible: root.panelMode === "view"
 
             NText {
                 text: root.viewItem ? (root.viewItem.name || "Vault Item") : "Vault Item"
@@ -86,6 +97,17 @@ Item {
         // ── ADD MODE ────────────────────────────────────────────────────────
         ColumnLayout {
             id: addForm
+            anchors { fill: parent; margins: Style.marginL }
+            spacing: Style.marginL
+            visible: root.panelMode === "add"
+
+            property string editName: ""
+            property string editUsername: ""
+            property string editPassword: ""
+            property string editUri: ""
+            property string statusText: ""
+            property bool statusOk: true
+            property bool isSaving: false
 
             NText {
                 text: "Add Vault Item"
@@ -153,31 +175,6 @@ Item {
             }
         }
     }
-
-    states: [
-        State {
-            name: "view"
-            when: root.panelMode === "view"
-            PropertyChanges {
-                target: viewLayout
-                anchors.fill: parent
-                anchors.margins: Style.marginL
-                visible: true
-            }
-            PropertyChanges { target: addForm; visible: false }
-        },
-        State {
-            name: "add"
-            when: root.panelMode === "add"
-            PropertyChanges {
-                target: addForm
-                anchors.fill: parent
-                anchors.margins: Style.marginL
-                visible: true
-            }
-            PropertyChanges { target: viewLayout; visible: false }
-        }
-    ]
 
     // ── Actions ───────────────────────────────────────────────────────────
 
