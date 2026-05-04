@@ -16,6 +16,8 @@ ColumnLayout {
     property string editServerUrl: cfg.serverUrl ?? defaults.serverUrl ?? ""
     property string editEmail: cfg.email ?? defaults.email ?? ""
     property string editPassword: cfg.password || ""
+    property bool editAutoType: cfg.autoTypeEnabled ?? defaults.autoTypeEnabled ?? true
+    property string editWtypePath: cfg.wtypePath ?? defaults.wtypePath ?? "/home/linuxbrew/.linuxbrew/bin/wtype"
 
     property string testStatus: ""   // "" | "testing" | "ok" | "err"
     property string testMessage: ""
@@ -108,9 +110,11 @@ ColumnLayout {
 
     function saveSettings() {
         if (!pluginApi) return
-        pluginApi.pluginSettings.serverUrl = root.editServerUrl
-        pluginApi.pluginSettings.email     = root.editEmail
-        pluginApi.pluginSettings.password  = root.editPassword
+        pluginApi.pluginSettings.serverUrl       = root.editServerUrl
+        pluginApi.pluginSettings.email          = root.editEmail
+        pluginApi.pluginSettings.password       = root.editPassword
+        pluginApi.pluginSettings.autoTypeEnabled = root.editAutoType
+        pluginApi.pluginSettings.wtypePath       = root.editWtypePath
         pluginApi.saveSettings()
         testConnection()
     }
@@ -187,6 +191,48 @@ ColumnLayout {
                 text: checked ? "Hide" : "Show"
                 outlined: true
                 onClicked: checked = !checked
+            }
+        }
+    }
+
+    // Auto-type section
+    NBox {
+        Layout.fillWidth: true
+        Layout.preferredHeight: autoTypeContent.implicitHeight + Style.marginL * 2
+        color: Color.mSurfaceContainer
+        radius: Style.radiusM
+
+        ColumnLayout {
+            id: autoTypeContent
+            anchors { fill: parent; margins: Style.marginL }
+            spacing: Style.marginS
+
+            NText {
+                text: "Auto-Type Login"
+                font.weight: Font.Bold
+                Layout.fillWidth: true
+            }
+            NText {
+                text: "Type username + Tab + password into the focused window. Requires wtype (brew install wtype)."
+                color: Color.mOnSurfaceVariant
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+                pointSize: Style.fontSizeS
+            }
+
+            NButton {
+                Layout.fillWidth: true
+                text: root.editAutoType ? "Auto-Type: ON" : "Auto-Type: OFF"
+                outlined: !root.editAutoType
+                onClicked: root.editAutoType = !root.editAutoType
+            }
+
+            NTextInput {
+                Layout.fillWidth: true
+                label: "wtype path"
+                placeholderText: "/home/linuxbrew/.linuxbrew/bin/wtype"
+                text: root.editWtypePath
+                onTextChanged: root.editWtypePath = text
             }
         }
     }

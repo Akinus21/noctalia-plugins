@@ -77,6 +77,16 @@ Item {
                 }
             }
 
+            NButton {
+                text: "Auto-Type Login"
+                outlined: true
+                Layout.fillWidth: true
+                visible: root.viewItem && root.viewItem.login && root.viewItem.login.username && root.viewItem.login.password
+                onClicked: {
+                    autoTypeLogin()
+                }
+            }
+
             NText { text: "URL"; font.weight: Font.Bold }
             NText {
                 text: root.viewItem && root.viewItem.login ? (root.viewItem.login.uri || "-") : "-"
@@ -226,6 +236,25 @@ Item {
                 Logger.e("BitwardenPanel", "Save failed:", message)
             }
         })
+    }
+
+    function autoTypeLogin() {
+        if (!root.viewItem || !root.viewItem.login) return
+        var username = root.viewItem.login.username || ""
+        var password = root.viewItem.login.password || ""
+        if (!username || !password) {
+            ToastService.showError("Missing username or password for auto-type")
+            return
+        }
+        var main = pluginApi?.mainInstance
+        if (!main || !main.provider) {
+            ToastService.showError("Provider not ready")
+            return
+        }
+        main.provider.ensureUnlocked(function() {
+            main.provider.autoType(username, password)
+        })
+        closePanel()
     }
 
     function closePanel() {

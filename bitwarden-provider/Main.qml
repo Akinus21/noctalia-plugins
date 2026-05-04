@@ -18,6 +18,23 @@ Item {
         }
     }
 
+    function ensureUnlocked(callback) {
+        if (provider) {
+            provider.ensureUnlocked(callback)
+        } else {
+            Logger.w("BitwardenMain", "ensureUnlocked: no provider")
+            if (callback) callback()
+        }
+    }
+
+    function autoType(username, password) {
+        if (provider) {
+            provider.autoType(username, password)
+        } else {
+            Logger.w("BitwardenMain", "autoType: no provider")
+        }
+    }
+
     function refreshItems() {
         if (provider) {
             provider.loaded = false

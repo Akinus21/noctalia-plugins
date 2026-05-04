@@ -22,6 +22,7 @@
     "saveError": "Error: {{message}}",
     "copyUsername": "Copy Username",
     "copyPassword": "Copy Password",
+    "autoTypeLogin": "Auto-Type Login",
     "close": "Close"
   },
   "settings": {
@@ -36,6 +37,12 @@
     "password": {
       "label": "Master Password",
       "desc": "Your Bitwarden master password. Stored locally and used to unlock the vault."
+    },
+    "autoType": {
+      "label": "Auto-Type Login",
+      "desc": "Type username + Tab + password into the focused window using wtype.",
+      "wtypePathLabel": "wtype path",
+      "wtypePathPlaceholder": "/home/linuxbrew/.linuxbrew/bin/wtype"
     },
     "hint": "Install the Bitwarden CLI first: brew install bitwarden-cli. Then enter your credentials here. Saving will clear your cached session and require re-authentication."
   }

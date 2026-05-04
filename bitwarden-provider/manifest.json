@@ -1,33 +1,35 @@
 {
   "id": "bitwarden-provider",
   "name": "Bitwarden Vault",
-  "version": "2.0.3",
-  "minNoctaliaVersion": "4.4.1",
-  "author": "Akinus21",
-  "license": "MIT",
-  "repository": "https://github.com/Akinus21/noctalia-plugins",
-  "description": "Access your Bitwarden vault from the launcher. Requires the bw CLI (brew install bitwarden-cli).",
-  "tags": [
-    "Launcher",
-    "Security"
-  ],
-  "entryPoints": {
-    "main": "Main.qml",
-    "launcherProvider": "LauncherProvider.qml",
-    "panel": "Panel.qml",
-    "settings": "Settings.qml"
-  },
-  "dependencies": {
-    "plugins": []
-  },
-  "metadata": {
-    "defaultSettings": {
-      "serverUrl": "",
-      "email": "",
-      "password": "",
-      "sessionToken": "",
-      "bwVersion": "",
-      "bwLastUpdateCheck": 0
+    "version": "2.1.0",
+    "minNoctaliaVersion": "4.4.1",
+    "author": "Akinus21",
+    "license": "MIT",
+    "repository": "https://github.com/Akinus21/noctalia-plugins",
+    "description": "Access your Bitwarden vault from the launcher. Auto-type login credentials with wtype.",
+    "tags": [
+      "Launcher",
+      "Security"
+    ],
+    "entryPoints": {
+      "main": "Main.qml",
+      "launcherProvider": "LauncherProvider.qml",
+      "panel": "Panel.qml",
+      "settings": "Settings.qml"
+    },
+    "dependencies": {
+      "plugins": []
+    },
+    "metadata": {
+      "defaultSettings": {
+        "serverUrl": "",
+        "email": "",
+        "password": "",
+        "sessionToken": "",
+        "bwVersion": "",
+        "bwLastUpdateCheck": 0,
+        "wtypePath": "/home/linuxbrew/.linuxbrew/bin/wtype",
+        "autoTypeEnabled": true
+      }
     }
-  }
 }

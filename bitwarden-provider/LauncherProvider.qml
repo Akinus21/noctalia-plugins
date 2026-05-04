@@ -27,6 +27,8 @@ Item {
     property string sessionToken: ""
     property string vaultStatus: "unauthenticated"
     property string bwPath: "/home/linuxbrew/.linuxbrew/bin/bw"
+    property string wtypePath: pluginApi?.pluginSettings?.wtypePath || "/home/linuxbrew/.linuxbrew/bin/wtype"
+    property bool wtypeInstalled: false
 
     // Operations waiting to run after unlock
     property var _unlockQueue: []
@@ -114,6 +116,62 @@ Item {
         }
     }
 
+    // ── wtype management ────────────────────────────────────────────────────
+
+    function ensureWtype(callback) {
+        var path = pluginApi?.pluginSettings?.wtypePath || "/home/linuxbrew/.linuxbrew/bin/wtype"
+        if (wtypeInstalled) {
+            if (callback) callback(true)
+            return
+        }
+        // Check if wtype exists
+        runBw(["test", "-x", path], function(out, exitCode) {
+            if (exitCode === 0) {
+                wtypeInstalled = true
+                wtypePath = path
+                Logger.i("BitwardenProvider", "wtype found at:", path)
+                if (callback) callback(true)
+                return
+            }
+            Logger.i("BitwardenProvider", "wtype not found, attempting install via brew...")
+            // Try to install wtype
+            runBw(["sh", "-c", "export PATH=\"/home/linuxbrew/.linuxbrew/bin:$PATH\" && brew install wtype"], function(installOut, installExit) {
+                if (installExit === 0) {
+                    wtypeInstalled = true
+                    wtypePath = path
+                    pluginApi.pluginSettings.wtypePath = path
+                    pluginApi.saveSettings()
+                    Logger.i("BitwardenProvider", "wtype installed successfully")
+                    if (callback) callback(true)
+                } else {
+                    Logger.e("BitwardenProvider", "wtype install failed:", installOut)
+                    wtypeInstalled = false
+                    if (callback) callback(false)
+                }
+            })
+        })
+    }
+
+    function autoType(username, password) {
+        if (!pluginApi?.pluginSettings?.autoTypeEnabled) {
+            Logger.w("BitwardenProvider", "Auto-type disabled in settings")
+            return
+        }
+        ensureWtype(function(ok) {
+            if (!ok) {
+                ToastService.showError("wtype not available. Install: brew install wtype")
+                return
+            }
+            // wtype types the text then presses Tab, then types password
+            var safeUser = String(username).replace(/'/g, "'\''")
+            var safePass = String(password).replace(/'/g, "'\''")
+            var script = wtypePath + " '" + safeUser + "' -s 250 -k Tab '" + safePass + "'"
+            Logger.i("BitwardenProvider", "Auto-typing login for:", username)
+            Quickshell.execDetached(["sh", "-c", script])
+            ToastService.showNotice("Auto-typed login credentials")
+        })
+    }
+
     // ── Auto-unlock core ──────────────────────────────────────────────────
 
     function ensureUnlocked(thenDo) {
@@ -129,7 +187,7 @@ Item {
 
         if (thenDo) _unlockQueue.push(thenDo)
 
-        // Check current status then decide: login (>>> unlock) or just unlock
+        // Check current status then decide: login (-> unlock) or just unlock
         checkStatus(function(status) {
             if (status === "unauthenticated") {
                 Logger.i("BitwardenProvider", "ensureUnlocked: not logged in, will login")
@@ -390,7 +448,7 @@ Item {
         }
         var jsonStr = JSON.stringify(itemData)
         // Escape single quotes for shell printf
-        var safeJson = jsonStr.replace(/'/g, "'\\''")
+        var safeJson = jsonStr.replace(/'/g, "'\''")
         // Pipeline: printf JSON -> bw encode -> bw create item --session token
         var script = "printf '%s' '" + safeJson + "' | " + bwPath + " encode | " + bwPath + " create item --session " + sessionToken
 
@@ -410,7 +468,7 @@ Item {
     // ── Command handling ──────────────────────────────────────────────────
 
     function handleCommand(searchText) {
-        return searchText.startsWith(">bitwarden") || searchText.startsWith(">bw")
+        return searchText.startsWith(">bitwarden") || searchText.startsWith(">bw") || searchText.startsWith("bwa")
     }
 
     function commands() {
@@ -423,6 +481,9 @@ Item {
             { "name": ">bw password",        "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw password ") } },
             { "name": ">bitwarden add",      "description": "Add new vault item",            "icon": "plus",      "isTablerIcon": true, "onActivate": function() { openAddPanel() } },
             { "name": ">bw add",             "description": "Add new vault item",            "icon": "plus",      "isTablerIcon": true, "onActivate": function() { openAddPanel() } },
+            { "name": ">bitwarden autofill", "description": "Auto-type login credentials",   "icon": "keyboard",  "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden autofill ") } },
+            { "name": ">bw autofill",        "description": "Auto-type login credentials",   "icon": "keyboard",  "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw autofill ") } },
+            { "name": "bwa",                  "description": "Auto-type login credentials",   "icon": "keyboard",  "isTablerIcon": true, "onActivate": function() { launcher.setSearchText("bwa ") } },
             { "name": ">bitwarden settings", "description": "Open Bitwarden plugin settings", "icon": "settings",  "isTablerIcon": true, "onActivate": function() { openSettings() } },
             { "name": ">bw settings",        "description": "Open Bitwarden plugin settings", "icon": "settings",  "isTablerIcon": true, "onActivate": function() { openSettings() } }
         ]
@@ -436,10 +497,13 @@ Item {
 
         if      (searchText.startsWith(">bitwarden")) query = searchText.slice(10).trim()
         else if (searchText.startsWith(">bw"))        query = searchText.slice(3).trim()
+        else if (searchText.startsWith("bwa"))         query = searchText.slice(3).trim()
         else return []
 
         if (query === "settings") { openSettings(); return [] }
         if (query === "add")      { openAddPanel(); return [] }
+        if (query === "autofill") { query = ""; mode = "autofill" }
+        else if (query.startsWith("autofill ")) { mode = "autofill"; query = query.slice(9).trim() }
 
         // bw not found guard
         if (bwPath === "") {
@@ -516,12 +580,17 @@ Item {
         var password = item.login ? (item.login.password || "") : ""
         var subtitle = username || "No username"
         if (mode === "password") subtitle = password ? "Click to copy password" : "No password stored"
+        if (mode === "autofill") subtitle = "Auto-type: " + (username || "no username")
 
         return {
             "name": itemName, "description": subtitle, "icon": "key", "isTablerIcon": true, "provider": root,
             "onActivate": function() {
                 if (mode === "username" && username) { copyToClipboard(username); if (launcher) launcher.close() }
                 else if (mode === "password" && password) { copyToClipboard(password); if (launcher) launcher.close() }
+                else if (mode === "autofill" && username) {
+                    ensureUnlocked(function() { autoType(username, password) })
+                    if (launcher) launcher.close()
+                }
                 else { openItemPanel(item) }
             }
         }
