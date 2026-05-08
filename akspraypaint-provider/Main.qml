@@ -167,7 +167,7 @@ Item {
         wallpaperBusy = true
         var env = Object.assign({}, Qt.application.environment)
         runProcess.environment = env
-        runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "'"]
+        runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "' --no-cache"]
         runProcess.running = true
         Logger.i("AKSprayPaintMain", "runWallpaperInternal:", wallpaperPath)
     }
