@@ -44,7 +44,7 @@
     {
       "id": "akspraypaint-provider",
       "name": "AKSprayPaint",
-      "version": "1.0.13",
+      "version": "1.0.14",
       "description": "Theme-aware wallpaper recoloring daemon. Auto-detects wallpaper, applies Noctalia theme colors via Oklch color transfer, and keeps the wallpaper in sync as themes change.",
       "tags": [
         "Daemon",
