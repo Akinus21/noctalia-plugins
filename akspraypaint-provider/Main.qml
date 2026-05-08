@@ -58,7 +58,9 @@ Item {
     }
 
     function checkInstalled() {
-        checkProcess.command = ["which", "akspraypaint"]
+        var env = Object.assign({}, Qt.application.environment)
+        checkProcess.environment = env
+        checkProcess.command = ["sh", "-c", "which akspraypaint"]
         checkProcess.running = true
     }
 
@@ -97,6 +99,8 @@ Item {
             Logger.w("AKSprayPaintMain", "runProcess busy, waiting...")
             return
         }
+        var env = Object.assign({}, Qt.application.environment)
+        runProcess.environment = env
         runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "'"]
         runProcess.running = true
         Logger.i("AKSprayPaintMain", "Running with wallpaper:", wallpaperPath)
