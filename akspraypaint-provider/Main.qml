@@ -38,6 +38,7 @@ Item {
         stdout: SplitParser { onRead: function(d) { Logger.d("AKSprayPaintMain", "run stdout:", d) } }
         stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "run stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
+            Logger.i("AKSprayPaintMain", "runProcess exited code=" + exitCode)
             if (exitCode === 0) {
                 Logger.i("AKSprayPaintMain", "Wallpaper set successfully")
             } else {
@@ -57,8 +58,6 @@ Item {
     }
 
     function checkInstalled() {
-        var env = Object.assign({}, Qt.application.environment)
-        checkProcess.environment = env
         checkProcess.command = ["which", "akspraypaint"]
         checkProcess.running = true
     }
@@ -68,8 +67,10 @@ Item {
             Logger.w("AKSprayPaintMain", "Cannot start daemon: akspraypaint not installed")
             return
         }
-        var env = Object.assign({}, Qt.application.environment)
-        daemonProcess.environment = env
+        if (daemonProcess.running) {
+            Logger.w("AKSprayPaintMain", "daemonProcess busy")
+            return
+        }
         daemonProcess.command = ["sh", "-c", "akspraypaint watch"]
         daemonProcess.running = true
         daemonRunning = true
@@ -77,8 +78,10 @@ Item {
     }
 
     function stopDaemon() {
-        var env = Object.assign({}, Qt.application.environment)
-        disableProcess.environment = env
+        if (disableProcess.running) {
+            Logger.w("AKSprayPaintMain", "disableProcess busy")
+            return
+        }
         disableProcess.command = ["sh", "-c", "akspraypaint --disable"]
         disableProcess.running = true
         daemonRunning = false
@@ -90,8 +93,10 @@ Item {
             Logger.w("AKSprayPaintMain", "Cannot run: akspraypaint not installed")
             return
         }
-        var env = Object.assign({}, Qt.application.environment)
-        runProcess.environment = env
+        if (runProcess.running) {
+            Logger.w("AKSprayPaintMain", "runProcess busy, waiting...")
+            return
+        }
         runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "'"]
         runProcess.running = true
         Logger.i("AKSprayPaintMain", "Running with wallpaper:", wallpaperPath)

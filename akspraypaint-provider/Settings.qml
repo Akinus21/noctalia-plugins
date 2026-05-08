@@ -218,8 +218,6 @@ ColumnLayout {
     }
 
 function checkInstallation() {
-        var env = Object.assign({}, Qt.application.environment)
-        whichProcess.environment = env
         whichProcess.command = ["sh", "-c", "which akspraypaint"]
         whichProcess.running = true
     }
