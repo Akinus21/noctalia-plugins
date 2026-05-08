@@ -1,0 +1,28 @@
+{
+  "id": "akspraypaint-provider",
+  "name": "AKSprayPaint",
+  "version": "1.0.0",
+  "minNoctaliaVersion": "4.4.1",
+  "author": "Akinus21",
+  "license": "MIT",
+  "repository": "https://github.com/Akinus21/noctalia-plugins",
+  "description": "Theme-aware wallpaper recoloring daemon. Auto-detects wallpaper, applies Noctalia theme colors via Oklch color transfer, and keeps the wallpaper in sync as themes change.",
+  "tags": [
+    "Daemon",
+    "Wallpaper"
+  ],
+  "entryPoints": {
+    "main": "Main.qml",
+    "settings": "Settings.qml"
+  },
+  "dependencies": {
+    "plugins": []
+  },
+  "metadata": {
+    "defaultSettings": {
+      "akspraypaintPath": "/home/linuxbrew/.linuxbrew/bin/akspraypaint",
+      "enableDaemon": false,
+      "lastWallpaper": ""
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "settings": {
+    "akspraypaintPath": {
+      "label": "AKSprayPaint Path"
+    },
+    "installed": "AKSprayPaint is installed",
+    "notInstalled": "AKSprayPaint not found — install with: brew install akspraypaint",
+    "checkInstall": "Check",
+    "enableDaemon": "Enable Daemon",
+    "daemonOn": "ON",
+    "daemonOff": "OFF",
+    "daemonRunning": "Watch daemon is running — theme changes will auto-recolor wallpaper",
+    "daemonStopped": "Watch daemon is stopped",
+    "wallpaper": "Wallpaper",
+    "wallpaperTitle": "Choose a wallpaper",
+    "wallpaperPlaceholder": "No wallpaper selected",
+    "browse": "Browse…",
+    "set": "Set"
+  }
+}
