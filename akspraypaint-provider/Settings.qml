@@ -196,6 +196,8 @@ ColumnLayout {
     }
 
     function checkInstallation() {
+        var env = Object.assign({}, Qt.application.environment)
+        checkProcess.environment = env
         checkProcess.command = ["sh", "-c", "which akspraypaint"]
         checkProcess.running = true
     }
@@ -232,6 +234,8 @@ ColumnLayout {
     }
 
     function clearCache() {
+        var env = Object.assign({}, Qt.application.environment)
+        cleanProcess.environment = env
         cleanProcess.command = ["sh", "-c", "akspraypaint clean"]
         cleanProcess.running = true
     }
