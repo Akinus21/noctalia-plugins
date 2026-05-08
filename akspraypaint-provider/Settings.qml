@@ -160,7 +160,14 @@ ColumnLayout {
                         color: Color.mOnSurface
                         font.pixelSize: 14
                         onTextChanged: root.editWallpaperPath = text
-                        placeholderText: pluginApi?.tr("settings.wallpaperPlaceholder") || "No wallpaper selected"
+
+                        Text {
+                            anchors.fill: parent
+                            text: pluginApi?.tr("settings.wallpaperPlaceholder") || "No wallpaper selected"
+                            color: Color.mOnSurfaceVariant
+                            font: wallpaperPathField.font
+                            visible: wallpaperPathField.text.length === 0 && !wallpaperPathField.activeFocus
+                        }
                     }
                 }
 
