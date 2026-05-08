@@ -25,9 +25,23 @@ Item {
             if (!isInstalled) {
                 Logger.w("AKSprayPaintMain", "akspraypaint not found in PATH")
             } else {
-                Logger.i("AKSprayPaintMain", "akspraypaint found")
-                Qt.callLater(afterCheck)
+                Logger.i("AKSprayPaintMain", "akspraypaint found, checking for updates...")
+                Qt.callLater(checkForUpdates)
             }
+        }
+    }
+
+    Process {
+        id: updateProcess
+        stdout: SplitParser { onRead: function(d) { Logger.d("AKSprayPaintMain", "update stdout:", d) } }
+        stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "update stderr:", d) } }
+        onExited: function(exitCode, exitStatus) {
+            if (exitCode === 0) {
+                Logger.i("AKSprayPaintMain", "Auto-update completed")
+            } else {
+                Logger.w("AKSprayPaintMain", "Auto-update exited with code:", exitCode)
+            }
+            Qt.callLater(afterCheck)
         }
     }
 
@@ -92,6 +106,13 @@ Item {
         checkProcess.environment = env
         checkProcess.command = ["sh", "-c", "which akspraypaint"]
         checkProcess.running = true
+    }
+
+    function checkForUpdates() {
+        var env = Object.assign({}, Qt.application.environment)
+        updateProcess.environment = env
+        updateProcess.command = ["sh", "-c", "brew update && brew upgrade akspraypaint"]
+        updateProcess.running = true
     }
 
     function startDaemon() {
