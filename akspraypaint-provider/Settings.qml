@@ -222,13 +222,11 @@ ColumnLayout {
         if (!root.editWallpaperPath) return
         var main = pluginApi?.mainInstance
         if (!main) return
-        main.stopDaemon()
         if (editEnableDaemon) {
-            Qt.callLater(function() {
-                main.startDaemonWithWallpaper(root.editWallpaperPath)
-            })
+            main.stopDaemon(root.editWallpaperPath)
             daemonStatus = "running"
         } else {
+            main.stopDaemon("")
             Qt.callLater(function() {
                 main.runWallpaperOnce(root.editWallpaperPath)
             })

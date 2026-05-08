@@ -154,9 +154,11 @@ Item {
         startDaemonWithWallpaper(activeWallpaperPath)
     }
 
-    function stopDaemon() {
+    function stopDaemon(wallpaperPath) {
+        _pendingWallpaperRestart = true
+        _pendingWallpaperPath = wallpaperPath || ""
         if (disableProcess.running) {
-            Logger.w("AKSprayPaintMain", "stopDaemon: disableProcess busy")
+            Logger.w("AKSprayPaintMain", "stopDaemon: disableProcess busy, pending wallpaper:", _pendingWallpaperPath)
             return
         }
         var env = Object.assign({}, Qt.application.environment)
