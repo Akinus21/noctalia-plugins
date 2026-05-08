@@ -25,9 +25,23 @@ Item {
             if (!isInstalled) {
                 Logger.w("AKSprayPaintMain", "akspraypaint not found in PATH")
             } else {
-                Logger.i("AKSprayPaintMain", "akspraypaint found, checking for updates...")
-                Qt.callLater(checkForUpdates)
+                Logger.i("AKSprayPaintMain", "akspraypaint found, cleaning cache...")
+                Qt.callLater(cleanCache)
             }
+        }
+    }
+
+    Process {
+        id: cleanProcess
+        stdout: SplitParser { onRead: function(d) {} }
+        stderr: SplitParser { onRead: function(d) {} }
+        onExited: function(exitCode, exitStatus) {
+            if (exitCode === 0) {
+                Logger.i("AKSprayPaintMain", "Cache clean done, updating...")
+            } else {
+                Logger.w("AKSprayPaintMain", "Cache clean failed:", exitCode)
+            }
+            Qt.callLater(runBrewUpdate)
         }
     }
 
@@ -37,9 +51,9 @@ Item {
         stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "update stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
             if (exitCode === 0) {
-                Logger.i("AKSprayPaintMain", "Auto-update completed, waiting before init...")
+                Logger.i("AKSprayPaintMain", "Brew update done, waiting before daemon start...")
             } else {
-                Logger.w("AKSprayPaintMain", "Auto-update exited with code:", exitCode)
+                Logger.w("AKSprayPaintMain", "Brew update exited with code:", exitCode)
             }
             updateDelayTimer.start()
         }
@@ -49,7 +63,7 @@ Item {
         id: updateDelayTimer
         interval: 5000
         onTriggered: function() {
-            Qt.callLater(afterCheck)
+            Qt.callLater(startInitDaemon)
         }
     }
 
@@ -64,26 +78,7 @@ Item {
                 _pendingWallpaperRestart = false
                 var wp = _pendingWallpaperPath
                 _pendingWallpaperPath = ""
-                Qt.callLater(function() { runWallpaperInternal(wp) })
-            }
-        }
-    }
-
-    Process {
-        id: runProcess
-        stdout: SplitParser { onRead: function(d) { Logger.d("AKSprayPaintMain", "run stdout:", d) } }
-        stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "run stderr:", d) } }
-        onExited: function(exitCode, exitStatus) {
-            wallpaperBusy = false
-            Logger.i("AKSprayPaintMain", "runProcess exited code=" + exitCode)
-            if (exitCode === 0) {
-                Logger.i("AKSprayPaintMain", "Wallpaper set successfully")
-            } else {
-                Logger.e("AKSprayPaintMain", "akspraypaint run failed:", exitCode)
-            }
-            if (_pendingWallpaperRestart && exitCode === 0) {
-                _pendingWallpaperRestart = false
-                Qt.callLater(function() { startDaemon() })
+                Qt.callLater(function() { startDaemonWithWallpaper(wp) })
             }
         }
     }
@@ -94,18 +89,31 @@ Item {
         stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "daemon stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
             Logger.w("AKSprayPaintMain", "daemonProcess exited (fork completed), resetting running flag")
-            // Reset running so subsequent daemon commands work - the background fork keeps running
             daemonProcess.running = false
         }
     }
 
-    function afterCheck() {
+    function cleanCache() {
+        var env = Object.assign({}, Qt.application.environment)
+        cleanProcess.environment = env
+        cleanProcess.command = ["sh", "-c", "akspraypaint clean"]
+        cleanProcess.running = true
+    }
+
+    function runBrewUpdate() {
+        var env = Object.assign({}, Qt.application.environment)
+        updateProcess.environment = env
+        updateProcess.command = ["sh", "-c", "brew update && brew upgrade akspraypaint"]
+        updateProcess.running = true
+    }
+
+    function startInitDaemon() {
         if (!pluginApi) return
         var enabled = pluginApi.pluginSettings?.enableDaemon
         var wallpaper = pluginApi.pluginSettings?.lastWallpaper
-        Logger.i("AKSprayPaintMain", "afterCheck: enabled=" + enabled + " wallpaper=" + wallpaper)
+        Logger.i("AKSprayPaintMain", "startInitDaemon: enabled=" + enabled + " wallpaper=" + wallpaper)
         if (enabled && wallpaper) {
-            Qt.callLater(function() { initDaemon(wallpaper) })
+            startDaemonWithWallpaper(wallpaper)
         }
     }
 
@@ -116,14 +124,7 @@ Item {
         checkProcess.running = true
     }
 
-    function checkForUpdates() {
-        var env = Object.assign({}, Qt.application.environment)
-        updateProcess.environment = env
-        updateProcess.command = ["sh", "-c", "brew update && brew upgrade akspraypaint"]
-        updateProcess.running = true
-    }
-
-    function startDaemon() {
+    function startDaemonWithWallpaper(wallpaperPath) {
         if (!isInstalled) {
             Logger.w("AKSprayPaintMain", "Cannot start daemon: akspraypaint not installed")
             return
@@ -132,16 +133,25 @@ Item {
             Logger.w("AKSprayPaintMain", "daemonProcess busy")
             return
         }
+        if (!wallpaperPath) {
+            Logger.w("AKSprayPaintMain", "startDaemonWithWallpaper: no wallpaper path")
+            return
+        }
+        activeWallpaperPath = wallpaperPath
+        var env = Object.assign({}, Qt.application.environment)
+        daemonProcess.environment = env
+        daemonProcess.command = ["sh", "-c", "akspraypaint watch --wallpaper '" + wallpaperPath + "'"]
+        daemonProcess.running = true
+        daemonRunning = true
+        Logger.i("AKSprayPaintMain", "Daemon started with wallpaper:", wallpaperPath)
+    }
+
+    function startDaemon() {
         if (!activeWallpaperPath) {
             Logger.w("AKSprayPaintMain", "startDaemon: no active wallpaper path")
             return
         }
-        var env = Object.assign({}, Qt.application.environment)
-        daemonProcess.environment = env
-        daemonProcess.command = ["sh", "-c", "akspraypaint watch --wallpaper '" + activeWallpaperPath + "'"]
-        daemonProcess.running = true
-        daemonRunning = true
-        Logger.i("AKSprayPaintMain", "Daemon started with wallpaper:", activeWallpaperPath)
+        startDaemonWithWallpaper(activeWallpaperPath)
     }
 
     function stopDaemon() {
@@ -155,21 +165,6 @@ Item {
         disableProcess.running = true
         daemonRunning = false
         Logger.i("AKSprayPaintMain", "Daemon stop requested")
-    }
-
-    function initDaemon(wallpaperPath) {
-        if (!isInstalled) {
-            Logger.w("AKSprayPaintMain", "initDaemon: akspraypaint not installed")
-            return
-        }
-        if (!wallpaperPath) {
-            Logger.w("AKSprayPaintMain", "initDaemon: no wallpaper path")
-            return
-        }
-        Logger.i("AKSprayPaintMain", "initDaemon: starting with", wallpaperPath)
-        _pendingWallpaperRestart = true
-        _pendingWallpaperPath = wallpaperPath
-        runWallpaperInternal(wallpaperPath)
     }
 
     function restartDaemonWithWallpaper(wallpaperPath) {
@@ -186,23 +181,34 @@ Item {
         Logger.i("AKSprayPaintMain", "restartDaemonWithWallpaper: stopping daemon first")
     }
 
-    function runWallpaperInternal(wallpaperPath) {
+    function runWallpaper(wallpaperPath) {
+        if (!isInstalled) return
         if (runProcess.running) {
-            Logger.w("AKSprayPaintMain", "runWallpaperInternal: runProcess busy")
+            Logger.w("AKSprayPaintMain", "runWallpaper: runProcess busy")
             return
         }
-        currentWallpaperPath = wallpaperPath
         activeWallpaperPath = wallpaperPath
         wallpaperBusy = true
         var env = Object.assign({}, Qt.application.environment)
         runProcess.environment = env
         runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "' --no-cache"]
         runProcess.running = true
-        Logger.i("AKSprayPaintMain", "runWallpaperInternal:", wallpaperPath)
+        Logger.i("AKSprayPaintMain", "runWallpaper:", wallpaperPath)
     }
 
-    function runWallpaper(wallpaperPath) {
-        runWallpaperInternal(wallpaperPath)
+    Process {
+        id: runProcess
+        stdout: SplitParser { onRead: function(d) { Logger.d("AKSprayPaintMain", "run stdout:", d) } }
+        stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "run stderr:", d) } }
+        onExited: function(exitCode, exitStatus) {
+            wallpaperBusy = false
+            Logger.i("AKSprayPaintMain", "runProcess exited code=" + exitCode)
+            if (exitCode === 0) {
+                Logger.i("AKSprayPaintMain", "Wallpaper set successfully")
+            } else {
+                Logger.e("AKSprayPaintMain", "akspraypaint run failed:", exitCode)
+            }
+        }
     }
 
     Component.onCompleted: {
