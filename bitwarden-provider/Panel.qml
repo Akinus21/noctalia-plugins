@@ -45,53 +45,147 @@ Item {
                 Layout.fillWidth: true
             }
 
-            NText { text: "Username"; font.weight: Font.Bold }
-            NText {
-                text: root.viewItem && root.viewItem.login ? (root.viewItem.login.username || "-") : "-"
-                Layout.fillWidth: true
-            }
-            NButton {
-                text: "Copy Username"
-                outlined: true
-                Layout.fillWidth: true
-                visible: root.viewItem && root.viewItem.login && root.viewItem.login.username
-                onClicked: {
-                    copyToClipboard(root.viewItem.login.username)
-                    ToastService.showNotice("Username copied")
+            // ── LOGIN item type (type 1) ────────────────────────────────────
+            ColumnLayout {
+                spacing: Style.marginS
+                visible: root.viewItem && root.viewItem.type === 1
+
+                NText { text: "Username"; font.weight: Font.Bold }
+                NText {
+                    text: root.viewItem && root.viewItem.login ? (root.viewItem.login.username || "-") : "-"
+                    Layout.fillWidth: true
+                }
+                NButton {
+                    text: "Copy Username"
+                    outlined: true
+                    Layout.fillWidth: true
+                    visible: root.viewItem && root.viewItem.login && root.viewItem.login.username
+                    onClicked: {
+                        copyToClipboard(root.viewItem.login.username)
+                        ToastService.showNotice("Username copied")
+                    }
+                }
+
+                NText { text: "Password"; font.weight: Font.Bold }
+                NText {
+                    text: root.viewItem && root.viewItem.login && root.viewItem.login.password ? "********" : "-"
+                    Layout.fillWidth: true
+                }
+                NButton {
+                    text: "Copy Password"
+                    outlined: true
+                    Layout.fillWidth: true
+                    visible: root.viewItem && root.viewItem.login && root.viewItem.login.password
+                    onClicked: {
+                        copyToClipboard(root.viewItem.login.password)
+                        ToastService.showNotice("Password copied")
+                    }
+                }
+
+                NButton {
+                    text: "Auto-Type Login"
+                    outlined: true
+                    Layout.fillWidth: true
+                    visible: root.viewItem && root.viewItem.login && root.viewItem.login.username && root.viewItem.login.password
+                    onClicked: {
+                        autoTypeLogin()
+                    }
+                }
+
+                NText { text: "URL"; font.weight: Font.Bold }
+                NText {
+                    text: root.viewItem && root.viewItem.login ? (root.viewItem.login.uri || "-") : "-"
+                    color: Color.mPrimary
+                    Layout.fillWidth: true
                 }
             }
 
-            NText { text: "Password"; font.weight: Font.Bold }
-            NText {
-                text: root.viewItem && root.viewItem.login && root.viewItem.login.password ? "********" : "-"
-                Layout.fillWidth: true
-            }
-            NButton {
-                text: "Copy Password"
-                outlined: true
-                Layout.fillWidth: true
-                visible: root.viewItem && root.viewItem.login && root.viewItem.login.password
-                onClicked: {
-                    copyToClipboard(root.viewItem.login.password)
-                    ToastService.showNotice("Password copied")
+            // ── SECURE NOTE item type (type 2) ────────────────────────────────
+            ColumnLayout {
+                spacing: Style.marginS
+                visible: root.viewItem && root.viewItem.type === 2
+
+                NText { text: "Note"; font.weight: Font.Bold }
+                NText {
+                    text: root.viewItem && root.viewItem.notes ? root.viewItem.notes : "-"
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                NButton {
+                    text: "Copy Note"
+                    outlined: true
+                    Layout.fillWidth: true
+                    visible: root.viewItem && root.viewItem.notes
+                    onClicked: {
+                        copyToClipboard(root.viewItem.notes)
+                        ToastService.showNotice("Note copied")
+                    }
                 }
             }
 
-            NButton {
-                text: "Auto-Type Login"
-                outlined: true
-                Layout.fillWidth: true
-                visible: root.viewItem && root.viewItem.login && root.viewItem.login.username && root.viewItem.login.password
-                onClicked: {
-                    autoTypeLogin()
+            // ── CARD item type (type 3) ───────────────────────────────────────
+            ColumnLayout {
+                spacing: Style.marginS
+                visible: root.viewItem && root.viewItem.type === 3
+
+                NText { text: "Cardholder Name"; font.weight: Font.Bold }
+                NText {
+                    text: root.viewItem && root.viewItem.card ? (root.viewItem.card.cardholderName || "-") : "-"
+                    Layout.fillWidth: true
+                }
+
+                NText { text: "Number"; font.weight: Font.Bold }
+                NText {
+                    text: root.viewItem && root.viewItem.card && root.viewItem.card.number ? "**** **** **** " + root.viewItem.card.number.slice(-4) : "-"
+                    Layout.fillWidth: true
+                }
+
+                NText { text: "Expiration"; font.weight: Font.Bold }
+                NText {
+                    text: root.viewItem && root.viewItem.card ? ((root.viewItem.card.expMonth || "") + "/" + (root.viewItem.card.expYear || "")) : "-"
+                    Layout.fillWidth: true
+                }
+
+                NText { text: "Code"; font.weight: Font.Bold }
+                NText {
+                    text: root.viewItem && root.viewItem.card && root.viewItem.card.code ? "****" : "-"
+                    Layout.fillWidth: true
+                }
+                NButton {
+                    text: "Copy Code"
+                    outlined: true
+                    Layout.fillWidth: true
+                    visible: root.viewItem && root.viewItem.card && root.viewItem.card.code
+                    onClicked: {
+                        copyToClipboard(root.viewItem.card.code)
+                        ToastService.showNotice("Code copied")
+                    }
                 }
             }
 
-            NText { text: "URL"; font.weight: Font.Bold }
-            NText {
-                text: root.viewItem && root.viewItem.login ? (root.viewItem.login.uri || "-") : "-"
-                color: Color.mPrimary
-                Layout.fillWidth: true
+            // ── IDENTITY item type (type 4) ──────────────────────────────────
+            ColumnLayout {
+                spacing: Style.marginS
+                visible: root.viewItem && root.viewItem.type === 4
+
+                NText { text: "Name"; font.weight: Font.Bold }
+                NText {
+                    text: root.viewItem && root.viewItem.identity ? (root.viewItem.identity.firstName || "-") : "-"
+                    Layout.fillWidth: true
+                }
+
+                NText { text: "Email"; font.weight: Font.Bold }
+                NText {
+                    text: root.viewItem && root.viewItem.identity ? (root.viewItem.identity.email || "-") : "-"
+                    color: Color.mPrimary
+                    Layout.fillWidth: true
+                }
+
+                NText { text: "Phone"; font.weight: Font.Bold }
+                NText {
+                    text: root.viewItem && root.viewItem.identity ? (root.viewItem.identity.phone || "-") : "-"
+                    Layout.fillWidth: true
+                }
             }
 
             Item { Layout.fillHeight: true; Layout.fillWidth: true }
@@ -239,9 +333,9 @@ Item {
     }
 
     function autoTypeLogin() {
-        if (!root.viewItem || !root.viewItem.login) return
-        var username = root.viewItem.login.username || ""
-        var password = root.viewItem.login.password || ""
+        if (!root.viewItem || root.viewItem.type !== 1) return
+        var username = root.viewItem.login?.username || ""
+        var password = root.viewItem.login?.password || ""
         if (!username || !password) {
             ToastService.showError("Missing username or password for auto-type")
             return
