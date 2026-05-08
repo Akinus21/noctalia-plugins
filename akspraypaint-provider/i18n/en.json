@@ -13,6 +13,7 @@
     "wallpaperTitle": "Choose a wallpaper",
     "wallpaperPlaceholder": "No wallpaper selected",
     "browse": "Browse…",
-    "set": "Set"
+    "set": "Set",
+    "clearCache": "Clear Cache"
   }
 }

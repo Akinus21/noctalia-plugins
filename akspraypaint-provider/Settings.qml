@@ -155,6 +155,13 @@ ColumnLayout {
         onClicked: setWallpaper()
     }
 
+    NButton {
+        Layout.fillWidth: true
+        text: pluginApi?.tr("settings.clearCache") || "Clear Cache"
+        outlined: true
+        onClicked: clearCache()
+    }
+
     // ── saveSettings ───────────────────────────────────────────────────────
 
     function saveSettings() {
@@ -197,6 +204,19 @@ ColumnLayout {
         }
     }
 
+    Process {
+        id: cleanProcess
+        stdout: SplitParser { onRead: function(d) {} }
+        stderr: SplitParser { onRead: function(d) {} }
+        onExited: function(exitCode, exitStatus) {
+            if (exitCode === 0) {
+                Logger.i("AKSprayPaintSettings", "Cache cleared")
+            } else {
+                Logger.e("AKSprayPaintSettings", "Cache clear failed:", exitCode)
+            }
+        }
+    }
+
     function checkInstallation() {
         whichProcess.command = ["which", "akspraypaint"]
         whichProcess.running = true
@@ -227,6 +247,11 @@ ColumnLayout {
             })
         }
         saveSettings()
+    }
+
+    function clearCache() {
+        cleanProcess.command = ["sh", "-c", "akspraypaint clean"]
+        cleanProcess.running = true
     }
 
     function onPluginReady() {
