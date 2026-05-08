@@ -383,7 +383,7 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `chore`
 
 ## Git Configuration
 
-SSH key for pushing: `/home/opencode/.ssh/github`
+SSH key for pushing: `/config/.ssh/github`
 
 ## Self-Instructions
 
