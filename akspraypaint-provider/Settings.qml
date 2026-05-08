@@ -230,10 +230,6 @@ function checkInstallation() {
         cleanProcess.command = ["sh", "-c", "akspraypaint clean"]
         cleanProcess.running = true
     }
-        whichProcess.environment = env
-        whichProcess.command = ["sh", "-c", "which akspraypaint"]
-        whichProcess.running = true
-    }
 
     function toggleDaemon() {
         var main = pluginApi?.mainInstance
