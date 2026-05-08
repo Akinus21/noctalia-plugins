@@ -1,7 +1,7 @@
 {
   "id": "akspraypaint-provider",
   "name": "AKSprayPaint",
-  "version": "1.0.28",
+  "version": "1.0.29",
   "minNoctaliaVersion": "4.4.1",
   "author": "Akinus21",
   "license": "MIT",
