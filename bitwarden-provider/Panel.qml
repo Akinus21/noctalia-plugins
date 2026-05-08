@@ -17,12 +17,14 @@ Item {
 
     property string panelMode: pluginApi?.pluginSettings?._panelMode || "view"
     property var viewItem: pluginApi?.pluginSettings?._viewItem || null
+    property string addItemType: "choose" // "choose" | "login" | "note"
 
     onVisibleChanged: {
         if (visible && pluginApi) {
             panelMode = pluginApi.pluginSettings._panelMode || "view"
             viewItem  = pluginApi.pluginSettings._viewItem || null
-            Logger.d("BitwardenPanel", "Visible changed, mode:", panelMode)
+            addItemType = pluginApi.pluginSettings._addItemType || "choose"
+            Logger.d("BitwardenPanel", "Visible changed, mode:", panelMode, "addType:", addItemType)
         }
     }
 
@@ -199,11 +201,53 @@ Item {
         }
 
         // ── ADD MODE ────────────────────────────────────────────────────────
+
+        // Step 1: Choose item type
         ColumnLayout {
-            id: addForm
+            id: addChoose
             anchors { fill: parent; margins: Style.marginL }
             spacing: Style.marginL
-            visible: root.panelMode === "add"
+            visible: root.panelMode === "add" && root.addItemType === "choose"
+
+            NText {
+                text: "Add Vault Item"
+                font.weight: Font.Bold
+                pointSize: Style.fontSizeL
+                Layout.fillWidth: true
+            }
+
+            NButton {
+                Layout.fillWidth: true
+                text: "Login"
+                description: "Username, password, URL"
+                icon: "key"
+                onClicked: root.addItemType = "login"
+            }
+
+            NButton {
+                Layout.fillWidth: true
+                text: "Secure Note"
+                description: "Title and multiline note"
+                icon: "notes"
+                onClicked: root.addItemType = "note"
+            }
+
+            Item { Layout.fillHeight: true; Layout.fillWidth: true }
+
+            NButton {
+                text: "Cancel"
+                outlined: true
+                Layout.fillWidth: true
+                onClicked: closePanel()
+            }
+        }
+
+        // Step 2a: Add Login form
+        ColumnLayout {
+            id: addLoginForm
+            anchors { fill: parent; margins: Style.marginL }
+            spacing: Style.marginL
+            visible: root.panelMode === "add" && root.addItemType === "login"
 
             property string editName: ""
             property string editUsername: ""
@@ -214,7 +258,7 @@ Item {
             property bool isSaving: false
 
             NText {
-                text: "Add Vault Item"
+                text: "Add Login"
                 font.weight: Font.Bold
                 pointSize: Style.fontSizeL
                 Layout.fillWidth: true
@@ -222,37 +266,37 @@ Item {
 
             NTextInput {
                 Layout.fillWidth: true
-                label: "Name"
+                label: "Name / Title"
                 placeholderText: "e.g. github.com"
-                text: addForm.editName
-                onTextChanged: addForm.editName = text
+                text: addLoginForm.editName
+                onTextChanged: addLoginForm.editName = text
             }
             NTextInput {
                 Layout.fillWidth: true
                 label: "Username"
                 placeholderText: "your@email.com"
-                text: addForm.editUsername
-                onTextChanged: addForm.editUsername = text
+                text: addLoginForm.editUsername
+                onTextChanged: addLoginForm.editUsername = text
             }
             NTextInput {
                 Layout.fillWidth: true
                 label: "Password"
                 placeholderText: "your password"
-                text: addForm.editPassword
-                onTextChanged: addForm.editPassword = text
+                text: addLoginForm.editPassword
+                onTextChanged: addLoginForm.editPassword = text
             }
             NTextInput {
                 Layout.fillWidth: true
                 label: "URL"
                 placeholderText: "https://github.com"
-                text: addForm.editUri
-                onTextChanged: addForm.editUri = text
+                text: addLoginForm.editUri
+                onTextChanged: addLoginForm.editUri = text
             }
 
             NText {
-                visible: addForm.statusText !== ""
-                text: addForm.statusText
-                color: addForm.statusOk ? "#4CAF50" : "#F44336"
+                visible: addLoginForm.statusText !== ""
+                text: addLoginForm.statusText
+                color: addLoginForm.statusOk ? "#4CAF50" : "#F44336"
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
@@ -264,17 +308,107 @@ Item {
                 spacing: Style.marginS
 
                 NButton {
-                    text: "Cancel"
+                    text: "Back"
                     outlined: true
                     Layout.fillWidth: true
-                    enabled: !addForm.isSaving
-                    onClicked: closePanel()
+                    enabled: !addLoginForm.isSaving
+                    onClicked: root.addItemType = "choose"
                 }
                 NButton {
-                    text: addForm.isSaving ? "Saving…" : "Save"
+                    text: addLoginForm.isSaving ? "Saving…" : "Save"
                     Layout.fillWidth: true
-                    enabled: addForm.editName !== "" && !addForm.isSaving
-                    onClicked: saveNewItem()
+                    enabled: addLoginForm.editName !== "" && !addLoginForm.isSaving
+                    onClicked: saveNewLogin()
+                }
+            }
+        }
+
+        // Step 2b: Add Note form
+        ColumnLayout {
+            id: addNoteForm
+            anchors { fill: parent; margins: Style.marginL }
+            spacing: Style.marginL
+            visible: root.panelMode === "add" && root.addItemType === "note"
+
+            property string editName: ""
+            property string editNotes: ""
+            property string statusText: ""
+            property bool statusOk: true
+            property bool isSaving: false
+
+            NText {
+                text: "Add Secure Note"
+                font.weight: Font.Bold
+                pointSize: Style.fontSizeL
+                Layout.fillWidth: true
+            }
+
+            NTextInput {
+                Layout.fillWidth: true
+                label: "Name / Title"
+                placeholderText: "e.g. My secret note"
+                text: addNoteForm.editName
+                onTextChanged: addNoteForm.editName = text
+            }
+
+            NText {
+                text: "Note"
+                font.weight: Font.Bold
+            }
+
+            NBox {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 200 * Style.uiScaleRatio
+                color: Color.mSurface
+                radius: Style.radiusM
+
+                TextEdit {
+                    id: noteTextArea
+                    anchors { left: parent.left; right: parent.right; top: parent.top; bottom: parent.bottom; margins: Style.marginM }
+                    color: Color.mOnSurface
+                    font.pixelSize: 14
+                    wrapMode: TextEdit.Wrap
+                    readOnly: false
+                    text: addNoteForm.editNotes
+                    onTextChanged: addNoteForm.editNotes = text
+                    property string placeholderText: "Enter your secret note here..."
+                    Text {
+                        anchors.fill: parent
+                        text: noteTextArea.placeholderText
+                        color: Color.mOnSurfaceVariant
+                        font: noteTextArea.font
+                        visible: noteTextArea.text.length === 0 && !noteTextArea.activeFocus
+                        z: -1
+                    }
+                }
+            }
+
+            NText {
+                visible: addNoteForm.statusText !== ""
+                text: addNoteForm.statusText
+                color: addNoteForm.statusOk ? "#4CAF50" : "#F44336"
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+
+            Item { Layout.fillHeight: true; Layout.fillWidth: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.marginS
+
+                NButton {
+                    text: "Back"
+                    outlined: true
+                    Layout.fillWidth: true
+                    enabled: !addNoteForm.isSaving
+                    onClicked: root.addItemType = "choose"
+                }
+                NButton {
+                    text: addNoteForm.isSaving ? "Saving…" : "Save"
+                    Layout.fillWidth: true
+                    enabled: addNoteForm.editName !== "" && !addNoteForm.isSaving
+                    onClicked: saveNewNote()
                 }
             }
         }
@@ -282,26 +416,26 @@ Item {
 
     // ── Actions ───────────────────────────────────────────────────────────
 
-    function saveNewItem() {
-        var name     = addForm.editName.trim()
-        var username = addForm.editUsername.trim()
-        var password = addForm.editPassword.trim()
-        var uri      = addForm.editUri.trim()
+    function saveNewLogin() {
+        var name     = addLoginForm.editName.trim()
+        var username = addLoginForm.editUsername.trim()
+        var password = addLoginForm.editPassword.trim()
+        var uri      = addLoginForm.editUri.trim()
 
         if (!name) {
-            addForm.statusText = "Name is required"
-            addForm.statusOk = false
+            addLoginForm.statusText = "Name is required"
+            addLoginForm.statusOk = false
             return
         }
 
-        addForm.isSaving = true
-        addForm.statusText = ""
+        addLoginForm.isSaving = true
+        addLoginForm.statusText = ""
 
         var main = pluginApi?.mainInstance
         if (!main || !main.createItem) {
-            addForm.statusText = "Provider not ready"
-            addForm.statusOk = false
-            addForm.isSaving = false
+            addLoginForm.statusText = "Provider not ready"
+            addLoginForm.statusOk = false
+            addLoginForm.isSaving = false
             return
         }
 
@@ -314,20 +448,62 @@ Item {
                 uris: uri ? [{ uri: uri, match: null }] : []
             }
         }, function(success, message) {
-            addForm.isSaving = false
+            addLoginForm.isSaving = false
             if (success) {
-                addForm.statusText = "Item saved"
-                addForm.statusOk = true
+                addLoginForm.statusText = "Item saved"
+                addLoginForm.statusOk = true
                 ToastService.showNotice("Vault item created")
-                addForm.editName = ""
-                addForm.editUsername = ""
-                addForm.editPassword = ""
-                addForm.editUri = ""
+                addLoginForm.editName = ""
+                addLoginForm.editUsername = ""
+                addLoginForm.editPassword = ""
+                addLoginForm.editUri = ""
                 Qt.callLater(closePanel)
             } else {
-                addForm.statusText = "Error: " + (message || "Failed")
-                addForm.statusOk = false
-                Logger.e("BitwardenPanel", "Save failed:", message)
+                addLoginForm.statusText = "Error: " + (message || "Failed")
+                addLoginForm.statusOk = false
+                Logger.e("BitwardenPanel", "Save login failed:", message)
+            }
+        })
+    }
+
+    function saveNewNote() {
+        var name  = addNoteForm.editName.trim()
+        var notes = addNoteForm.editNotes.trim()
+
+        if (!name) {
+            addNoteForm.statusText = "Name is required"
+            addNoteForm.statusOk = false
+            return
+        }
+
+        addNoteForm.isSaving = true
+        addNoteForm.statusText = ""
+
+        var main = pluginApi?.mainInstance
+        if (!main || !main.createItem) {
+            addNoteForm.statusText = "Provider not ready"
+            addNoteForm.statusOk = false
+            addNoteForm.isSaving = false
+            return
+        }
+
+        main.createItem({
+            type: 2,
+            name: name,
+            notes: notes
+        }, function(success, message) {
+            addNoteForm.isSaving = false
+            if (success) {
+                addNoteForm.statusText = "Note saved"
+                addNoteForm.statusOk = true
+                ToastService.showNotice("Secure note created")
+                addNoteForm.editName = ""
+                addNoteForm.editNotes = ""
+                Qt.callLater(closePanel)
+            } else {
+                addNoteForm.statusText = "Error: " + (message || "Failed")
+                addNoteForm.statusOk = false
+                Logger.e("BitwardenPanel", "Save note failed:", message)
             }
         })
     }
@@ -352,6 +528,7 @@ Item {
     }
 
     function closePanel() {
+        root.addItemType = "choose"
         pluginApi.pluginSettings._panelMode = "view"
         pluginApi.pluginSettings._viewItem = null
         pluginApi.saveSettings()

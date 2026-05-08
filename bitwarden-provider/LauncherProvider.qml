@@ -479,8 +479,12 @@ Item {
             { "name": ">bw username",        "description": "Copy username for an item",     "icon": "user",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw username ") } },
             { "name": ">bitwarden password", "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden password ") } },
             { "name": ">bw password",        "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw password ") } },
-            { "name": ">bitwarden add",      "description": "Add new vault item",            "icon": "plus",      "isTablerIcon": true, "onActivate": function() { openAddPanel() } },
-            { "name": ">bw add",             "description": "Add new vault item",            "icon": "plus",      "isTablerIcon": true, "onActivate": function() { openAddPanel() } },
+            { "name": ">bitwarden add",      "description": "Add new vault item",            "icon": "plus",      "isTablerIcon": true, "onActivate": function() { openAddPanel("choose") } },
+            { "name": ">bw add",             "description": "Add new vault item",            "icon": "plus",      "isTablerIcon": true, "onActivate": function() { openAddPanel("choose") } },
+            { "name": ">bitwarden add login", "description": "Add a login item",             "icon": "key",       "isTablerIcon": true, "onActivate": function() { openAddPanel("login") } },
+            { "name": ">bw add login",        "description": "Add a login item",             "icon": "key",       "isTablerIcon": true, "onActivate": function() { openAddPanel("login") } },
+            { "name": ">bitwarden add note",  "description": "Add a secure note",            "icon": "notes",     "isTablerIcon": true, "onActivate": function() { openAddPanel("note") } },
+            { "name": ">bw add note",         "description": "Add a secure note",            "icon": "notes",     "isTablerIcon": true, "onActivate": function() { openAddPanel("note") } },
             { "name": ">bitwarden autofill", "description": "Auto-type login credentials",   "icon": "keyboard",  "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden autofill ") } },
             { "name": ">bw autofill",        "description": "Auto-type login credentials",   "icon": "keyboard",  "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw autofill ") } },
             { "name": "bwa",                  "description": "Auto-type login credentials",   "icon": "keyboard",  "isTablerIcon": true, "onActivate": function() { launcher.setSearchText("bwa ") } },
@@ -501,7 +505,13 @@ Item {
         else return []
 
         if (query === "settings") { openSettings(); return [] }
-        if (query === "add")      { openAddPanel(); return [] }
+        if (query === "add")      { openAddPanel("choose"); return [] }
+        if (query.startsWith("add ")) {
+            var addType = query.slice(4).trim()
+            if (addType === "login") { openAddPanel("login"); return [] }
+            if (addType === "note")  { openAddPanel("note");  return [] }
+            openAddPanel("choose"); return []
+        }
         if (query === "autofill") { query = ""; mode = "autofill" }
         else if (query.startsWith("autofill ")) { mode = "autofill"; query = query.slice(9).trim() }
 
@@ -621,12 +631,12 @@ Item {
         if (launcher) launcher.close()
     }
 
-    function openAddPanel() {
-        Logger.i("BitwardenProvider", "openAddPanel called")
+    function openAddPanel(type) {
+        Logger.i("BitwardenProvider", "openAddPanel called, type:", type)
         if (!pluginApi) { Logger.w("BitwardenProvider", "openAddPanel: no pluginApi"); return }
         pluginApi.withCurrentScreen(function(screen) {
             pluginApi.pluginSettings._panelMode = "add"
-            pluginApi.pluginSettings._viewItem  = null
+            pluginApi.pluginSettings._addItemType = type || "choose"
             pluginApi.saveSettings()
             Logger.i("BitwardenProvider", "Opening add panel on screen:", screen?.name)
             pluginApi.openPanel(screen)
