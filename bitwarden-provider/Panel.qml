@@ -17,7 +17,7 @@ Item {
 
     property string panelMode: pluginApi?.pluginSettings?._panelMode || "view"
     property var viewItem: pluginApi?.pluginSettings?._viewItem || null
-    property string addItemType: "choose" // "choose" | "login" | "note"
+    property string addItemType: pluginApi?.pluginSettings?._addItemType || "choose" // "choose" | "login" | "note"
 
     onVisibleChanged: {
         if (visible && pluginApi) {
@@ -26,6 +26,10 @@ Item {
             addItemType = pluginApi.pluginSettings._addItemType || "choose"
             Logger.d("BitwardenPanel", "Visible changed, mode:", panelMode, "addType:", addItemType)
         }
+    }
+
+    onAddItemTypeChanged: {
+        Logger.d("BitwardenPanel", "addItemType changed to:", addItemType)
     }
 
     Rectangle {
@@ -219,16 +223,14 @@ Item {
             NButton {
                 Layout.fillWidth: true
                 text: "Login"
-                description: "Username, password, URL"
-                icon: "key"
+                outlined: true
                 onClicked: root.addItemType = "login"
             }
 
             NButton {
                 Layout.fillWidth: true
                 text: "Secure Note"
-                description: "Title and multiline note"
-                icon: "notes"
+                outlined: true
                 onClicked: root.addItemType = "note"
             }
 
