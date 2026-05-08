@@ -208,9 +208,7 @@ ColumnLayout {
         if (editEnableDaemon) {
             var wallpaperPath = root.editWallpaperPath || cfg.lastWallpaper
             if (wallpaperPath) {
-                main.initDaemon(wallpaperPath)
-            } else {
-                main.startDaemon()
+                main.startWatchDaemon(wallpaperPath)
             }
             daemonStatus = "running"
         } else {
@@ -224,11 +222,17 @@ ColumnLayout {
         if (!root.editWallpaperPath) return
         var main = pluginApi?.mainInstance
         if (!main) return
+        main.stopDaemon()
         if (editEnableDaemon) {
-            main.restartDaemonWithWallpaper(root.editWallpaperPath)
+            Qt.callLater(function() {
+                main.startWatchDaemon(root.editWallpaperPath)
+            })
             daemonStatus = "running"
         } else {
-            main.runWallpaper(root.editWallpaperPath)
+            Qt.callLater(function() {
+                main.runWallpaperOnce(root.editWallpaperPath)
+            })
+            daemonStatus = "stopped"
         }
         saveSettings()
     }
