@@ -233,13 +233,13 @@ function checkInstallation() {
         var main = pluginApi?.mainInstance
         if (!main) return
         if (editEnableDaemon) {
-            if (root.editWallpaperPath) {
-                main.runWallpaper(root.editWallpaperPath)
-            }
-            Qt.callLater(function() {
+            var wallpaperPath = root.editWallpaperPath || cfg.lastWallpaper
+            if (wallpaperPath) {
+                main.initDaemon(wallpaperPath)
+            } else {
                 main.startDaemon()
-                daemonStatus = "running"
-            })
+            }
+            daemonStatus = "running"
         } else {
             main.stopDaemon()
             daemonStatus = "stopped"
@@ -251,12 +251,11 @@ function checkInstallation() {
         if (!root.editWallpaperPath) return
         var main = pluginApi?.mainInstance
         if (!main) return
-        main.runWallpaper(root.editWallpaperPath)
         if (editEnableDaemon) {
-            Qt.callLater(function() {
-                main.startDaemon()
-                daemonStatus = "running"
-            })
+            main.initDaemon(root.editWallpaperPath)
+            daemonStatus = "running"
+        } else {
+            main.runWallpaper(root.editWallpaperPath)
         }
         saveSettings()
     }

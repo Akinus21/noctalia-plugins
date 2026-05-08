@@ -9,6 +9,9 @@ Item {
 
     property bool isInstalled: false
     property bool daemonRunning: false
+    property bool wallpaperBusy: false
+    property bool pendingDaemonStart: false
+    property string pendingWallpaperPath: ""
 
     Process {
         id: checkProcess
@@ -39,11 +42,16 @@ Item {
         stdout: SplitParser { onRead: function(d) { Logger.d("AKSprayPaintMain", "run stdout:", d) } }
         stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "run stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
+            wallpaperBusy = false
             Logger.i("AKSprayPaintMain", "runProcess exited code=" + exitCode)
             if (exitCode === 0) {
                 Logger.i("AKSprayPaintMain", "Wallpaper set successfully")
             } else {
                 Logger.e("AKSprayPaintMain", "akspraypaint run failed:", exitCode)
+            }
+            if (pendingDaemonStart && exitCode === 0) {
+                pendingDaemonStart = false
+                startDaemon()
             }
         }
     }
@@ -95,7 +103,27 @@ Item {
         Logger.i("AKSprayPaintMain", "Daemon stop requested")
     }
 
-    function runWallpaper(wallpaperPath) {
+    function initDaemon(wallpaperPath) {
+        if (!isInstalled) {
+            Logger.w("AKSprayPaintMain", "Cannot init daemon: akspraypaint not installed")
+            return
+        }
+        if (runProcess.running) {
+            Logger.w("AKSprayPaintMain", "initDaemon: runProcess busy, skipping wallpaper")
+            startDaemon()
+            return
+        }
+        pendingDaemonStart = true
+        pendingWallpaperPath = wallpaperPath
+        wallpaperBusy = true
+        var env = Object.assign({}, Qt.application.environment)
+        runProcess.environment = env
+        runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "'"]
+        runProcess.running = true
+        Logger.i("AKSprayPaintMain", "initDaemon: running wallpaper then starting daemon")
+    }
+
+    function runWallpaper(wallpaperPath, onComplete) {
         if (!isInstalled) {
             Logger.w("AKSprayPaintMain", "Cannot run: akspraypaint not installed")
             return
@@ -104,6 +132,7 @@ Item {
             Logger.w("AKSprayPaintMain", "runProcess busy, waiting...")
             return
         }
+        wallpaperBusy = true
         var env = Object.assign({}, Qt.application.environment)
         runProcess.environment = env
         runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "'"]
@@ -113,12 +142,5 @@ Item {
 
     Component.onCompleted: {
         checkInstalled()
-        var lastWallpaper = pluginApi?.pluginSettings?.lastWallpaper
-        if (pluginApi?.pluginSettings?.enableDaemon && lastWallpaper) {
-            runWallpaper(lastWallpaper)
-            Qt.callLater(startDaemon)
-        } else if (pluginApi?.pluginSettings?.enableDaemon) {
-            Qt.callLater(startDaemon)
-        }
     }
 }
