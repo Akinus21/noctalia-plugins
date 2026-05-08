@@ -11,6 +11,7 @@ Item {
     property bool daemonRunning: false
     property bool wallpaperBusy: false
     property string currentWallpaperPath: ""
+    property string activeWallpaperPath: ""
 
     property bool _pendingWallpaperRestart: false
     property string _pendingWallpaperPath: ""
@@ -100,12 +101,16 @@ Item {
             Logger.w("AKSprayPaintMain", "daemonProcess busy")
             return
         }
+        if (!activeWallpaperPath) {
+            Logger.w("AKSprayPaintMain", "startDaemon: no active wallpaper path")
+            return
+        }
         var env = Object.assign({}, Qt.application.environment)
         daemonProcess.environment = env
-        daemonProcess.command = ["sh", "-c", "akspraypaint watch"]
+        daemonProcess.command = ["sh", "-c", "akspraypaint watch --wallpaper '" + activeWallpaperPath + "'"]
         daemonProcess.running = true
         daemonRunning = true
-        Logger.i("AKSprayPaintMain", "Daemon started")
+        Logger.i("AKSprayPaintMain", "Daemon started with wallpaper:", activeWallpaperPath)
     }
 
     function stopDaemon() {
@@ -156,6 +161,7 @@ Item {
             return
         }
         currentWallpaperPath = wallpaperPath
+        activeWallpaperPath = wallpaperPath
         wallpaperBusy = true
         var env = Object.assign({}, Qt.application.environment)
         runProcess.environment = env
