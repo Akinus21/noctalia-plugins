@@ -12,14 +12,11 @@ ColumnLayout {
     property var cfg: pluginApi?.pluginSettings || ({})
     property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
 
-    property string editAkspraypaintPath: cfg.akspraypaintPath ?? defaults.akspraypaintPath ?? "akspraypaint"
     property bool editEnableDaemon: cfg.enableDaemon ?? defaults.enableDaemon ?? false
     property string editWallpaperPath: cfg.lastWallpaper ?? defaults.lastWallpaper ?? ""
 
-    property string installStatus: "unknown"
     property string daemonStatus: "stopped"
     property bool akspraypaintInstalled: false
-    property string akspraypaintPath: "akspraypaint"
 
     spacing: Style.marginL
 
@@ -40,16 +37,6 @@ ColumnLayout {
                 root.editWallpaperPath = selectedPaths[0]
             }
         }
-    }
-
-    // ── AKSprayPaint path ──────────────────────────────────────────────────
-
-    NTextInput {
-        Layout.fillWidth: true
-        label: pluginApi?.tr("settings.akspraypaintPath.label") || "AKSprayPaint Path"
-        placeholderText: "akspraypaint"
-        text: root.editAkspraypaintPath
-        onTextChanged: root.editAkspraypaintPath = text
     }
 
     // ── Installation status ────────────────────────────────────────────────
@@ -74,14 +61,16 @@ ColumnLayout {
             NText {
                 text: akspraypaintInstalled
                     ? (pluginApi?.tr("settings.installed") || "AKSprayPaint is installed")
-                    : (pluginApi?.tr("settings.notInstalled") || "AKSprayPaint not found — install with: brew install akspraypaint")
+                    : (pluginApi?.tr("settings.notInstalled") || "AKSprayPaint not found — run: brew install akspraypaint")
                 color: Color.mOnSurfaceVariant
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
             }
 
             NButton {
-                text: pluginApi?.tr("settings.checkInstall") || "Check"
+                text: akspraypaintInstalled
+                    ? (pluginApi?.tr("settings.recheck") || "Recheck")
+                    : (pluginApi?.tr("settings.install") || "Install")
                 outlined: true
                 onClicked: checkInstallation()
             }
@@ -171,7 +160,6 @@ ColumnLayout {
 
     function saveSettings() {
         if (!pluginApi) return
-        pluginApi.pluginSettings.akspraypaintPath = root.editAkspraypaintPath
         pluginApi.pluginSettings.enableDaemon = root.editEnableDaemon
         pluginApi.pluginSettings.lastWallpaper = root.editWallpaperPath
         pluginApi.saveSettings()
@@ -185,31 +173,34 @@ ColumnLayout {
         stderr: SplitParser { onRead: function(d) {} }
         onExited: function(exitCode, exitStatus) {
             root.akspraypaintInstalled = (exitCode === 0)
-            root.installStatus = root.akspraypaintInstalled ? "installed" : "notInstalled"
-            if (root.akspraypaintInstalled) {
-                checkDaemonStatus()
+        }
+    }
+
+    Process {
+        id: whichProcess
+        stdout: SplitParser { onRead: function(d) {} }
+        stderr: SplitParser { onRead: function(d) {} }
+        onExited: function(exitCode, exitStatus) {
+            root.akspraypaintInstalled = (exitCode === 0)
+        }
+    }
+
+    Process {
+        id: setProcess
+        stdout: SplitParser { onRead: function(d) {} }
+        stderr: SplitParser { onRead: function(d) {} }
+        onExited: function(exitCode, exitStatus) {
+            if (exitCode === 0) {
+                Logger.i("AKSprayPaintSettings", "Wallpaper set successfully")
+            } else {
+                Logger.e("AKSprayPaintSettings", "akspraypaint run failed:", exitCode)
             }
         }
     }
 
     function checkInstallation() {
-        var path = root.akspraypaintPath || root.editAkspraypaintPath
-        checkProcess.command = ["sh", "-c", "test -x " + path + " && " + path + " --version"]
-        checkProcess.running = true
-    }
-
-    Process {
-        id: daemonCheckProcess
-        stdout: SplitParser { onRead: function(data) { } }
-        stderr: SplitParser { onRead: function(data) { } }
-        onExited: function(exitCode, exitStatus) {
-            root.daemonStatus = "stopped"
-        }
-    }
-
-    function checkDaemonStatus() {
-        daemonCheckProcess.command = ["sh", "-c", "test -f ~/.cache/akspraypaint/watch.pid && kill -0 $(cat ~/.cache/akspraypaint/watch.pid) 2>/dev/null && echo 'running' || echo 'stopped'"]
-        daemonCheckProcess.running = true
+        whichProcess.command = ["which", "akspraypaint"]
+        whichProcess.running = true
     }
 
     function toggleDaemon() {
@@ -240,7 +231,6 @@ ColumnLayout {
     }
 
     Component.onCompleted: {
-        akspraypaintPath = cfg.akspraypaintPath ?? defaults.akspraypaintPath ?? "akspraypaint"
         checkInstallation()
     }
 }

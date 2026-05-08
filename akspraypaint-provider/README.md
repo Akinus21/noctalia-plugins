@@ -24,8 +24,8 @@ Reads the active Noctalia theme from `~/.config/noctalia/colors.json`, extracts 
 ### Settings
 
 1. Open **Settings → AKSprayPaint**
-2. Set the **AKSprayPaint Path** if not using the default (`akspraypaint`)
-3. Check that the installation is detected
+2. The plugin automatically checks if akspraypaint is installed using `which akspraypaint`
+3. If not found, click **Install** to see the install command
 4. Toggle **Enable Daemon** to ON to start the watch daemon
 5. Choose a wallpaper with **Browse** and click **Set** to apply theme colors
 

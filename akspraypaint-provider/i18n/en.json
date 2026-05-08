@@ -1,11 +1,9 @@
 {
   "settings": {
-    "akspraypaintPath": {
-      "label": "AKSprayPaint Path"
-    },
     "installed": "AKSprayPaint is installed",
-    "notInstalled": "AKSprayPaint not found — install with: brew install akspraypaint",
-    "checkInstall": "Check",
+    "notInstalled": "AKSprayPaint not found — run: brew install akspraypaint",
+    "recheck": "Recheck",
+    "install": "Install",
     "enableDaemon": "Enable Daemon",
     "daemonOn": "ON",
     "daemonOff": "OFF",
