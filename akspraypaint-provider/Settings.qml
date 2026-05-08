@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Dialogs
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -13,23 +12,32 @@ ColumnLayout {
     property var cfg: pluginApi?.pluginSettings || ({})
     property var defaults: pluginApi?.manifest?.metadata?.defaultSettings || ({})
 
+    property string editAkspraypaintPath: cfg.akspraypaintPath ?? defaults.akspraypaintPath ?? "akspraypaint"
     property bool editEnableDaemon: cfg.enableDaemon ?? defaults.enableDaemon ?? false
     property string editWallpaperPath: cfg.lastWallpaper ?? defaults.lastWallpaper ?? ""
-    property string akspraypaintPath: cfg.akspraypaintPath ?? defaults.akspraypaintPath ?? "akspraypaint"
 
-    property string installStatus: "checking"
+    property string installStatus: "unknown"
     property string daemonStatus: "stopped"
     property bool akspraypaintInstalled: false
 
     spacing: Style.marginL
 
-    FileDialog {
-        id: wallpaperDialog
+    NFilePicker {
+        id: wallpaperPicker
         title: pluginApi?.tr("settings.wallpaper.title") || "Choose a wallpaper"
-        nameFilters: ["Image files (*.png *.jpg *.jpeg *.webp *.avif *.bmp)", "All files (*)"]
+        selectionMode: "files"
+        nameFilters: ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.avif", "*.bmp"]
+        showHiddenFiles: false
+        allowMultiSelection: false
+
+        function openPicker() {
+            openFilePicker()
+        }
+
         onAccepted: {
-            var path = wallpaperDialog.fileUrl.toString().replace("file://", "")
-            root.editWallpaperPath = path
+            if (selectedPaths.length > 0) {
+                root.editWallpaperPath = selectedPaths[0]
+            }
         }
     }
 
@@ -39,8 +47,8 @@ ColumnLayout {
         Layout.fillWidth: true
         label: pluginApi?.tr("settings.akspraypaintPath.label") || "AKSprayPaint Path"
         placeholderText: "akspraypaint"
-        text: root.akspraypaintPath
-        onTextChanged: root.akspraypaintPath = text
+        text: root.editAkspraypaintPath
+        onTextChanged: root.editAkspraypaintPath = text
     }
 
     // ── Installation status ────────────────────────────────────────────────
@@ -57,17 +65,18 @@ ColumnLayout {
             spacing: Style.marginM
 
             NIcon {
-                icon: root.akspraypaintInstalled ? "check-circle" : "x-circle"
-                color: root.akspraypaintInstalled ? "#4CAF50" : "#F44336"
+                icon: akspraypaintInstalled ? "check" : "x"
+                color: akspraypaintInstalled ? Color.mPrimary : "#F44336"
                 pointSize: Style.iconSizeM
             }
 
             NText {
-                text: root.akspraypaintInstalled
+                text: akspraypaintInstalled
                     ? (pluginApi?.tr("settings.installed") || "AKSprayPaint is installed")
-                    : (pluginApi?.tr("settings.notInstalled") || "AKSprayPaint not found")
-                color: root.akspraypaintInstalled ? "#4CAF50" : "#F44336"
+                    : (pluginApi?.tr("settings.notInstalled") || "AKSprayPaint not found — install with: brew install akspraypaint")
+                color: akspraypaintInstalled ? Color.mPrimary : "#F44336"
                 Layout.fillWidth: true
+                wrapMode: Text.Wrap
             }
 
             NButton {
@@ -80,47 +89,16 @@ ColumnLayout {
 
     // ── Daemon toggle ──────────────────────────────────────────────────────
 
-    NBox {
-        Layout.fillWidth: true
-        Layout.preferredHeight: daemonContent.implicitHeight + Style.marginL * 2
-        color: Color.mSurfaceContainer
-        radius: Style.radiusM
-
-        ColumnLayout {
-            id: daemonContent
-            anchors { fill: parent; margins: Style.marginL }
-            spacing: Style.marginS
-
-            RowLayout {
-                spacing: Style.marginS
-
-                NText {
-                    text: pluginApi?.tr("settings.enableDaemon") || "Enable Daemon"
-                    font.weight: Font.Bold
-                    Layout.fillWidth: true
-                }
-
-                NButton {
-                    text: editEnableDaemon
-                        ? (pluginApi?.tr("settings.daemonOn") || "ON")
-                        : (pluginApi?.tr("settings.daemonOff") || "OFF")
-                    outlined: !editEnableDaemon
-                    onClicked: {
-                        editEnableDaemon = !editEnableDaemon
-                        toggleDaemon()
-                    }
-                }
-            }
-
-            NText {
-                text: daemonStatus === "running"
-                    ? (pluginApi?.tr("settings.daemonRunning") || "Daemon is running")
-                    : (pluginApi?.tr("settings.daemonStopped") || "Daemon is stopped")
-                color: daemonStatus === "running" ? "#4CAF50" : Color.mOnSurfaceVariant
-                pointSize: Style.fontSizeS
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
-            }
+    NToggle {
+        label: pluginApi?.tr("settings.enableDaemon") || "Enable Daemon"
+        description: daemonStatus === "running"
+            ? (pluginApi?.tr("settings.daemonRunning") || "Watch daemon is running")
+            : (pluginApi?.tr("settings.daemonStopped") || "Watch daemon is stopped")
+        checked: root.editEnableDaemon
+        icon: "watch"
+        onToggled: function(checked) {
+            root.editEnableDaemon = checked
+            toggleDaemon()
         }
     }
 
@@ -174,7 +152,7 @@ ColumnLayout {
                 NButton {
                     text: pluginApi?.tr("settings.browse") || "Browse…"
                     outlined: true
-                    onClicked: wallpaperDialog.open()
+                    onClicked: wallpaperPicker.openPicker()
                 }
             }
         }
@@ -189,7 +167,17 @@ ColumnLayout {
         onClicked: setWallpaper()
     }
 
-    // ── Process for checking install ───────────────────────────────────────
+    // ── saveSettings ───────────────────────────────────────────────────────
+
+    function saveSettings() {
+        if (!pluginApi) return
+        pluginApi.pluginSettings.akspraypaintPath = root.editAkspraypaintPath
+        pluginApi.pluginSettings.enableDaemon = root.editEnableDaemon
+        pluginApi.pluginSettings.lastWallpaper = root.editWallpaperPath
+        pluginApi.saveSettings()
+    }
+
+    // ── Actions ────────────────────────────────────────────────────────────
 
     Process {
         id: checkProcess
@@ -204,6 +192,11 @@ ColumnLayout {
         }
     }
 
+    function checkInstallation() {
+        checkProcess.command = [root.editAkspraypaintPath, "--version"]
+        checkProcess.running = true
+    }
+
     Process {
         id: daemonCheckProcess
         stdout: SplitParser { onRead: function(data) { } }
@@ -211,36 +204,6 @@ ColumnLayout {
         onExited: function(exitCode, exitStatus) {
             root.daemonStatus = "stopped"
         }
-    }
-
-    Process {
-        id: setProcess
-        stdout: SplitParser { onRead: function(data) { } }
-        stderr: SplitParser { onRead: function(data) { } }
-        onExited: function(exitCode, exitStatus) {
-            if (exitCode === 0) {
-                Logger.i("AKSprayPaintSettings", "Wallpaper set successfully")
-            } else {
-                Logger.e("AKSprayPaintSettings", "Failed to set wallpaper:", exitCode)
-            }
-        }
-    }
-
-    // ── saveSettings ───────────────────────────────────────────────────────
-
-    function saveSettings() {
-        if (!pluginApi) return
-        pluginApi.pluginSettings.akspraypaintPath = root.akspraypaintPath
-        pluginApi.pluginSettings.enableDaemon = root.editEnableDaemon
-        pluginApi.pluginSettings.lastWallpaper = root.editWallpaperPath
-        pluginApi.saveSettings()
-    }
-
-    // ── Actions ────────────────────────────────────────────────────────────
-
-    function checkInstallation() {
-        checkProcess.command = [root.akspraypaintPath, "--version"]
-        checkProcess.running = true
     }
 
     function checkDaemonStatus() {
