@@ -84,7 +84,7 @@ Item {
             Logger.w("AKSprayPaintMain", "Cannot run: akspraypaint not installed")
             return
         }
-        var cmd = "WAYLAND_DISPLAY=" + (Qt.envVar("WAYLAND_DISPLAY") || "") + " XDG_RUNTIME_DIR=" + (Qt.envVar("XDG_RUNTIME_DIR") || "/run/user/1000") + " akspraypaint run --wallpaper '" + wallpaperPath + "'"
+        var cmd = "WAYLAND_DISPLAY=" + (Quickshell.env("WAYLAND_DISPLAY") || "") + " XDG_RUNTIME_DIR=" + (Quickshell.env("XDG_RUNTIME_DIR") || "/run/user/1000") + " akspraypaint run --wallpaper '" + wallpaperPath + "'"
         runProcess.command = ["sh", "-c", cmd]
         runProcess.running = true
         Logger.i("AKSprayPaintMain", "Running with wallpaper:", wallpaperPath)
