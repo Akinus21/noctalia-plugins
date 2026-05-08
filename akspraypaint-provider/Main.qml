@@ -21,7 +21,6 @@ Item {
                 Logger.w("AKSprayPaintMain", "akspraypaint not found at:", akspraypaintPath)
             } else {
                 Logger.i("AKSprayPaintMain", "akspraypaint found at:", akspraypaintPath)
-                checkDaemonStatus()
             }
         }
     }
@@ -32,9 +31,6 @@ Item {
         stderr: SplitParser { onRead: function(d) {} }
         onExited: function(exitCode, exitStatus) {
             daemonRunning = false
-            if (pluginApi?.pluginSettings?.enableDaemon) {
-                startDaemon()
-            }
         }
     }
 
@@ -61,23 +57,9 @@ Item {
         }
     }
 
-    Process {
-        id: statusProcess
-        stdout: SplitParser { onRead: function(data) { } }
-        stderr: SplitParser { onRead: function(data) { } }
-        onExited: function(exitCode, exitStatus) {
-            daemonRunning = false
-        }
-    }
-
     function checkInstalled() {
         checkProcess.command = ["sh", "-c", "test -x " + akspraypaintPath + " && " + akspraypaintPath + " --version"]
         checkProcess.running = true
-    }
-
-    function checkDaemonStatus() {
-        statusProcess.command = ["sh", "-c", "test -f ~/.cache/akspraypaint/watch.pid && kill -0 $(cat ~/.cache/akspraypaint/watch.pid) 2>/dev/null && echo 'running' || echo 'stopped'"]
-        statusProcess.running = true
     }
 
     function startDaemon() {
