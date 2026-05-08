@@ -61,7 +61,7 @@ Item {
 
     Timer {
         id: updateDelayTimer
-        interval: 5000
+        interval: 100
         onTriggered: function() {
             Qt.callLater(startInitDaemon)
         }
