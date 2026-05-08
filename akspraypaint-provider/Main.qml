@@ -163,26 +163,10 @@ Item {
         }
         var env = Object.assign({}, Qt.application.environment)
         disableProcess.environment = env
-        disableProcess.command = ["sh", "-c", "pkill -f 'akspraypaint watch'"]
+        disableProcess.command = ["sh", "-c", "PID=$(cat ~/.cache/akspraypaint/watch.pid 2>/dev/null) && [ -n \"$PID\" ] && kill $PID 2>/dev/null && rm -f ~/.cache/akspraypaint/watch.pid"]
         disableProcess.running = true
         daemonRunning = false
-        Logger.i("AKSprayPaintMain", "Daemon stop requested")
-    }
-
-    Process {
-        id: killProcess
-        stdout: SplitParser { onRead: function(d) {} }
-        stderr: SplitParser { onRead: function(d) {} }
-        onExited: function(exitCode, exitStatus) {
-            daemonProcess.running = false
-            Logger.i("AKSprayPaintMain", "killProcess done, daemonProcess.running reset")
-            if (_pendingWallpaperRestart && _pendingWallpaperPath) {
-                var wp = _pendingWallpaperPath
-                _pendingWallpaperRestart = false
-                _pendingWallpaperPath = ""
-                Qt.callLater(function() { startDaemonWithWallpaper(wp) })
-            }
-        }
+        Logger.i("AKSprayPaintMain", "Daemon stop requested via PID file")
     }
 
     function runWallpaperOnce(wallpaperPath) {
