@@ -67,7 +67,7 @@ ColumnLayout {
 
             NIcon {
                 icon: akspraypaintInstalled ? "check" : "x"
-                color: akspraypaintInstalled ? "#4CAF50" : "#F44336"
+                color: Color.mOnSurface
                 pointSize: Style.iconSizeM
             }
 
@@ -75,7 +75,7 @@ ColumnLayout {
                 text: akspraypaintInstalled
                     ? (pluginApi?.tr("settings.installed") || "AKSprayPaint is installed")
                     : (pluginApi?.tr("settings.notInstalled") || "AKSprayPaint not found — install with: brew install akspraypaint")
-                color: akspraypaintInstalled ? "#4CAF50" : "#F44336"
+                color: Color.mOnSurfaceVariant
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
             }
