@@ -57,7 +57,13 @@ Item {
     }
 
     function checkInstalled() {
-        checkProcess.command = ["which", "akspraypaint"]
+        var env = {}
+        for (var i = 0; i < Qt.application.environment.length; i++) {
+            var entry = Qt.application.environment[i]
+            if (entry) env[entry.name] = entry.value
+        }
+        checkProcess.environment = env
+        checkProcess.command = ["sh", "-c", "which akspraypaint"]
         checkProcess.running = true
     }
 
@@ -66,6 +72,12 @@ Item {
             Logger.w("AKSprayPaintMain", "Cannot start daemon: akspraypaint not installed")
             return
         }
+        var env = {}
+        for (var i = 0; i < Qt.application.environment.length; i++) {
+            var entry = Qt.application.environment[i]
+            if (entry) env[entry.name] = entry.value
+        }
+        daemonProcess.environment = env
         daemonProcess.command = ["sh", "-c", "akspraypaint watch"]
         daemonProcess.running = true
         daemonRunning = true
@@ -73,6 +85,12 @@ Item {
     }
 
     function stopDaemon() {
+        var env = {}
+        for (var i = 0; i < Qt.application.environment.length; i++) {
+            var entry = Qt.application.environment[i]
+            if (entry) env[entry.name] = entry.value
+        }
+        disableProcess.environment = env
         disableProcess.command = ["sh", "-c", "akspraypaint --disable"]
         disableProcess.running = true
         daemonRunning = false
@@ -84,8 +102,13 @@ Item {
             Logger.w("AKSprayPaintMain", "Cannot run: akspraypaint not installed")
             return
         }
-        var cmd = "WAYLAND_DISPLAY=" + (Quickshell.env("WAYLAND_DISPLAY") || "") + " XDG_RUNTIME_DIR=" + (Quickshell.env("XDG_RUNTIME_DIR") || "/run/user/1000") + " akspraypaint run --wallpaper '" + wallpaperPath + "'"
-        runProcess.command = ["sh", "-c", cmd]
+        var env = {}
+        for (var i = 0; i < Qt.application.environment.length; i++) {
+            var entry = Qt.application.environment[i]
+            if (entry) env[entry.name] = entry.value
+        }
+        runProcess.environment = env
+        runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "'"]
         runProcess.running = true
         Logger.i("AKSprayPaintMain", "Running with wallpaper:", wallpaperPath)
     }
