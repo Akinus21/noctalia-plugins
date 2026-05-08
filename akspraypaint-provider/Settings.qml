@@ -19,6 +19,7 @@ ColumnLayout {
     property string installStatus: "unknown"
     property string daemonStatus: "stopped"
     property bool akspraypaintInstalled: false
+    property string akspraypaintPath: "akspraypaint"
 
     spacing: Style.marginL
 
@@ -56,7 +57,7 @@ ColumnLayout {
     NBox {
         Layout.fillWidth: true
         Layout.preferredHeight: installRow.implicitHeight + Style.marginL * 2
-        color: Color.mSurfaceContainer
+        color: Color.mSurface
         radius: Style.radiusM
 
         RowLayout {
@@ -66,7 +67,7 @@ ColumnLayout {
 
             NIcon {
                 icon: akspraypaintInstalled ? "check" : "x"
-                color: akspraypaintInstalled ? Color.mPrimary : "#F44336"
+                color: akspraypaintInstalled ? "#4CAF50" : "#F44336"
                 pointSize: Style.iconSizeM
             }
 
@@ -74,7 +75,7 @@ ColumnLayout {
                 text: akspraypaintInstalled
                     ? (pluginApi?.tr("settings.installed") || "AKSprayPaint is installed")
                     : (pluginApi?.tr("settings.notInstalled") || "AKSprayPaint not found — install with: brew install akspraypaint")
-                color: akspraypaintInstalled ? Color.mPrimary : "#F44336"
+                color: akspraypaintInstalled ? "#4CAF50" : "#F44336"
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
             }
@@ -95,7 +96,6 @@ ColumnLayout {
             ? (pluginApi?.tr("settings.daemonRunning") || "Watch daemon is running")
             : (pluginApi?.tr("settings.daemonStopped") || "Watch daemon is stopped")
         checked: root.editEnableDaemon
-        icon: "watch"
         onToggled: function(checked) {
             root.editEnableDaemon = checked
             toggleDaemon()
@@ -107,7 +107,7 @@ ColumnLayout {
     NBox {
         Layout.fillWidth: true
         Layout.preferredHeight: wallpaperContent.implicitHeight + Style.marginL * 2
-        color: Color.mSurfaceContainer
+        color: Color.mSurface
         radius: Style.radiusM
 
         ColumnLayout {
@@ -193,7 +193,8 @@ ColumnLayout {
     }
 
     function checkInstallation() {
-        checkProcess.command = [root.editAkspraypaintPath, "--version"]
+        var path = root.akspraypaintPath || root.editAkspraypaintPath
+        checkProcess.command = [path, "--version"]
         checkProcess.running = true
     }
 
@@ -239,6 +240,7 @@ ColumnLayout {
     }
 
     Component.onCompleted: {
+        akspraypaintPath = cfg.akspraypaintPath ?? defaults.akspraypaintPath ?? "akspraypaint"
         checkInstallation()
     }
 }
