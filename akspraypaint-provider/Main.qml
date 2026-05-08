@@ -27,9 +27,10 @@ Item {
     Process {
         id: daemonProcess
         stdout: SplitParser { onRead: function(d) {} }
-        stderr: SplitParser { onRead: function(d) {} }
+        stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "daemon stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
-            daemonRunning = false
+            Logger.w("AKSprayPaintMain", "daemonProcess exited, keeping daemonRunning=true (background fork)")
+            // Don't set daemonRunning = false here - akspraypaint watch forks to background
         }
     }
 
@@ -50,7 +51,7 @@ Item {
     Process {
         id: disableProcess
         stdout: SplitParser { onRead: function(d) {} }
-        stderr: SplitParser { onRead: function(d) {} }
+        stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "disable stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
             daemonRunning = false
             Logger.i("AKSprayPaintMain", "Daemon stopped")
@@ -73,6 +74,8 @@ Item {
             Logger.w("AKSprayPaintMain", "daemonProcess busy")
             return
         }
+        var env = Object.assign({}, Qt.application.environment)
+        daemonProcess.environment = env
         daemonProcess.command = ["sh", "-c", "akspraypaint watch"]
         daemonProcess.running = true
         daemonRunning = true
@@ -84,6 +87,8 @@ Item {
             Logger.w("AKSprayPaintMain", "disableProcess busy")
             return
         }
+        var env = Object.assign({}, Qt.application.environment)
+        disableProcess.environment = env
         disableProcess.command = ["sh", "-c", "akspraypaint --disable"]
         disableProcess.running = true
         daemonRunning = false
