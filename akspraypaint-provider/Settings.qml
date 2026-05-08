@@ -258,17 +258,6 @@ function checkInstallation() {
         saveSettings()
     }
 
-    function clearCache() {
-        var env = {}
-        for (var i = 0; i < Qt.application.environment.length; i++) {
-            var entry = Qt.application.environment[i]
-            if (entry) env[entry.name] = entry.value
-        }
-        cleanProcess.environment = env
-        cleanProcess.command = ["sh", "-c", "akspraypaint clean"]
-        cleanProcess.running = true
-    }
-
     function onPluginReady() {
         checkInstallation()
     }
