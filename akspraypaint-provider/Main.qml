@@ -10,8 +10,7 @@ Item {
     property bool isInstalled: false
     property bool daemonRunning: false
     property bool wallpaperBusy: false
-    property bool pendingDaemonStart: false
-    property string pendingWallpaperPath: ""
+    property string currentWallpaperPath: ""
 
     Process {
         id: checkProcess
@@ -23,17 +22,24 @@ Item {
                 Logger.w("AKSprayPaintMain", "akspraypaint not found in PATH")
             } else {
                 Logger.i("AKSprayPaintMain", "akspraypaint found")
+                afterCheck()
             }
         }
     }
 
     Process {
-        id: daemonProcess
+        id: disableProcess
         stdout: SplitParser { onRead: function(d) {} }
-        stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "daemon stderr:", d) } }
+        stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "disable stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
-            Logger.w("AKSprayPaintMain", "daemonProcess exited, keeping daemonRunning=true (background fork)")
-            // Don't set daemonRunning = false here - akspraypaint watch forks to background
+            daemonRunning = false
+            Logger.i("AKSprayPaintMain", "disableProcess exited")
+            if (pendingRestartAfterDisable && pendingRestartWallpaper) {
+                pendingRestartAfterDisable = false
+                var wp = pendingRestartWallpaper
+                pendingRestartWallpaper = ""
+                Qt.callLater(function() { runWallpaperAndRestartDaemon(wp) })
+            }
         }
     }
 
@@ -49,20 +55,30 @@ Item {
             } else {
                 Logger.e("AKSprayPaintMain", "akspraypaint run failed:", exitCode)
             }
-            if (pendingDaemonStart && exitCode === 0) {
-                pendingDaemonStart = false
+            if (pendingWallpaperForRestart && exitCode === 0) {
+                pendingWallpaperForRestart = ""
                 startDaemon()
             }
         }
     }
 
     Process {
-        id: disableProcess
+        id: daemonProcess
         stdout: SplitParser { onRead: function(d) {} }
-        stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "disable stderr:", d) } }
+        stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "daemon stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
-            daemonRunning = false
-            Logger.i("AKSprayPaintMain", "Daemon stopped")
+            Logger.w("AKSprayPaintMain", "daemonProcess exited, keeping daemonRunning=true (background fork)")
+        }
+    }
+
+    property bool pendingWallpaperForRestart: false
+
+    function afterCheck() {
+        if (!pluginApi) return
+        var enabled = pluginApi.pluginSettings?.enableDaemon
+        var wallpaper = pluginApi.pluginSettings?.lastWallpaper
+        if (enabled && wallpaper) {
+            initDaemon(wallpaper)
         }
     }
 
@@ -92,7 +108,7 @@ Item {
 
     function stopDaemon() {
         if (disableProcess.running) {
-            Logger.w("AKSprayPaintMain", "disableProcess busy")
+            Logger.w("AKSprayPaintMain", "stopDaemon: disableProcess busy")
             return
         }
         var env = Object.assign({}, Qt.application.environment)
@@ -104,40 +120,45 @@ Item {
     }
 
     function initDaemon(wallpaperPath) {
-        if (!isInstalled) {
-            Logger.w("AKSprayPaintMain", "Cannot init daemon: akspraypaint not installed")
+        if (!isInstalled || !wallpaperPath) {
+            if (!wallpaperPath) Logger.w("AKSprayPaintMain", "initDaemon: no wallpaper path")
             return
         }
-        if (runProcess.running) {
-            Logger.w("AKSprayPaintMain", "initDaemon: runProcess busy, skipping wallpaper")
-            startDaemon()
-            return
-        }
-        pendingDaemonStart = true
-        pendingWallpaperPath = wallpaperPath
-        wallpaperBusy = true
-        var env = Object.assign({}, Qt.application.environment)
-        runProcess.environment = env
-        runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "'"]
-        runProcess.running = true
-        Logger.i("AKSprayPaintMain", "initDaemon: running wallpaper then starting daemon")
+        pendingWallpaperForRestart = true
+        pendingRestartWallpaper = wallpaperPath
+        runWallpaperInternal(wallpaperPath)
     }
 
-    function runWallpaper(wallpaperPath, onComplete) {
-        if (!isInstalled) {
-            Logger.w("AKSprayPaintMain", "Cannot run: akspraypaint not installed")
+    function restartDaemonWithWallpaper(wallpaperPath) {
+        if (disableProcess.running || daemonProcess.running) {
+            Logger.w("AKSprayPaintMain", "restartDaemonWithWallpaper: processes busy")
             return
         }
+        pendingWallpaperForRestart = true
+        pendingRestartWallpaper = wallpaperPath
+        var env = Object.assign({}, Qt.application.environment)
+        disableProcess.environment = env
+        disableProcess.command = ["sh", "-c", "akspraypaint --disable"]
+        disableProcess.running = true
+        Logger.i("AKSprayPaintMain", "restartDaemonWithWallpaper: stopping daemon first")
+    }
+
+    function runWallpaperInternal(wallpaperPath) {
         if (runProcess.running) {
-            Logger.w("AKSprayPaintMain", "runProcess busy, waiting...")
+            Logger.w("AKSprayPaintMain", "runWallpaperInternal: runProcess busy")
             return
         }
+        currentWallpaperPath = wallpaperPath
         wallpaperBusy = true
         var env = Object.assign({}, Qt.application.environment)
         runProcess.environment = env
         runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "'"]
         runProcess.running = true
-        Logger.i("AKSprayPaintMain", "Running with wallpaper:", wallpaperPath)
+        Logger.i("AKSprayPaintMain", "runWallpaperInternal:", wallpaperPath)
+    }
+
+    function runWallpaper(wallpaperPath) {
+        runWallpaperInternal(wallpaperPath)
     }
 
     Component.onCompleted: {

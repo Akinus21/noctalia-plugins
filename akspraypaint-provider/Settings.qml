@@ -183,28 +183,6 @@ ColumnLayout {
     }
 
     Process {
-        id: whichProcess
-        stdout: SplitParser { onRead: function(d) {} }
-        stderr: SplitParser { onRead: function(d) {} }
-        onExited: function(exitCode, exitStatus) {
-            root.akspraypaintInstalled = (exitCode === 0)
-        }
-    }
-
-    Process {
-        id: setProcess
-        stdout: SplitParser { onRead: function(d) {} }
-        stderr: SplitParser { onRead: function(d) {} }
-        onExited: function(exitCode, exitStatus) {
-            if (exitCode === 0) {
-                Logger.i("AKSprayPaintSettings", "Wallpaper set successfully")
-            } else {
-                Logger.e("AKSprayPaintSettings", "akspraypaint run failed:", exitCode)
-            }
-        }
-    }
-
-    Process {
         id: cleanProcess
         stdout: SplitParser { onRead: function(d) {} }
         stderr: SplitParser { onRead: function(d) {} }
@@ -217,16 +195,9 @@ ColumnLayout {
         }
     }
 
-function checkInstallation() {
-        whichProcess.command = ["sh", "-c", "which akspraypaint"]
-        whichProcess.running = true
-    }
-
-    function clearCache() {
-        var env = Object.assign({}, Qt.application.environment)
-        cleanProcess.environment = env
-        cleanProcess.command = ["sh", "-c", "akspraypaint clean"]
-        cleanProcess.running = true
+    function checkInstallation() {
+        checkProcess.command = ["sh", "-c", "which akspraypaint"]
+        checkProcess.running = true
     }
 
     function toggleDaemon() {
@@ -252,12 +223,17 @@ function checkInstallation() {
         var main = pluginApi?.mainInstance
         if (!main) return
         if (editEnableDaemon) {
-            main.initDaemon(root.editWallpaperPath)
+            main.restartDaemonWithWallpaper(root.editWallpaperPath)
             daemonStatus = "running"
         } else {
             main.runWallpaper(root.editWallpaperPath)
         }
         saveSettings()
+    }
+
+    function clearCache() {
+        cleanProcess.command = ["sh", "-c", "akspraypaint clean"]
+        cleanProcess.running = true
     }
 
     function onPluginReady() {
