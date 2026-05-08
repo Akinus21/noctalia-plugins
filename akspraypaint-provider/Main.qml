@@ -71,7 +71,9 @@ Item {
         stdout: SplitParser { onRead: function(d) {} }
         stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "daemon stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
-            Logger.w("AKSprayPaintMain", "daemonProcess exited (background fork)")
+            Logger.w("AKSprayPaintMain", "daemonProcess exited (fork completed), resetting running flag")
+            // Reset running so subsequent daemon commands work - the background fork keeps running
+            daemonProcess.running = false
         }
     }
 
