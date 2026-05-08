@@ -91,7 +91,11 @@ Item {
 
     Component.onCompleted: {
         checkInstalled()
-        if (pluginApi?.pluginSettings?.enableDaemon) {
+        var lastWallpaper = pluginApi?.pluginSettings?.lastWallpaper
+        if (pluginApi?.pluginSettings?.enableDaemon && lastWallpaper) {
+            runWallpaper(lastWallpaper)
+            Qt.callLater(startDaemon)
+        } else if (pluginApi?.pluginSettings?.enableDaemon) {
             Qt.callLater(startDaemon)
         }
     }

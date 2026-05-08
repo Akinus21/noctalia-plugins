@@ -229,6 +229,10 @@ ColumnLayout {
         saveSettings()
     }
 
+    function onPluginReady() {
+        checkInstallation()
+    }
+
     Component.onCompleted: {
         checkInstallation()
     }
