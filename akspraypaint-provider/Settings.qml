@@ -225,7 +225,7 @@ ColumnLayout {
         main.stopDaemon()
         if (editEnableDaemon) {
             Qt.callLater(function() {
-                main.startWatchDaemon(root.editWallpaperPath)
+                main.startDaemonWithWallpaper(root.editWallpaperPath)
             })
             daemonStatus = "running"
         } else {

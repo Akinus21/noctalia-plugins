@@ -167,41 +167,6 @@ Item {
         Logger.i("AKSprayPaintMain", "Daemon stop requested")
     }
 
-    function startWatchDaemon(wallpaperPath) {
-        if (!isInstalled) {
-            Logger.w("AKSprayPaintMain", "Cannot start watch: akspraypaint not installed")
-            return
-        }
-        if (daemonProcess.running) {
-            Logger.w("AKSprayPaintMain", "daemonProcess busy")
-            return
-        }
-        if (!wallpaperPath) {
-            Logger.w("AKSprayPaintMain", "startWatchDaemon: no wallpaper path")
-            return
-        }
-        activeWallpaperPath = wallpaperPath
-        var env = Object.assign({}, Qt.application.environment)
-        daemonProcess.environment = env
-        daemonProcess.command = ["sh", "-c", "akspraypaint watch --wallpaper '" + wallpaperPath + "'"]
-        daemonProcess.running = true
-        daemonRunning = true
-        Logger.i("AKSprayPaintMain", "Watch daemon started with wallpaper:", wallpaperPath)
-    }
-
-    function stopDaemon() {
-        if (disableProcess.running) {
-            Logger.w("AKSprayPaintMain", "stopDaemon: disableProcess busy")
-            return
-        }
-        var env = Object.assign({}, Qt.application.environment)
-        disableProcess.environment = env
-        disableProcess.command = ["sh", "-c", "akspraypaint --disable"]
-        disableProcess.running = true
-        daemonRunning = false
-        Logger.i("AKSprayPaintMain", "Daemon stop requested")
-    }
-
     function runWallpaperOnce(wallpaperPath) {
         if (!isInstalled) return
         if (runProcess.running) {
