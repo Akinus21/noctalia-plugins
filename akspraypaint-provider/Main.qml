@@ -11,7 +11,7 @@ Item {
     property bool isInstalled: false
     property bool daemonRunning: false
 
-Process {
+    Process {
         id: checkProcess
         stdout: SplitParser { onRead: function(d) {} }
         stderr: SplitParser { onRead: function(d) {} }
@@ -23,13 +23,6 @@ Process {
                 Logger.i("AKSprayPaintMain", "akspraypaint found at:", akspraypaintPath)
                 checkDaemonStatus()
             }
-        }
-    }
-
-    function checkInstalled() {
-        checkProcess.command = ["sh", "-c", "test -x " + akspraypaintPath + " && " + akspraypaintPath + " --version"]
-        checkProcess.running = true
-    }
         }
     }
 
@@ -78,7 +71,7 @@ Process {
     }
 
     function checkInstalled() {
-        checkProcess.command = [akspraypaintPath, "--version"]
+        checkProcess.command = ["sh", "-c", "test -x " + akspraypaintPath + " && " + akspraypaintPath + " --version"]
         checkProcess.running = true
     }
 
