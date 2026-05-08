@@ -37,10 +37,18 @@ Item {
         stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "update stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
             if (exitCode === 0) {
-                Logger.i("AKSprayPaintMain", "Auto-update completed")
+                Logger.i("AKSprayPaintMain", "Auto-update completed, waiting before init...")
             } else {
                 Logger.w("AKSprayPaintMain", "Auto-update exited with code:", exitCode)
             }
+            updateDelayTimer.start()
+        }
+    }
+
+    Timer {
+        id: updateDelayTimer
+        interval: 5000
+        onTriggered: function() {
             Qt.callLater(afterCheck)
         }
     }
