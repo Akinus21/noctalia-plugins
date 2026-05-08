@@ -26,7 +26,6 @@ ColumnLayout {
     FileDialog {
         id: wallpaperDialog
         title: pluginApi?.tr("settings.wallpaper.title") || "Choose a wallpaper"
-        folder: ""
         nameFilters: ["Image files (*.png *.jpg *.jpeg *.webp *.avif *.bmp)", "All files (*)"]
         onAccepted: {
             var path = wallpaperDialog.fileUrl.toString().replace("file://", "")
