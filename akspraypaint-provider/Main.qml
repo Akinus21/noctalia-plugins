@@ -12,6 +12,9 @@ Item {
     property bool wallpaperBusy: false
     property string currentWallpaperPath: ""
 
+    property bool _pendingWallpaperRestart: false
+    property string _pendingWallpaperPath: ""
+
     Process {
         id: checkProcess
         stdout: SplitParser { onRead: function(d) {} }
@@ -22,7 +25,7 @@ Item {
                 Logger.w("AKSprayPaintMain", "akspraypaint not found in PATH")
             } else {
                 Logger.i("AKSprayPaintMain", "akspraypaint found")
-                afterCheck()
+                Qt.callLater(afterCheck)
             }
         }
     }
@@ -33,12 +36,12 @@ Item {
         stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "disable stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
             daemonRunning = false
-            Logger.i("AKSprayPaintMain", "disableProcess exited")
-            if (pendingRestartAfterDisable && pendingRestartWallpaper) {
-                pendingRestartAfterDisable = false
-                var wp = pendingRestartWallpaper
-                pendingRestartWallpaper = ""
-                Qt.callLater(function() { runWallpaperAndRestartDaemon(wp) })
+            Logger.i("AKSprayPaintMain", "disableProcess exited, pendingRestart=" + _pendingWallpaperRestart)
+            if (_pendingWallpaperRestart && _pendingWallpaperPath) {
+                _pendingWallpaperRestart = false
+                var wp = _pendingWallpaperPath
+                _pendingWallpaperPath = ""
+                Qt.callLater(function() { runWallpaperInternal(wp) })
             }
         }
     }
@@ -55,9 +58,9 @@ Item {
             } else {
                 Logger.e("AKSprayPaintMain", "akspraypaint run failed:", exitCode)
             }
-            if (pendingWallpaperForRestart && exitCode === 0) {
-                pendingWallpaperForRestart = ""
-                startDaemon()
+            if (_pendingWallpaperRestart && exitCode === 0) {
+                _pendingWallpaperRestart = false
+                Qt.callLater(function() { startDaemon() })
             }
         }
     }
@@ -67,18 +70,17 @@ Item {
         stdout: SplitParser { onRead: function(d) {} }
         stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "daemon stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
-            Logger.w("AKSprayPaintMain", "daemonProcess exited, keeping daemonRunning=true (background fork)")
+            Logger.w("AKSprayPaintMain", "daemonProcess exited (background fork)")
         }
     }
-
-    property bool pendingWallpaperForRestart: false
 
     function afterCheck() {
         if (!pluginApi) return
         var enabled = pluginApi.pluginSettings?.enableDaemon
         var wallpaper = pluginApi.pluginSettings?.lastWallpaper
+        Logger.i("AKSprayPaintMain", "afterCheck: enabled=" + enabled + " wallpaper=" + wallpaper)
         if (enabled && wallpaper) {
-            initDaemon(wallpaper)
+            Qt.callLater(function() { initDaemon(wallpaper) })
         }
     }
 
@@ -120,12 +122,17 @@ Item {
     }
 
     function initDaemon(wallpaperPath) {
-        if (!isInstalled || !wallpaperPath) {
-            if (!wallpaperPath) Logger.w("AKSprayPaintMain", "initDaemon: no wallpaper path")
+        if (!isInstalled) {
+            Logger.w("AKSprayPaintMain", "initDaemon: akspraypaint not installed")
             return
         }
-        pendingWallpaperForRestart = true
-        pendingRestartWallpaper = wallpaperPath
+        if (!wallpaperPath) {
+            Logger.w("AKSprayPaintMain", "initDaemon: no wallpaper path")
+            return
+        }
+        Logger.i("AKSprayPaintMain", "initDaemon: starting with", wallpaperPath)
+        _pendingWallpaperRestart = true
+        _pendingWallpaperPath = wallpaperPath
         runWallpaperInternal(wallpaperPath)
     }
 
@@ -134,8 +141,8 @@ Item {
             Logger.w("AKSprayPaintMain", "restartDaemonWithWallpaper: processes busy")
             return
         }
-        pendingWallpaperForRestart = true
-        pendingRestartWallpaper = wallpaperPath
+        _pendingWallpaperRestart = true
+        _pendingWallpaperPath = wallpaperPath
         var env = Object.assign({}, Qt.application.environment)
         disableProcess.environment = env
         disableProcess.command = ["sh", "-c", "akspraypaint --disable"]
