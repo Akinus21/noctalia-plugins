@@ -233,8 +233,13 @@ function checkInstallation() {
         var main = pluginApi?.mainInstance
         if (!main) return
         if (editEnableDaemon) {
-            main.startDaemon()
-            daemonStatus = "running"
+            if (root.editWallpaperPath) {
+                main.runWallpaper(root.editWallpaperPath)
+            }
+            Qt.callLater(function() {
+                main.startDaemon()
+                daemonStatus = "running"
+            })
         } else {
             main.stopDaemon()
             daemonStatus = "stopped"
