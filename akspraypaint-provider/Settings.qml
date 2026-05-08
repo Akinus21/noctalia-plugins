@@ -26,7 +26,7 @@ ColumnLayout {
     FileDialog {
         id: wallpaperDialog
         title: pluginApi?.tr("settings.wallpaper.title") || "Choose a wallpaper"
-        folder: "file://" + (Qt.envVar("HOME") || "")
+        folder: "/var/home/gabriel"
         nameFilters: ["Image files (*.png *.jpg *.jpeg *.webp *.avif *.bmp)", "All files (*)"]
         onAccepted: {
             var path = wallpaperDialog.fileUrl.toString().replace("file://", "")

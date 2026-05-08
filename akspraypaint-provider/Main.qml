@@ -66,21 +66,18 @@ Item {
         checkProcess.running = true
     }
 
-    function checkDaemonStatus() {
-        var pidPath = Qt.resolvedUrl("file://~/.cache/akspraypaint/watch.pid").path
-        var xdgHome = Qt.envVar("HOME")
-        var fullPidPath = xdgHome + "/.cache/akspraypaint/watch.pid"
-        FileView {
-            id: pidFileReader
-            path: fullPidPath
-            onReady: function() {
-                var pid = parseInt(pidFileReader.readAll().trim())
-                if (pid > 0) {
-                    daemonProcess.command = ["sh", "-c", "kill -0 " + pid + " 2>/dev/null && echo 'running' || echo 'dead'"]
-                    daemonProcess.running = true
-                }
-            }
+    Process {
+        id: statusProcess
+        stdout: SplitParser { onRead: function(data) { } }
+        stderr: SplitParser { onRead: function(data) { } }
+        onExited: function(exitCode, exitStatus) {
+            daemonRunning = false
         }
+    }
+
+    function checkDaemonStatus() {
+        statusProcess.command = ["sh", "-c", "test -f ~/.cache/akspraypaint/watch.pid && kill -0 $(cat ~/.cache/akspraypaint/watch.pid) 2>/dev/null && echo 'running' || echo 'stopped'"]
+        statusProcess.running = true
     }
 
     function startDaemon() {
