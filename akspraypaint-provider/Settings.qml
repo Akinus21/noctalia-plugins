@@ -238,8 +238,7 @@ ColumnLayout {
     }
 
     function checkDaemonStatus() {
-        var home = Qt.envVar("HOME") || "/root"
-        daemonCheckProcess.command = ["sh", "-c", "test -f '" + home + "/.cache/akspraypaint/watch.pid' && kill -0 $(cat '" + home + "/.cache/akspraypaint/watch.pid") 2>/dev/null && echo 'running' || echo 'stopped'"]
+        daemonCheckProcess.command = ["sh", "-c", "test -f /var/home/gabriel/.cache/akspraypaint/watch.pid && kill -0 $(cat /var/home/gabriel/.cache/akspraypaint/watch.pid) 2>/dev/null && echo 'running' || echo 'stopped'"]
         daemonCheckProcess.running = true
     }
 
