@@ -11,7 +11,7 @@ Item {
     property bool isInstalled: false
     property bool daemonRunning: false
 
-    Process {
+Process {
         id: checkProcess
         stdout: SplitParser { onRead: function(d) {} }
         stderr: SplitParser { onRead: function(d) {} }
@@ -23,6 +23,13 @@ Item {
                 Logger.i("AKSprayPaintMain", "akspraypaint found at:", akspraypaintPath)
                 checkDaemonStatus()
             }
+        }
+    }
+
+    function checkInstalled() {
+        checkProcess.command = ["sh", "-c", "test -x " + akspraypaintPath + " && " + akspraypaintPath + " --version"]
+        checkProcess.running = true
+    }
         }
     }
 
@@ -85,14 +92,14 @@ Item {
             Logger.w("AKSprayPaintMain", "Cannot start daemon: akspraypaint not installed")
             return
         }
-        daemonProcess.command = [akspraypaintPath, "watch"]
+        daemonProcess.command = ["sh", "-c", akspraypaintPath + " watch"]
         daemonProcess.running = true
         daemonRunning = true
         Logger.i("AKSprayPaintMain", "Daemon started")
     }
 
     function stopDaemon() {
-        disableProcess.command = [akspraypaintPath, "--disable"]
+        disableProcess.command = ["sh", "-c", akspraypaintPath + " --disable"]
         disableProcess.running = true
         daemonRunning = false
         Logger.i("AKSprayPaintMain", "Daemon stop requested")
@@ -103,7 +110,7 @@ Item {
             Logger.w("AKSprayPaintMain", "Cannot run: akspraypaint not installed")
             return
         }
-        runProcess.command = [akspraypaintPath, "run", "--wallpaper", wallpaperPath]
+        runProcess.command = ["sh", "-c", akspraypaintPath + " run --wallpaper " + wallpaperPath]
         runProcess.running = true
         Logger.i("AKSprayPaintMain", "Running with wallpaper:", wallpaperPath)
     }

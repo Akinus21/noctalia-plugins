@@ -194,7 +194,7 @@ ColumnLayout {
 
     function checkInstallation() {
         var path = root.akspraypaintPath || root.editAkspraypaintPath
-        checkProcess.command = [path, "--version"]
+        checkProcess.command = ["sh", "-c", "test -x " + path + " && " + path + " --version"]
         checkProcess.running = true
     }
 
