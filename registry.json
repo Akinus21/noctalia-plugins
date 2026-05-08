@@ -14,7 +14,7 @@
     {
       "id": "bitwarden-provider",
       "name": "Bitwarden Vault",
-      "version": "2.1.2",
+      "version": "2.1.3",
       "description": "Access your Bitwarden vault from the launcher. Auto-type login credentials with wtype.",
       "tags": [
         "Launcher",
