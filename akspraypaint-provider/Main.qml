@@ -57,13 +57,9 @@ Item {
     }
 
     function checkInstalled() {
-        var env = {}
-        for (var i = 0; i < Qt.application.environment.length; i++) {
-            var entry = Qt.application.environment[i]
-            if (entry) env[entry.name] = entry.value
-        }
+        var env = Object.assign({}, Qt.application.environment)
         checkProcess.environment = env
-        checkProcess.command = ["sh", "-c", "which akspraypaint"]
+        checkProcess.command = ["which", "akspraypaint"]
         checkProcess.running = true
     }
 
@@ -72,11 +68,7 @@ Item {
             Logger.w("AKSprayPaintMain", "Cannot start daemon: akspraypaint not installed")
             return
         }
-        var env = {}
-        for (var i = 0; i < Qt.application.environment.length; i++) {
-            var entry = Qt.application.environment[i]
-            if (entry) env[entry.name] = entry.value
-        }
+        var env = Object.assign({}, Qt.application.environment)
         daemonProcess.environment = env
         daemonProcess.command = ["sh", "-c", "akspraypaint watch"]
         daemonProcess.running = true
@@ -85,11 +77,7 @@ Item {
     }
 
     function stopDaemon() {
-        var env = {}
-        for (var i = 0; i < Qt.application.environment.length; i++) {
-            var entry = Qt.application.environment[i]
-            if (entry) env[entry.name] = entry.value
-        }
+        var env = Object.assign({}, Qt.application.environment)
         disableProcess.environment = env
         disableProcess.command = ["sh", "-c", "akspraypaint --disable"]
         disableProcess.running = true
@@ -102,11 +90,7 @@ Item {
             Logger.w("AKSprayPaintMain", "Cannot run: akspraypaint not installed")
             return
         }
-        var env = {}
-        for (var i = 0; i < Qt.application.environment.length; i++) {
-            var entry = Qt.application.environment[i]
-            if (entry) env[entry.name] = entry.value
-        }
+        var env = Object.assign({}, Qt.application.environment)
         runProcess.environment = env
         runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "'"]
         runProcess.running = true
