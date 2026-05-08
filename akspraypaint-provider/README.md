@@ -24,7 +24,7 @@ Reads the active Noctalia theme from `~/.config/noctalia/colors.json`, extracts 
 ### Settings
 
 1. Open **Settings → AKSprayPaint**
-2. Set the **AKSprayPaint Path** if not using the default (`/home/linuxbrew/.linuxbrew/bin/akspraypaint`)
+2. Set the **AKSprayPaint Path** if not using the default (`akspraypaint`)
 3. Check that the installation is detected
 4. Toggle **Enable Daemon** to ON to start the watch daemon
 5. Choose a wallpaper with **Browse** and click **Set** to apply theme colors

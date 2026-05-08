@@ -7,7 +7,7 @@ Item {
     id: root
     property var pluginApi: null
 
-    property string akspraypaintPath: pluginApi?.pluginSettings?.akspraypaintPath || "/home/linuxbrew/.linuxbrew/bin/akspraypaint"
+    property string akspraypaintPath: pluginApi?.pluginSettings?.akspraypaintPath || "akspraypaint"
     property bool isInstalled: false
     property bool daemonRunning: false
 
@@ -61,11 +61,6 @@ Item {
         }
     }
 
-    function checkInstalled() {
-        checkProcess.command = [akspraypaintPath, "--version"]
-        checkProcess.running = true
-    }
-
     Process {
         id: statusProcess
         stdout: SplitParser { onRead: function(data) { } }
@@ -73,6 +68,11 @@ Item {
         onExited: function(exitCode, exitStatus) {
             daemonRunning = false
         }
+    }
+
+    function checkInstalled() {
+        checkProcess.command = [akspraypaintPath, "--version"]
+        checkProcess.running = true
     }
 
     function checkDaemonStatus() {

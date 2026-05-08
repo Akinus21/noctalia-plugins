@@ -20,7 +20,7 @@
   },
   "metadata": {
     "defaultSettings": {
-      "akspraypaintPath": "/home/linuxbrew/.linuxbrew/bin/akspraypaint",
+      "akspraypaintPath": "akspraypaint",
       "enableDaemon": false,
       "lastWallpaper": ""
     }

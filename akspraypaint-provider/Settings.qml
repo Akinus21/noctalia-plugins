@@ -15,7 +15,7 @@ ColumnLayout {
 
     property bool editEnableDaemon: cfg.enableDaemon ?? defaults.enableDaemon ?? false
     property string editWallpaperPath: cfg.lastWallpaper ?? defaults.lastWallpaper ?? ""
-    property string akspraypaintPath: cfg.akspraypaintPath ?? defaults.akspraypaintPath ?? "/home/linuxbrew/.linuxbrew/bin/akspraypaint"
+    property string akspraypaintPath: cfg.akspraypaintPath ?? defaults.akspraypaintPath ?? "akspraypaint"
 
     property string installStatus: "checking"
     property string daemonStatus: "stopped"
@@ -26,7 +26,7 @@ ColumnLayout {
     FileDialog {
         id: wallpaperDialog
         title: pluginApi?.tr("settings.wallpaper.title") || "Choose a wallpaper"
-        folder: "/var/home/gabriel"
+        folder: ""
         nameFilters: ["Image files (*.png *.jpg *.jpeg *.webp *.avif *.bmp)", "All files (*)"]
         onAccepted: {
             var path = wallpaperDialog.fileUrl.toString().replace("file://", "")
@@ -39,7 +39,7 @@ ColumnLayout {
     NTextInput {
         Layout.fillWidth: true
         label: pluginApi?.tr("settings.akspraypaintPath.label") || "AKSprayPaint Path"
-        placeholderText: "/home/linuxbrew/.linuxbrew/bin/akspraypaint"
+        placeholderText: "akspraypaint"
         text: root.akspraypaintPath
         onTextChanged: root.akspraypaintPath = text
     }
@@ -238,7 +238,7 @@ ColumnLayout {
     }
 
     function checkDaemonStatus() {
-        daemonCheckProcess.command = ["sh", "-c", "test -f /var/home/gabriel/.cache/akspraypaint/watch.pid && kill -0 $(cat /var/home/gabriel/.cache/akspraypaint/watch.pid) 2>/dev/null && echo 'running' || echo 'stopped'"]
+        daemonCheckProcess.command = ["sh", "-c", "test -f ~/.cache/akspraypaint/watch.pid && kill -0 $(cat ~/.cache/akspraypaint/watch.pid) 2>/dev/null && echo 'running' || echo 'stopped'"]
         daemonCheckProcess.running = true
     }
 
