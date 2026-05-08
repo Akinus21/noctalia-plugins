@@ -55,7 +55,6 @@ ColumnLayout {
             NIcon {
                 icon: akspraypaintInstalled ? "check" : "x"
                 color: Color.mOnSurface
-                pointSize: Style.iconSizeM
             }
 
             NText {

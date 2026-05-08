@@ -35,8 +35,8 @@ Item {
 
     Process {
         id: runProcess
-        stdout: SplitParser { onRead: function(d) {} }
-        stderr: SplitParser { onRead: function(d) {} }
+        stdout: SplitParser { onRead: function(d) { Logger.d("AKSprayPaintMain", "stdout:", d) } }
+        stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
             if (exitCode === 0) {
                 Logger.i("AKSprayPaintMain", "Wallpaper set successfully")
@@ -84,7 +84,7 @@ Item {
             Logger.w("AKSprayPaintMain", "Cannot run: akspraypaint not installed")
             return
         }
-        runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper " + wallpaperPath]
+        runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "'"]
         runProcess.running = true
         Logger.i("AKSprayPaintMain", "Running with wallpaper:", wallpaperPath)
     }
