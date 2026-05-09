@@ -477,10 +477,10 @@ Item {
             { "name": ">bw",                 "description": "Search Bitwarden vault",        "icon": "key",       "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw ") } },
             { "name": ">bitwarden username", "description": "Copy username for an item",     "icon": "user",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden username ") } },
             { "name": ">bw username",        "description": "Copy username for an item",     "icon": "user",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw username ") } },
-            { "name": ">bwu",                "description": "Copy username for an item",     "icon": "user",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText("bwu ") } },
-            { "name": ">bitwarden password", "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bitwarden password ") } },
+            { "name": "bwu",                 "description": "Copy username for an item",     "icon": "user",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw username ") } },
+            { "name": ">bitwarden password", "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw password ") } },
             { "name": ">bw password",        "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw password ") } },
-            { "name": ">bwp",                "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText("bwp ") } },
+            { "name": "bwp",                 "description": "Copy password for an item",     "icon": "lock",      "isTablerIcon": true, "onActivate": function() { launcher.setSearchText(">bw password ") } },
             { "name": ">bitwarden add",      "description": "Add new vault item",            "icon": "plus",      "isTablerIcon": true, "onActivate": function() { openAddPanel("choose") } },
             { "name": ">bw add",             "description": "Add new vault item",            "icon": "plus",      "isTablerIcon": true, "onActivate": function() { openAddPanel("choose") } },
             { "name": ">bitwarden add login", "description": "Add a login item",             "icon": "key",       "isTablerIcon": true, "onActivate": function() { openAddPanel("login") } },
@@ -504,10 +504,10 @@ Item {
         if      (searchText.startsWith(">bitwarden")) query = searchText.slice(10).trim()
         else if (searchText.startsWith(">bw"))        query = searchText.slice(3).trim()
         else if (searchText.startsWith("bwa"))         query = searchText.slice(3).trim()
-        else if (searchText === "bwu")              { mode = "username"; query = "" }
-        else if (searchText === "bwp")              { mode = "password"; query = "" }
         else if (searchText.startsWith("bwu "))     { mode = "username"; query = searchText.slice(4).trim() }
+        else if (searchText === "bwu")              { mode = "username"; query = "" }
         else if (searchText.startsWith("bwp "))     { mode = "password"; query = searchText.slice(4).trim() }
+        else if (searchText === "bwp")              { mode = "password"; query = "" }
         else return []
 
         if (query === "settings") { openSettings(); return [] }
