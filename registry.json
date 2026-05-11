@@ -54,6 +54,20 @@
       "license": "MIT",
       "repository": "https://github.com/Akinus21/noctalia-plugins",
       "minNoctaliaVersion": "4.4.1"
+    },
+    {
+      "id": "systemd-provider",
+      "name": "Systemd Provider",
+      "version": "1.0.1",
+      "description": "Manage systemd user and system services, timers, and units from Noctalia",
+      "tags": [
+        "Launcher",
+        "Panel"
+      ],
+      "author": "Noctalia",
+      "license": "MIT",
+      "repository": "https://github.com/noctalia-dev/noctalia-plugins",
+      "minNoctaliaVersion": "4.4.1"
     }
   ]
 }

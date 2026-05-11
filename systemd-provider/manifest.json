@@ -1,13 +1,16 @@
 {
   "id": "systemd-provider",
   "name": "Systemd Provider",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minNoctaliaVersion": "4.4.1",
   "author": "Noctalia",
   "license": "MIT",
   "repository": "https://github.com/noctalia-dev/noctalia-plugins",
   "description": "Manage systemd user and system services, timers, and units from Noctalia",
-  "tags": ["Launcher", "Panel"],
+  "tags": [
+    "Launcher",
+    "Panel"
+  ],
   "entryPoints": {
     "main": "Main.qml",
     "launcherProvider": "LauncherProvider.qml",
