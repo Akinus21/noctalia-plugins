@@ -622,12 +622,15 @@ Item {
         ToastService.showError("On Calendar schedule is required for timers")
         return
       }
-      var unitContent = "[Unit]\nDescription=" + (root.unitDescription || baseName) + "\n\n" +
+      var timerContent = "[Unit]\nDescription=" + (root.unitDescription || baseName) + "\n\n" +
         "[Timer]\nOnCalendar=" + root.onCalendar + "\n" + installSection + "\n"
+      var serviceContent = "[Unit]\nDescription=" + (root.unitDescription || baseName) + "\n\n" +
+        "[Service]\nExecStart=" + (root.execStart || "/bin/true") + "\n"
       createProcess.command = [
         "sh", "-c",
         "mkdir -p '" + targetDir + "' && " +
-        "printf '%s' " + JSON.stringify(unitContent) + " > '" + targetDir + "/" + baseName + ".timer'"
+        "printf '%s' " + JSON.stringify(timerContent) + " > '" + targetDir + "/" + baseName + ".timer' && " +
+        "printf '%s' " + JSON.stringify(serviceContent) + " > '" + targetDir + "/" + baseName + ".service'"
       ]
       createProcess.running = true
     }
