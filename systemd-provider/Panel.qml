@@ -531,23 +531,15 @@ Item {
   }
 
   function parseUnitLine(line) {
-    var unitEnd = line.indexOf(" ")
-    if (unitEnd === -1 || unitEnd > 80) return { name: "" }
-    var name = line.substring(0, unitEnd).replace(/\\x2d/g, "-").replace(/\\x20/g, " ")
+    var trimmed = line.trim()
+    var parts = trimmed.split(/\s+/)
+    if (parts.length < 4) return { name: "" }
 
-    var loadState = extractAfter(line, "loaded")
-    var activeState = extractAfter(line, "active")
-    var subState = extractAfter(line, "/")
-    var description = ""
-    var descStart = line.lastIndexOf("—")
-    if (descStart !== -1) {
-      description = line.substring(descStart + 1).trim().replace(/\\x2d/g, "-").replace(/\\x20/g, " ")
-    } else {
-      descStart = line.lastIndexOf("-")
-      if (descStart !== -1 && descStart > 50) {
-        description = line.substring(descStart + 1).trim().replace(/\\x2d/g, "-").replace(/\\x20/g, " ")
-      }
-    }
+    var name = parts[0].replace(/\\x2d/g, "-").replace(/\\x20/g, " ")
+    var loadState = parts[1]
+    var activeState = parts[2]
+    var subState = parts[3]
+    var description = parts.slice(4).join(" ").replace(/\\x2d/g, "-").replace(/\\x20/g, " ")
 
     var dotIdx = name.lastIndexOf(".")
     var unitType = "service"
@@ -569,17 +561,6 @@ Item {
       description: description,
       scope: selectedScope
     }
-  }
-
-  function extractAfter(text, marker) {
-    var idx = text.indexOf(marker)
-    if (idx === -1) return ""
-    var start = idx + marker.length
-    var end = start
-    while (end < text.length && text.charAt(end) === " ") end++
-    var nextSpace = text.indexOf(" ", end)
-    if (nextSpace === -1) nextSpace = text.length
-    return text.substring(end, nextSpace).trim()
   }
 
   function runAction(name, action) {
