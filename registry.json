@@ -58,7 +58,7 @@
     {
       "id": "systemd-provider",
       "name": "Systemd Provider",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "description": "Manage systemd user and system services, timers, and units from Noctalia",
       "tags": [
         "Launcher",
