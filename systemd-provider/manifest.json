@@ -1,7 +1,7 @@
 {
   "id": "systemd-provider",
   "name": "Systemd Provider",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "minNoctaliaVersion": "4.4.1",
   "author": "Noctalia",
   "license": "MIT",
