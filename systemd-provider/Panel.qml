@@ -322,7 +322,7 @@ Item {
           NTextInput {
             Layout.fillWidth: true
             label: pluginApi?.tr("unit.name") || "Unit Name"
-            placeholderText: "my-service.service"
+            placeholderText: "my-service"
             text: root.unitName
             enabled: panelMode === "create"
             onTextChanged: root.unitName = text
@@ -356,6 +356,17 @@ Item {
             placeholderText: unitType === "timer" ? "/usr/bin/my-script.sh" : "/usr/bin/my-daemon"
             text: root.execStart
             onTextChanged: root.execStart = text
+            visible: unitType === "service"
+          }
+
+          NTextInput {
+            Layout.fillWidth: true
+            label: "On Calendar (timer interval)"
+            description: "e.g. *:*:0 (every minute), daily, weekly, *:*:0/15 (every 15 min)"
+            placeholderText: "hourly"
+            text: root.onCalendar
+            onTextChanged: root.onCalendar = text
+            visible: unitType === "timer"
           }
 
           NTextInput {
@@ -550,32 +561,43 @@ Item {
       return
     }
 
-    var unitFile = root.unitName
-    if (!unitFile.endsWith("." + root.unitType)) {
-      unitFile = unitFile + "." + root.unitType
-    }
+    var baseName = root.unitName.replace(/\.(service|timer)$/, "")
+    var ext = root.unitType
+    var targetDir = root.createAsUser
+      ? (Quickshell.env("HOME") || "/root") + "/.config/systemd/user"
+      : "/etc/systemd/system"
 
     var installSection = ""
     if (root.wantedBy) {
       installSection = "\n[Install]\nWantedBy=" + root.wantedBy
     }
 
-    var unitContent = "[Unit]\nDescription=" + (root.unitDescription || root.unitName) + "\n\n"
     if (root.unitType === "service") {
-      unitContent += "[Service]\nExecStart=" + (root.execStart || "/bin/true") + "\n" + installSection + "\n"
+      if (!root.execStart) {
+        ToastService.showError("Exec Start is required for services")
+        return
+      }
+      var unitContent = "[Unit]\nDescription=" + (root.unitDescription || baseName) + "\n\n" +
+        "[Service]\nExecStart=" + root.execStart + "\n" + installSection + "\n"
+      createProcess.command = [
+        "sh", "-c",
+        "mkdir -p '" + targetDir + "' && " +
+        "printf '%s' " + JSON.stringify(unitContent) + " > '" + targetDir + "/" + baseName + ".service'"
+      ]
+      createProcess.running = true
     } else if (root.unitType === "timer") {
-      unitContent += "[Timer]\nOnCalendar=" + (root.onCalendar || "hourly") + "\n" + installSection + "\n"
+      if (!root.onCalendar) {
+        ToastService.showError("On Calendar schedule is required for timers")
+        return
+      }
+      var unitContent = "[Unit]\nDescription=" + (root.unitDescription || baseName) + "\n\n" +
+        "[Timer]\nOnCalendar=" + root.onCalendar + "\n" + installSection + "\n"
+      createProcess.command = [
+        "sh", "-c",
+        "mkdir -p '" + targetDir + "' && " +
+        "printf '%s' " + JSON.stringify(unitContent) + " > '" + targetDir + "/" + baseName + ".timer'"
+      ]
+      createProcess.running = true
     }
-
-    var targetDir = root.createAsUser
-      ? (Quickshell.env("HOME") || "/root") + "/.config/systemd/user"
-      : "/etc/systemd/system"
-
-    createProcess.command = [
-      "sh", "-c",
-      "mkdir -p '" + targetDir + "' && " +
-      "printf '%s' " + JSON.stringify(unitContent) + " > '" + targetDir + "/" + unitFile + "'"
-    ]
-    createProcess.running = true
   }
 }
