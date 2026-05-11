@@ -289,6 +289,12 @@ Item {
                 }
 
                 NButton {
+                  text: "Delete"
+                  outlined: true
+                  onClicked: deleteUnit(modelData.name, modelData.type)
+                }
+
+                NButton {
                   text: "Logs"
                   outlined: true
                   onClicked: {
@@ -573,6 +579,47 @@ Item {
       "systemctl " + scope + " " + action + " '" + name + "'"
     ]
     actionProcess.running = true
+  }
+
+  function deleteUnit(name, type) {
+    root._actionUnit = name
+    root._actionName = "delete"
+    var scope = selectedScope === "system" ? "" : "--user"
+    var targetDir = root.createAsUser
+      ? (Quickshell.env("HOME") || "/root") + "/.config/systemd/user"
+      : "/etc/systemd/system"
+
+    var baseName = name.replace(/\.(service|timer)$/, "")
+    var filesToDelete = "'" + targetDir + "/" + baseName + ".service'"
+
+    if (type === "timer") {
+      filesToDelete += " '" + targetDir + "/" + baseName + ".timer'"
+    }
+
+    deleteProcess.command = [
+      "sh", "-c",
+      "rm -f " + filesToDelete + " && " +
+      "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
+      "systemctl " + scope + " daemon-reload"
+    ]
+    deleteProcess.running = true
+  }
+
+  Process {
+    id: deleteProcess
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode === 0) {
+        ToastService.showNotice(root._actionUnit + " deleted")
+        if (selectedScope === "user") refreshUnits()
+        else refreshUnitsSystem()
+      } else {
+        ToastService.showError(root._actionUnit + " delete failed")
+      }
+      root._actionUnit = ""
+      root._actionName = ""
+    }
   }
 
   function loadLogs(name) {
