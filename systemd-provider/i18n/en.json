@@ -1,0 +1,50 @@
+{
+  "launcher": {
+    "searchPlaceholder": "Search units... (>svc for commands)"
+  },
+  "panel": {
+    "title": "Systemd Services",
+    "userUnits": "User Units",
+    "systemUnits": "System Units",
+    "noUnits": "No units found",
+    "loading": "Loading units...",
+    "running": "Running",
+    "stopped": "Stopped",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
+  },
+  "unit": {
+    "name": "Unit Name",
+    "type": "Type",
+    "service": "Service",
+    "timer": "Timer",
+    "path": "Exec Path",
+    "wantedBy": "Wanted By",
+    "scope": "Scope"
+  },
+  "actions": {
+    "start": "Start",
+    "stop": "Stop",
+    "restart": "Restart",
+    "enable": "Enable",
+    "disable": "Disable",
+    "create": "Create",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "settings": {
+    "defaultScope": "Default Scope",
+    "autoRefresh": "Auto Refresh (seconds)",
+    "showSystemUnits": "Show System Units",
+    "lingerStatus": "Linger Status"
+  },
+  "commands": {
+    "start": "Start a unit",
+    "stop": "Stop a unit",
+    "restart": "Restart a unit",
+    "enable": "Enable on boot",
+    "disable": "Disable from boot",
+    "new": "Create new unit"
+  }
+}

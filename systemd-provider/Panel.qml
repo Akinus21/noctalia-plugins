@@ -1,0 +1,565 @@
+import QtQuick
+import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
+import qs.Commons
+import qs.Services.UI
+import qs.Widgets
+
+Item {
+  id: root
+
+  property var pluginApi: null
+  readonly property var geometryPlaceholder: contentRect
+  property real contentPreferredWidth: 700 * Style.uiScaleRatio
+  property real contentPreferredHeight: 600 * Style.uiScaleRatio
+  readonly property bool allowAttach: true
+
+  anchors.fill: parent
+
+  property var units: []
+  property bool loading: false
+  property string errorMessage: ""
+  property string selectedScope: "user"
+
+  property var selectedUnit: pluginApi?.pluginSettings?._selectedUnit || null
+  property string panelMode: pluginApi?.pluginSettings?._panelMode || "view"
+
+  property string unitName: ""
+  property string unitType: "service"
+  property string execStart: ""
+  property string unitDescription: ""
+  property string onCalendar: ""
+  property string wantedBy: "default.target"
+  property bool createAsUser: true
+
+  property string logOutput: ""
+  property bool loadingLogs: false
+
+  Component.onCompleted: {
+    refreshUnits()
+  }
+
+  Rectangle {
+    id: contentRect
+    anchors.fill: parent
+    color: "transparent"
+
+    ColumnLayout {
+      anchors.fill: parent
+      anchors.margins: Style.marginL
+      spacing: Style.marginM
+
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: Style.marginM
+
+        NText {
+          text: pluginApi?.tr("panel.title") || "Systemd Services"
+          pointSize: Style.fontSizeXL
+          font.weight: Font.Bold
+          color: Color.mOnSurface
+        }
+
+        Item { Layout.fillWidth: true }
+
+        NButton {
+          text: "Refresh"
+          outlined: true
+          onClicked: refreshUnits()
+        }
+      }
+
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: Style.marginS
+
+        NButton {
+          text: "User"
+          outlined: selectedScope !== "user"
+          onClicked: { selectedScope = "user"; refreshUnits() }
+        }
+        NButton {
+          text: "System"
+          outlined: selectedScope !== "system"
+          onClicked: { selectedScope = "system"; refreshUnitsSystem() }
+        }
+      }
+
+      NText {
+        visible: loading
+        text: pluginApi?.tr("panel.loading") || "Loading units..."
+        color: Color.mOnSurfaceVariant
+        pointSize: Style.fontSizeS
+      }
+
+      NText {
+        visible: errorMessage !== ""
+        text: errorMessage
+        color: Color.mError
+        pointSize: Style.fontSizeS
+        wrapMode: Text.WordWrap
+        Layout.fillWidth: true
+      }
+
+      NText {
+        visible: !loading && units.length === 0 && errorMessage === ""
+        text: pluginApi?.tr("panel.noUnits") || "No units found"
+        color: Color.mOnSurfaceVariant
+        pointSize: Style.fontSizeS
+      }
+
+      NScrollView {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: panelMode === "view" || panelMode === "logs"
+
+        ColumnLayout {
+          width: parent.width
+          spacing: Style.marginS
+
+          Repeater {
+            id: unitRepeater
+            model: panelMode === "logs" && selectedUnit ? [selectedUnit] : units
+
+            NBox {
+              Layout.fillWidth: true
+              implicitHeight: rowLayout.implicitHeight + Style.marginM * 2
+              radius: Style.radiusM
+
+              RowLayout {
+                id: rowLayout
+                anchors {
+                  left: parent.left
+                  right: parent.right
+                  verticalCenter: parent.verticalCenter
+                  margins: Style.marginM
+                }
+                spacing: Style.marginM
+
+                Rectangle {
+                  Layout.preferredWidth: 8
+                  Layout.preferredHeight: 8
+                  radius: 4
+                  color: modelData.activeState === "active" ? "#4CAF50" : "#9E9E9E"
+                }
+
+                ColumnLayout {
+                  Layout.fillWidth: true
+                  spacing: 2
+
+                  NText {
+                    text: modelData.name || ""
+                    font.weight: Font.Medium
+                    color: Color.mOnSurface
+                    Layout.fillWidth: true
+                  }
+                  NText {
+                    text: (modelData.activeState || "") + " / " + (modelData.subState || "") + (modelData.description ? " — " + modelData.description : "")
+                    color: Color.mOnSurfaceVariant
+                    pointSize: Style.fontSizeXS
+                    Layout.fillWidth: true
+                  }
+                }
+
+                NButton {
+                  text: modelData.activeState === "active" ? "Stop" : "Start"
+                  outlined: true
+                  onClicked: {
+                    var action = modelData.activeState === "active" ? "stop" : "start"
+                    runAction(modelData.name, action)
+                  }
+                }
+
+                NButton {
+                  text: "Restart"
+                  outlined: true
+                  onClicked: runAction(modelData.name, "restart")
+                }
+
+                NButton {
+                  text: "Logs"
+                  outlined: true
+                  onClicked: {
+                    selectedUnit = modelData
+                    panelMode = "logs"
+                    loadLogs(modelData.name)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      NScrollView {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: panelMode === "create" || panelMode === "edit"
+
+        ColumnLayout {
+          width: parent.width
+          spacing: Style.marginM
+
+          NText {
+            text: panelMode === "create" ? "Create New Unit" : "Edit Unit"
+            font.weight: Font.Bold
+            pointSize: Style.fontSizeL
+            Layout.fillWidth: true
+          }
+
+          NTextInput {
+            Layout.fillWidth: true
+            label: pluginApi?.tr("unit.name") || "Unit Name"
+            placeholderText: "my-service.service"
+            text: root.unitName
+            enabled: panelMode === "create"
+            onTextChanged: root.unitName = text
+          }
+
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.marginS
+
+            NText {
+              text: pluginApi?.tr("unit.type") || "Type"
+              color: Color.mOnSurface
+              Layout.preferredWidth: 100
+            }
+
+            NButton {
+              text: "Service"
+              outlined: unitType !== "service"
+              onClicked: unitType = "service"
+            }
+            NButton {
+              text: "Timer"
+              outlined: unitType !== "timer"
+              onClicked: unitType = "timer"
+            }
+          }
+
+          NTextInput {
+            Layout.fillWidth: true
+            label: "Exec Start"
+            placeholderText: unitType === "timer" ? "/usr/bin/my-script.sh" : "/usr/bin/my-daemon"
+            text: root.execStart
+            onTextChanged: root.execStart = text
+          }
+
+          NTextInput {
+            Layout.fillWidth: true
+            label: "Description"
+            placeholderText: "My systemd service"
+            text: root.unitDescription
+            onTextChanged: root.unitDescription = text
+          }
+
+          NTextInput {
+            Layout.fillWidth: true
+            label: "Wanted By"
+            placeholderText: "default.target"
+            text: root.wantedBy
+            onTextChanged: root.wantedBy = text
+          }
+
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.marginS
+
+            NText {
+              text: pluginApi?.tr("unit.scope") || "Scope"
+              color: Color.mOnSurface
+              Layout.preferredWidth: 100
+            }
+
+            NButton {
+              text: "User"
+              outlined: !createAsUser
+              onClicked: createAsUser = true
+            }
+            NButton {
+              text: "System (root)"
+              outlined: createAsUser
+              onClicked: createAsUser = false
+            }
+          }
+
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.marginM
+
+            NButton {
+              text: "Create"
+              onClicked: createUnit()
+            }
+
+            NButton {
+              text: "Cancel"
+              outlined: true
+              onClicked: panelMode = "view"
+            }
+          }
+        }
+      }
+
+      NScrollView {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: panelMode === "logs"
+
+        ColumnLayout {
+          width: parent.width
+          spacing: Style.marginM
+
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.marginM
+
+            NText {
+              text: (selectedUnit?.name || "") + " — Logs"
+              font.weight: Font.Bold
+              pointSize: Style.fontSizeL
+              Layout.fillWidth: true
+            }
+
+            NButton {
+              text: "Back"
+              outlined: true
+              onClicked: { panelMode = "view"; logOutput = "" }
+            }
+            NButton {
+              text: "Reload"
+              outlined: true
+              onClicked: { if (selectedUnit) loadLogs(selectedUnit.name) }
+            }
+          }
+
+          NText {
+            visible: loadingLogs
+            text: "Loading logs..."
+            color: Color.mOnSurfaceVariant
+            pointSize: Style.fontSizeS
+          }
+
+          NText {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            text: logOutput || "No logs"
+            color: Color.mOnSurface
+            pointSize: Style.fontSizeXS
+            font.family: "monospace"
+            wrapMode: Text.Wrap
+          }
+        }
+      }
+    }
+  }
+
+  Process {
+    id: listUnitsProcess
+    property string out: ""
+    environment: Object.assign({}, Qt.application.environment)
+
+    stdout: SplitParser {
+      onRead: function(data) { listUnitsProcess.out += data + "\n" }
+    }
+    stderr: SplitParser {
+      onRead: function(data) { Logger.w("SystemdPanel", "list stderr:", data) }
+    }
+    onExited: function(exitCode, exitStatus) {
+      parseUnits(listUnitsProcess.out)
+      listUnitsProcess.out = ""
+    }
+  }
+
+  Process {
+    id: listSystemUnitsProcess
+    property string out: ""
+    environment: Object.assign({}, Qt.application.environment)
+
+    stdout: SplitParser {
+      onRead: function(data) { listSystemUnitsProcess.out += data + "\n" }
+    }
+    stderr: SplitParser {
+      onRead: function(data) { Logger.w("SystemdPanel", "system list stderr:", data) }
+    }
+    onExited: function(exitCode, exitStatus) {
+      parseUnits(listSystemUnitsProcess.out)
+      listSystemUnitsProcess.out = ""
+    }
+  }
+
+  function refreshUnits() {
+    loading = true
+    errorMessage = ""
+    listUnitsProcess.out = ""
+    listUnitsProcess.command = [
+      "sh", "-c",
+      "systemctl --user list-units --all --no-pager " +
+      "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope " +
+      "--format=json 2>/dev/null || echo '[]'"
+    ]
+    listUnitsProcess.running = true
+  }
+
+  function refreshUnitsSystem() {
+    loading = true
+    errorMessage = ""
+    listSystemUnitsProcess.out = ""
+    listSystemUnitsProcess.command = [
+      "sh", "-c",
+      "systemctl list-units --all --no-pager " +
+      "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope " +
+      "--format=json 2>/dev/null || echo '[]'"
+    ]
+    listSystemUnitsProcess.running = true
+  }
+
+  function parseUnits(raw) {
+    loading = false
+    if (!raw || raw.trim().length === 0) {
+      units = []
+      return
+    }
+    try {
+      var data = JSON.parse(raw.trim())
+      var mapped = []
+      for (var i = 0; i < data.length; i++) {
+        var u = data[i]
+        mapped.push({
+          name: u.name || "",
+          type: u.unitType || "",
+          loadState: u.loadState || "",
+          activeState: u.activeState || "",
+          subState: u.subState || "",
+          description: u.description || "",
+          scope: selectedScope
+        })
+      }
+      root.units = mapped
+    } catch (e) {
+      errorMessage = "Failed to parse units: " + e
+      units = []
+    }
+  }
+
+  function runAction(name, action) {
+    var scope = selectedScope === "system" ? "" : "--user"
+    var p = Process {
+      id: actionProcess
+      environment: Object.assign({}, Qt.application.environment)
+      onExited: function(exitCode, exitStatus) {
+        if (exitCode === 0) {
+          ToastService.showNotice(name + " " + action + "ed")
+          if (selectedScope === "user") refreshUnits()
+          else refreshUnitsSystem()
+        } else {
+          ToastService.showError(name + " " + action + " failed")
+        }
+      }
+    }
+    p.command = ["sh", "-c", "systemctl " + scope + " " + action + " '" + name + "'"]
+    p.running = true
+  }
+
+  function loadLogs(name) {
+    loadingLogs = true
+    logOutput = ""
+    var scope = selectedScope === "system" ? "" : "--user"
+    logProcess.command = [
+      "sh", "-c",
+      "journalctl " + scope + " -u '" + name + "' -n 100 --no-pager 2>/dev/null || echo 'No logs available'"
+    ]
+    logProcess.running = true
+  }
+
+  Process {
+    id: logProcess
+    property string out: ""
+    environment: Object.assign({}, Qt.application.environment)
+
+    stdout: SplitParser {
+      onRead: function(data) { logProcess.out += data + "\n" }
+    }
+    stderr: SplitParser {
+      onRead: function(data) { logProcess.out += "ERR: " + data + "\n" }
+    }
+    onExited: function(exitCode, exitStatus) {
+      logOutput = logProcess.out
+      loadingLogs = false
+      logProcess.out = ""
+    }
+  }
+
+  function createUnit() {
+    if (!root.unitName) {
+      ToastService.showError("Unit name is required")
+      return
+    }
+
+    var unitFile = root.unitName
+    if (!unitFile.endsWith("." + root.unitType)) {
+      unitFile = unitFile + "." + root.unitType
+    }
+
+    var installSection = ""
+    if (root.wantedBy) {
+      installSection = "\n[Install]\nWantedBy=" + root.wantedBy
+    }
+
+    var unitContent = "[Unit]\nDescription=" + (root.unitDescription || root.unitName) + "\n\n"
+    if (root.unitType === "service") {
+      unitContent += "[Service]\nExecStart=" + (root.execStart || "/bin/true") + "\n" + installSection + "\n"
+    } else if (root.unitType === "timer") {
+      unitContent += "[Timer]\nOnCalendar=" + (root.onCalendar || "hourly") + "\n" + installSection + "\n"
+    }
+
+    var targetDir = root.createAsUser
+      ? (Quickshell.env("HOME") || "/root") + "/.config/systemd/user"
+      : "/etc/systemd/system"
+
+    var p = Process {
+      id: createProcess
+      environment: Object.assign({}, Qt.application.environment)
+      onExited: function(exitCode, exitStatus) {
+        if (exitCode === 0) {
+          var reloadCmd = root.createAsUser
+            ? "systemctl --user daemon-reload"
+            : "systemctl daemon-reload"
+          reloadProcess.command = ["sh", "-c", reloadCmd]
+          reloadProcess.running = true
+        } else {
+          ToastService.showError("Failed to create unit file")
+        }
+      }
+    }
+
+    p.command = [
+      "sh", "-c",
+      "mkdir -p '" + targetDir + "' && " +
+      "printf '%s' " + JSON.stringify(unitContent) + " > '" + targetDir + "/" + unitFile + "'"
+    ]
+    p.running = true
+  }
+
+  Process {
+    id: reloadProcess
+    environment: Object.assign({}, Qt.application.environment)
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode === 0) {
+        ToastService.showNotice("Unit created: " + root.unitName)
+        root.unitName = ""
+        root.execStart = ""
+        root.unitDescription = ""
+        root.onCalendar = ""
+        root.wantedBy = "default.target"
+        root.panelMode = "view"
+        if (root.createAsUser) refreshUnits()
+        else refreshUnitsSystem()
+      } else {
+        ToastService.showError("Unit created but daemon-reload failed")
+      }
+    }
+  }
+}
