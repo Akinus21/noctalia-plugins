@@ -127,7 +127,7 @@ Item {
       "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
       "systemctl --user list-units --all --no-pager " +
       "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope " +
-      "--format=json 2>/dev/null || echo '[]'"
+      "--format=json 2>&1"
     ]
     listProcess.running = true
   }
@@ -156,8 +156,13 @@ Item {
       root.loaded = true
       if (launcher) launcher.updateResults()
     } catch (e) {
-      Logger.e("SystemdProvider", "Parse error:", e, "raw:", raw.substring(0, 200))
-      root.loaded = true
+      if (raw.indexOf("loaded units listed") !== -1 || raw.indexOf("LOAD") !== -1) {
+        Logger.w("SystemdProvider", "systemctl JSON output not available — try enabling lingering")
+        root.loaded = true
+      } else {
+        Logger.e("SystemdProvider", "Parse error:", e, "raw:", raw.substring(0, 200))
+        root.loaded = true
+      }
     }
   }
 

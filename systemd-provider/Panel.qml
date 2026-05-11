@@ -487,7 +487,7 @@ Item {
       "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
       "systemctl --user list-units --all --no-pager " +
       "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope " +
-      "--format=json 2>/dev/null || echo '[]'"
+      "--format=json 2>&1"
     ]
     listUnitsProcess.running = true
   }
@@ -500,7 +500,7 @@ Item {
       "sh", "-c",
       "systemctl list-units --all --no-pager " +
       "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope " +
-      "--format=json 2>/dev/null || echo '[]'"
+      "--format=json 2>&1"
     ]
     listSystemUnitsProcess.running = true
   }
@@ -528,9 +528,23 @@ Item {
       }
       root.units = mapped
     } catch (e) {
-      errorMessage = "Failed to parse units: " + e
-      units = []
+      parseUnitsFallback(raw)
     }
+  }
+
+  function parseUnitsFallback(raw) {
+    if (!raw || raw.trim().length === 0) {
+      units = []
+      errorMessage = ""
+      return
+    }
+    if (raw.indexOf("loaded units listed") !== -1 || raw.indexOf("LOAD") !== -1) {
+      errorMessage = "systemctl JSON output unavailable — try enabling lingering with: loginctl enable-linger $USER"
+      units = []
+      return
+    }
+    errorMessage = "Failed to parse units: " + e
+    units = []
   }
 
   function runAction(name, action) {
