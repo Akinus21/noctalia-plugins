@@ -124,6 +124,7 @@ Item {
     unitBuffer = ""
     listProcess.command = [
       "sh", "-c",
+      "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
       "systemctl --user list-units --all --no-pager " +
       "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope " +
       "--format=json 2>/dev/null || echo '[]'"
@@ -383,6 +384,7 @@ Item {
     root._actionCallback = cb
     actionProcess.command = [
       "sh", "-c",
+      "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
       "systemctl --user " + action + " '" + name + "'"
     ]
     actionProcess.running = true

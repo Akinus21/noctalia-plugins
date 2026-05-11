@@ -120,7 +120,7 @@ Item {
     onExited: function(exitCode, exitStatus) {
       if (exitCode === 0) {
         var reloadCmd = root.createAsUser
-          ? "systemctl --user daemon-reload"
+          ? "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && systemctl --user daemon-reload"
           : "systemctl daemon-reload"
         reloadProcess.command = ["sh", "-c", reloadCmd]
         reloadProcess.running = true
@@ -484,6 +484,7 @@ Item {
     listUnitsProcess_out = ""
     listUnitsProcess.command = [
       "sh", "-c",
+      "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
       "systemctl --user list-units --all --no-pager " +
       "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope " +
       "--format=json 2>/dev/null || echo '[]'"
@@ -536,8 +537,10 @@ Item {
     root._actionUnit = name
     root._actionName = action
     var scope = selectedScope === "system" ? "" : "--user"
+    var dbus = "--user"
     actionProcess.command = [
       "sh", "-c",
+      "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
       "systemctl " + scope + " " + action + " '" + name + "'"
     ]
     actionProcess.running = true
@@ -550,6 +553,7 @@ Item {
     logProcess_out = ""
     logProcess.command = [
       "sh", "-c",
+      "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
       "journalctl " + scope + " -u '" + name + "' -n 100 --no-pager 2>/dev/null || echo 'No logs available'"
     ]
     logProcess.running = true
