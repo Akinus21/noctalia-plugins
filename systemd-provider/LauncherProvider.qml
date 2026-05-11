@@ -137,33 +137,101 @@ Item {
       loaded = true
       return
     }
-    try {
-      var data = JSON.parse(raw.trim())
-      var mapped = []
-      for (var i = 0; i < data.length; i++) {
-        var u = data[i]
-        mapped.push({
-          name: u.name || "",
-          type: u.unitType || "",
-          loadState: u.loadState || "",
-          activeState: u.activeState || "",
-          subState: u.subState || "",
-          description: u.description || "",
-          scope: "user"
-        })
-      }
-      root.units = mapped
-      root.loaded = true
-      if (launcher) launcher.updateResults()
-    } catch (e) {
-      if (raw.indexOf("loaded units listed") !== -1 || raw.indexOf("LOAD") !== -1) {
-        Logger.w("SystemdProvider", "systemctl JSON output not available — try enabling lingering")
+    var trimmed = raw.trim()
+    if (trimmed.charAt(0) === "[") {
+      try {
+        var data = JSON.parse(trimmed)
+        var mapped = []
+        for (var i = 0; i < data.length; i++) {
+          var u = data[i]
+          mapped.push({
+            name: u.name || "",
+            type: u.unitType || "",
+            loadState: u.loadState || "",
+            activeState: u.activeState || "",
+            subState: u.subState || "",
+            description: u.description || "",
+            scope: "user"
+          })
+        }
+        root.units = mapped
         root.loaded = true
-      } else {
-        Logger.e("SystemdProvider", "Parse error:", e, "raw:", raw.substring(0, 200))
-        root.loaded = true
+        if (launcher) launcher.updateResults()
+        return
+      } catch (e) {}
+    }
+    parseUnitsFromText(raw)
+  }
+
+  function parseUnitsFromText(raw) {
+    var lines = raw.split("\n")
+    var result = []
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i]
+      if (line.length < 60) continue
+      if (line.indexOf("LOAD") !== -1 && line.indexOf("ACTIVE") !== -1 && line.indexOf("SUB") !== -1) continue
+      if (line.indexOf("loaded units listed") !== -1) continue
+      if (line.indexOf(".") === -1) continue
+      var unit = parseUnitLine(line)
+      if (unit.name) result.push(unit)
+    }
+    root.units = result
+    root.loaded = true
+    if (launcher) launcher.updateResults()
+    if (result.length === 0) {
+      Logger.w("SystemdProvider", "No units parsed from text output, raw sample:", raw.substring(0, 200))
+    }
+  }
+
+  function parseUnitLine(line) {
+    var unitEnd = line.indexOf(" ")
+    if (unitEnd === -1 || unitEnd > 80) return { name: "" }
+    var name = line.substring(0, unitEnd).replace(/\\x2d/g, "-").replace(/\\x20/g, " ")
+
+    var activeState = extractAfter(line, "active")
+    var subState = extractAfter(line, "/")
+    var description = ""
+    var descStart = line.lastIndexOf("—")
+    if (descStart !== -1) {
+      description = line.substring(descStart + 1).trim().replace(/\\x2d/g, "-").replace(/\\x20/g, " ")
+    } else {
+      descStart = line.lastIndexOf("-")
+      if (descStart !== -1 && descStart > 50) {
+        description = line.substring(descStart + 1).trim().replace(/\\x2d/g, "-").replace(/\\x20/g, " ")
       }
     }
+
+    var dotIdx = name.lastIndexOf(".")
+    var unitType = "service"
+    if (dotIdx !== -1) {
+      var suffix = name.substring(dotIdx + 1)
+      if (suffix === "service" || suffix === "timer" || suffix === "socket" || suffix === "path" ||
+          suffix === "mount" || suffix === "scope" || suffix === "target" || suffix === "slice" ||
+          suffix === "automount" || suffix === "swap") {
+        unitType = suffix
+      }
+    }
+
+    return {
+      name: name,
+      type: unitType,
+      loadState: "loaded",
+      activeState: activeState || "inactive",
+      subState: subState || "",
+      description: description,
+      scope: "user"
+    }
+  }
+
+  function extractAfter(text, marker) {
+    var idx = text.indexOf(marker)
+    if (idx === -1) return ""
+    var start = idx + marker.length
+    var end = start
+    while (end < text.length && text.charAt(end) === " ") end++
+    var nextSpace = text.indexOf(" ", end)
+    if (nextSpace === -1) nextSpace = text.length
+    return text.substring(end, nextSpace).trim()
   }
 
   function getResults(searchText) {
