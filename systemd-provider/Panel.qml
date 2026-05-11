@@ -36,6 +36,9 @@ Item {
   property string logOutput: ""
   property bool loadingLogs: false
 
+  property var startupItems: []
+  property bool loadingStartup: false
+
   Component.onCompleted: refreshUnits()
 
   Process {
@@ -195,6 +198,11 @@ Item {
           outlined: selectedScope !== "system"
           onClicked: { selectedScope = "system"; refreshUnitsSystem() }
         }
+        NButton {
+          text: "Startup"
+          outlined: panelMode !== "startup"
+          onClicked: { panelMode = "startup"; loadStartupItems() }
+        }
       }
 
       NText {
@@ -214,8 +222,15 @@ Item {
       }
 
       NText {
-        visible: !loading && units.length === 0 && errorMessage === ""
+        visible: !loading && units.length === 0 && errorMessage === "" && panelMode !== "startup"
         text: pluginApi?.tr("panel.noUnits") || "No units found"
+        color: Color.mOnSurfaceVariant
+        pointSize: Style.fontSizeS
+      }
+
+      NText {
+        visible: !loadingStartup && startupItems.length === 0 && errorMessage === "" && panelMode === "startup"
+        text: "No startup items"
         color: Color.mOnSurfaceVariant
         pointSize: Style.fontSizeS
       }
@@ -223,7 +238,7 @@ Item {
       NScrollView {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        visible: panelMode === "view" || panelMode === "logs"
+        visible: panelMode === "view" || panelMode === "logs" || panelMode === "startup"
 
         ColumnLayout {
           width: parent.width
@@ -231,7 +246,7 @@ Item {
 
           Repeater {
             id: unitRepeater
-            model: panelMode === "logs" && selectedUnit ? [selectedUnit] : units
+            model: panelMode === "logs" && selectedUnit ? [selectedUnit] : (panelMode === "startup" ? startupItems : units)
 
             NBox {
               Layout.fillWidth: true
@@ -276,6 +291,7 @@ Item {
                 NButton {
                   text: modelData.activeState === "active" ? "Stop" : "Start"
                   outlined: true
+                  visible: panelMode !== "startup"
                   onClicked: {
                     var action = modelData.activeState === "active" ? "stop" : "start"
                     runAction(modelData.name, action)
@@ -285,7 +301,22 @@ Item {
                 NButton {
                   text: "Restart"
                   outlined: true
+                  visible: panelMode !== "startup"
                   onClicked: runAction(modelData.name, "restart")
+                }
+
+                NButton {
+                  text: panelMode === "startup" ? (modelData.state === "enabled" ? "Disable" : "Enable") : (modelData.loadState === "enabled" ? "Disable" : "Enable")
+                  outlined: true
+                  onClicked: {
+                    if (panelMode === "startup") {
+                      var a = modelData.state === "enabled" ? "disable" : "enable"
+                      runEnableDisable(modelData.name, a)
+                    } else {
+                      var action2 = modelData.loadState === "enabled" ? "disable" : "enable"
+                      runAction(modelData.name, action2)
+                    }
+                  }
                 }
 
                 NButton {
@@ -297,6 +328,7 @@ Item {
                 NButton {
                   text: "Logs"
                   outlined: true
+                  visible: panelMode !== "startup"
                   onClicked: {
                     selectedUnit = modelData
                     panelMode = "logs"
@@ -633,6 +665,98 @@ Item {
       "journalctl " + scope + " -u '" + name + "' -n 100 --no-pager 2>&1"
     ]
     logProcess.running = true
+  }
+
+  Process {
+    id: listStartupProcess
+    stdout: SplitParser {
+      onRead: function(data) { listStartupProcess_out += data + "\n" }
+    }
+    stderr: SplitParser {
+      onRead: function(data) { Logger.w("SystemdPanel", "startup stderr:", data) }
+    }
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      parseStartupItems(listStartupProcess_out)
+      listStartupProcess_out = ""
+    }
+  }
+
+  property string listStartupProcess_out: ""
+
+  function loadStartupItems() {
+    loadingStartup = true
+    startupItems = []
+    listStartupProcess_out = ""
+    var scope = selectedScope === "system" ? "" : "--user"
+    var dbug = selectedScope === "system" ? "" : "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && "
+    listStartupProcess.command = [
+      "sh", "-c",
+      dbug + "systemctl " + scope + " list-unit-files --all --no-pager 2>&1"
+    ]
+    listStartupProcess.running = true
+  }
+
+  function parseStartupItems(raw) {
+    loadingStartup = false
+    if (!raw || raw.trim().length === 0) {
+      startupItems = []
+      return
+    }
+    var lines = raw.split("\n")
+    var result = []
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i]
+      if (line.length < 20) continue
+      if (line.indexOf("UNIT FILE") !== -1) continue
+      if (line.indexOf("listed") !== -1) continue
+      var parts = line.trim().split(/\s+/)
+      if (parts.length < 2) continue
+      var name = parts[0]
+      var state = parts[1]
+      if (state === "enabled" || state === "enabled-runtime" || state === "linked" ||
+          state === "linked-runtime" || state === "static" || state === "transient") {
+        result.push({
+          name: name,
+          state: state,
+          scope: selectedScope,
+          type: name.indexOf(".") !== -1 ? name.split(".").pop() : "service"
+        })
+      }
+    }
+    startupItems = result
+    if (result.length === 0) {
+      Logger.w("SystemdPanel", "No startup items parsed, raw sample:", raw.substring(0, 300))
+    }
+  }
+
+  Process {
+    id: enableDisableProcess
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode === 0) {
+        ToastService.showNotice(root._actionUnit + " " + root._actionName + "d")
+        loadStartupItems()
+      } else {
+        ToastService.showError(root._actionUnit + " " + root._actionName + " failed")
+      }
+      root._actionUnit = ""
+      root._actionName = ""
+    }
+  }
+
+  function runEnableDisable(name, action) {
+    root._actionUnit = name
+    root._actionName = action
+    var scope = selectedScope === "system" ? "" : "--user"
+    var dbug = selectedScope === "system" ? "" : "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && "
+    enableDisableProcess.command = [
+      "sh", "-c",
+      dbug + "systemctl " + scope + " " + action + " '" + name + "'"
+    ]
+    enableDisableProcess.running = true
   }
 
   function createUnit() {
