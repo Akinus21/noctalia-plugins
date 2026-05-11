@@ -468,7 +468,8 @@ Item {
     // ── Command handling ──────────────────────────────────────────────────
 
     function handleCommand(searchText) {
-        return searchText.startsWith(">bitwarden") || searchText.startsWith(">bw") || searchText.startsWith("bwa")
+        return searchText.startsWith(">bitwarden") || searchText.startsWith(">bw") ||
+               searchText.startsWith("bwa") || searchText.startsWith("bwu") || searchText.startsWith("bwp")
     }
 
     function commands() {

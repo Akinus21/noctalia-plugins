@@ -120,7 +120,7 @@ Item {
     function checkInstalled() {
         var env = Object.assign({}, Qt.application.environment)
         checkProcess.environment = env
-        checkProcess.command = ["sh", "-c", "which akspraypaint"]
+        checkProcess.command = ["sh", "-c", "which akspraypaint || command -v akspraypaint || type akspraypaint"]
         checkProcess.running = true
     }
 
