@@ -486,8 +486,7 @@ Item {
       "sh", "-c",
       "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
       "systemctl --user list-units --all --no-pager " +
-      "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope " +
-      "--format=json 2>&1"
+      "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope 2>&1"
     ]
     listUnitsProcess.running = true
   }
@@ -499,8 +498,7 @@ Item {
     listSystemUnitsProcess.command = [
       "sh", "-c",
       "systemctl list-units --all --no-pager " +
-      "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope " +
-      "--format=json 2>&1"
+      "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope 2>&1"
     ]
     listSystemUnitsProcess.running = true
   }
@@ -510,27 +508,6 @@ Item {
     if (!raw || raw.trim().length === 0) {
       units = []
       return
-    }
-    var trimmed = raw.trim()
-    if (trimmed.charAt(0) === "[") {
-      try {
-        var data = JSON.parse(trimmed)
-        var mapped = []
-        for (var i = 0; i < data.length; i++) {
-          var u = data[i]
-          mapped.push({
-            name: u.name || "",
-            type: u.unitType || "",
-            loadState: u.loadState || "",
-            activeState: u.activeState || "",
-            subState: u.subState || "",
-            description: u.description || "",
-            scope: selectedScope
-          })
-        }
-        root.units = mapped
-        return
-      } catch (e) {}
     }
     parseUnitsFromText(raw)
   }
