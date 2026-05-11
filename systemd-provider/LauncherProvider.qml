@@ -24,12 +24,24 @@ Item {
   property bool loaded: false
   property bool fetching: false
 
-  readonly property string cacheFilePath: (pluginApi?.pluginDir || "") + "/cache.json"
+  property string unitBuffer: ""
 
-  Timer {
-    id: refreshTimer
-    interval: 2000
-    onTriggered: refreshUnits()
+  Process {
+    id: listProcess
+
+    stdout: SplitParser {
+      onRead: function(data) { root.unitBuffer += data + "\n" }
+    }
+    stderr: SplitParser {
+      onRead: function(data) { Logger.w("SystemdProvider", "stderr:", data) }
+    }
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      fetching = false
+      parseUnits(unitBuffer)
+      unitBuffer = ""
+    }
   }
 
   function init() {
@@ -109,35 +121,14 @@ Item {
   function refreshUnits() {
     if (fetching) return
     fetching = true
-
-    listProcess.stdout = SplitParser {
-      onRead: function(data) { unitBuffer += data + "\n" }
-    }
-    listProcess.command = ["systemctl", "--user", "list-units", "--all", "--no-pager",
-                           "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope",
-                           "--format=json"]
+    unitBuffer = ""
+    listProcess.command = [
+      "sh", "-c",
+      "systemctl --user list-units --all --no-pager " +
+      "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope " +
+      "--format=json 2>/dev/null || echo '[]'"
+    ]
     listProcess.running = true
-  }
-
-  property string unitBuffer: ""
-
-  Process {
-    id: listProcess
-    property string out: ""
-    environment: Object.assign({}, Qt.application.environment)
-
-    stdout: SplitParser {
-      onRead: function(data) { unitBuffer += data + "\n" }
-    }
-    stderr: SplitParser {
-      onRead: function(data) { Logger.w("SystemdProvider", "stderr:", data) }
-    }
-
-    onExited: function(exitCode, exitStatus) {
-      fetching = false
-      parseUnits(unitBuffer)
-      unitBuffer = ""
-    }
   }
 
   function parseUnits(raw) {
@@ -280,7 +271,6 @@ Item {
 
   function makeUnitResult(u) {
     var isActive = u.activeState === "active"
-    var isEnabled = u.loadState === "loaded"
     var subtitle = u.activeState + " / " + u.subState + (u.description ? " — " + u.description : "")
 
     return {
@@ -374,17 +364,28 @@ Item {
     }
   }
 
-  function runUnitAction(name, action, cb) {
-    var args = ["systemctl", "--user", action, name]
-    var p = Process {
-      id: actionProcess
-      environment: Object.assign({}, Qt.application.environment)
-      onExited: function(exitCode, exitStatus) {
-        if (cb) cb(exitCode === 0)
+  Process {
+    id: actionProcess
+
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      if (root._actionCallback) {
+        root._actionCallback(exitCode === 0)
+        root._actionCallback = null
       }
     }
-    p.command = args
-    p.running = true
+  }
+
+  property var _actionCallback: null
+
+  function runUnitAction(name, action, cb) {
+    root._actionCallback = cb
+    actionProcess.command = [
+      "sh", "-c",
+      "systemctl --user " + action + " '" + name + "'"
+    ]
+    actionProcess.running = true
   }
 
   function openCreatePanel() {
@@ -395,14 +396,5 @@ Item {
       pluginApi.openPanel(screen)
     })
     launcher.close()
-  }
-
-  function fuzzyMatch(needle, haystack) {
-    if (needle === "") return true
-    var ni = 0
-    for (var hi = 0; hi < haystack.length && ni < needle.length; hi++) {
-      if (haystack[hi] === needle[ni]) ni++
-    }
-    return ni === needle.length
   }
 }

@@ -66,19 +66,11 @@ ColumnLayout {
     }
   }
 
-  RowLayout {
-    Layout.fillWidth: true
-    spacing: Style.marginM
-
-    NToggle {
-      checked: root.editShowSystemUnits
-      onToggled: root.editShowSystemUnits = checked
-    }
-
-    NText {
-      text: pluginApi?.tr("settings.showSystemUnits") || "Show System Units"
-      color: Color.mOnSurface
-    }
+  NToggle {
+    label: pluginApi?.tr("settings.showSystemUnits") || "Show System Units"
+    description: "Include system-wide units in the unit list"
+    checked: root.editShowSystemUnits
+    onToggled: function(checked) { root.editShowSystemUnits = checked }
   }
 
   NBox {
@@ -138,24 +130,24 @@ ColumnLayout {
   function checkLingerStatus() {
     checkingLinger = true
     lingerStatus = ""
+    lingerProcess_out = ""
     lingerProcess.command = ["loginctl", "show-user", Quickshell.env("USER") || "root"]
     lingerProcess.running = true
   }
 
   Process {
     id: lingerProcess
-    property string out: ""
-    environment: Object.assign({}, Qt.application.environment)
-
     stdout: SplitParser {
-      onRead: function(data) { lingerProcess.out += data + "\n" }
+      onRead: function(data) { lingerProcess_out += data + "\n" }
     }
     stderr: SplitParser {
       onRead: function(data) { Logger.w("SystemdSettings", "linger stderr:", data) }
     }
+    environment: Object.assign({}, Qt.application.environment)
+
     onExited: function(exitCode, exitStatus) {
       checkingLinger = false
-      var lines = lingerProcess.out.split("\n")
+      var lines = lingerProcess_out.split("\n")
       var lingerLine = ""
       for (var i = 0; i < lines.length; i++) {
         if (lines[i].indexOf("Linger") !== -1) {
@@ -172,9 +164,11 @@ ColumnLayout {
       } else {
         lingerStatus = "Unknown (could not determine linger status)"
       }
-      lingerProcess.out = ""
+      lingerProcess_out = ""
     }
   }
+
+  property string lingerProcess_out: ""
 
   function saveSettings() {
     if (!pluginApi) return

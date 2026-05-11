@@ -36,8 +36,119 @@ Item {
   property string logOutput: ""
   property bool loadingLogs: false
 
-  Component.onCompleted: {
-    refreshUnits()
+  Component.onCompleted: refreshUnits()
+
+  Process {
+    id: listUnitsProcess
+    stdout: SplitParser {
+      onRead: function(data) { listUnitsProcess_out += data + "\n" }
+    }
+    stderr: SplitParser {
+      onRead: function(data) { Logger.w("SystemdPanel", "list stderr:", data) }
+    }
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      parseUnits(listUnitsProcess_out)
+      listUnitsProcess_out = ""
+    }
+  }
+
+  property string listUnitsProcess_out: ""
+
+  Process {
+    id: listSystemUnitsProcess
+    stdout: SplitParser {
+      onRead: function(data) { listSystemUnitsProcess_out += data + "\n" }
+    }
+    stderr: SplitParser {
+      onRead: function(data) { Logger.w("SystemdPanel", "system list stderr:", data) }
+    }
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      parseUnits(listSystemUnitsProcess_out)
+      listSystemUnitsProcess_out = ""
+    }
+  }
+
+  property string listSystemUnitsProcess_out: ""
+
+  Process {
+    id: actionProcess
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode === 0) {
+        ToastService.showNotice(root._actionUnit + " " + root._actionName + "ed")
+        if (selectedScope === "user") refreshUnits()
+        else refreshUnitsSystem()
+      } else {
+        ToastService.showError(root._actionUnit + " " + root._actionName + " failed")
+      }
+      root._actionUnit = ""
+      root._actionName = ""
+    }
+  }
+
+  property string _actionUnit: ""
+  property string _actionName: ""
+
+  Process {
+    id: logProcess
+    stdout: SplitParser {
+      onRead: function(data) { logProcess_out += data + "\n" }
+    }
+    stderr: SplitParser {
+      onRead: function(data) { logProcess_out += "ERR: " + data + "\n" }
+    }
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      logOutput = logProcess_out
+      loadingLogs = false
+      logProcess_out = ""
+    }
+  }
+
+  property string logProcess_out: ""
+
+  Process {
+    id: createProcess
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode === 0) {
+        var reloadCmd = root.createAsUser
+          ? "systemctl --user daemon-reload"
+          : "systemctl daemon-reload"
+        reloadProcess.command = ["sh", "-c", reloadCmd]
+        reloadProcess.running = true
+      } else {
+        ToastService.showError("Failed to create unit file")
+      }
+    }
+  }
+
+  Process {
+    id: reloadProcess
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode === 0) {
+        ToastService.showNotice("Unit created: " + root.unitName)
+        root.unitName = ""
+        root.execStart = ""
+        root.unitDescription = ""
+        root.onCalendar = ""
+        root.wantedBy = "default.target"
+        root.panelMode = "view"
+        if (root.createAsUser) refreshUnits()
+        else refreshUnitsSystem()
+      } else {
+        ToastService.showError("Unit created but daemon-reload failed")
+      }
+    }
   }
 
   Rectangle {
@@ -356,44 +467,10 @@ Item {
     }
   }
 
-  Process {
-    id: listUnitsProcess
-    property string out: ""
-    environment: Object.assign({}, Qt.application.environment)
-
-    stdout: SplitParser {
-      onRead: function(data) { listUnitsProcess.out += data + "\n" }
-    }
-    stderr: SplitParser {
-      onRead: function(data) { Logger.w("SystemdPanel", "list stderr:", data) }
-    }
-    onExited: function(exitCode, exitStatus) {
-      parseUnits(listUnitsProcess.out)
-      listUnitsProcess.out = ""
-    }
-  }
-
-  Process {
-    id: listSystemUnitsProcess
-    property string out: ""
-    environment: Object.assign({}, Qt.application.environment)
-
-    stdout: SplitParser {
-      onRead: function(data) { listSystemUnitsProcess.out += data + "\n" }
-    }
-    stderr: SplitParser {
-      onRead: function(data) { Logger.w("SystemdPanel", "system list stderr:", data) }
-    }
-    onExited: function(exitCode, exitStatus) {
-      parseUnits(listSystemUnitsProcess.out)
-      listSystemUnitsProcess.out = ""
-    }
-  }
-
   function refreshUnits() {
     loading = true
     errorMessage = ""
-    listUnitsProcess.out = ""
+    listUnitsProcess_out = ""
     listUnitsProcess.command = [
       "sh", "-c",
       "systemctl --user list-units --all --no-pager " +
@@ -406,7 +483,7 @@ Item {
   function refreshUnitsSystem() {
     loading = true
     errorMessage = ""
-    listSystemUnitsProcess.out = ""
+    listSystemUnitsProcess_out = ""
     listSystemUnitsProcess.command = [
       "sh", "-c",
       "systemctl list-units --all --no-pager " +
@@ -445,51 +522,26 @@ Item {
   }
 
   function runAction(name, action) {
+    root._actionUnit = name
+    root._actionName = action
     var scope = selectedScope === "system" ? "" : "--user"
-    var p = Process {
-      id: actionProcess
-      environment: Object.assign({}, Qt.application.environment)
-      onExited: function(exitCode, exitStatus) {
-        if (exitCode === 0) {
-          ToastService.showNotice(name + " " + action + "ed")
-          if (selectedScope === "user") refreshUnits()
-          else refreshUnitsSystem()
-        } else {
-          ToastService.showError(name + " " + action + " failed")
-        }
-      }
-    }
-    p.command = ["sh", "-c", "systemctl " + scope + " " + action + " '" + name + "'"]
-    p.running = true
+    actionProcess.command = [
+      "sh", "-c",
+      "systemctl " + scope + " " + action + " '" + name + "'"
+    ]
+    actionProcess.running = true
   }
 
   function loadLogs(name) {
     loadingLogs = true
     logOutput = ""
     var scope = selectedScope === "system" ? "" : "--user"
+    logProcess_out = ""
     logProcess.command = [
       "sh", "-c",
       "journalctl " + scope + " -u '" + name + "' -n 100 --no-pager 2>/dev/null || echo 'No logs available'"
     ]
     logProcess.running = true
-  }
-
-  Process {
-    id: logProcess
-    property string out: ""
-    environment: Object.assign({}, Qt.application.environment)
-
-    stdout: SplitParser {
-      onRead: function(data) { logProcess.out += data + "\n" }
-    }
-    stderr: SplitParser {
-      onRead: function(data) { logProcess.out += "ERR: " + data + "\n" }
-    }
-    onExited: function(exitCode, exitStatus) {
-      logOutput = logProcess.out
-      loadingLogs = false
-      logProcess.out = ""
-    }
   }
 
   function createUnit() {
@@ -519,47 +571,11 @@ Item {
       ? (Quickshell.env("HOME") || "/root") + "/.config/systemd/user"
       : "/etc/systemd/system"
 
-    var p = Process {
-      id: createProcess
-      environment: Object.assign({}, Qt.application.environment)
-      onExited: function(exitCode, exitStatus) {
-        if (exitCode === 0) {
-          var reloadCmd = root.createAsUser
-            ? "systemctl --user daemon-reload"
-            : "systemctl daemon-reload"
-          reloadProcess.command = ["sh", "-c", reloadCmd]
-          reloadProcess.running = true
-        } else {
-          ToastService.showError("Failed to create unit file")
-        }
-      }
-    }
-
-    p.command = [
+    createProcess.command = [
       "sh", "-c",
       "mkdir -p '" + targetDir + "' && " +
       "printf '%s' " + JSON.stringify(unitContent) + " > '" + targetDir + "/" + unitFile + "'"
     ]
-    p.running = true
-  }
-
-  Process {
-    id: reloadProcess
-    environment: Object.assign({}, Qt.application.environment)
-    onExited: function(exitCode, exitStatus) {
-      if (exitCode === 0) {
-        ToastService.showNotice("Unit created: " + root.unitName)
-        root.unitName = ""
-        root.execStart = ""
-        root.unitDescription = ""
-        root.onCalendar = ""
-        root.wantedBy = "default.target"
-        root.panelMode = "view"
-        if (root.createAsUser) refreshUnits()
-        else refreshUnitsSystem()
-      } else {
-        ToastService.showError("Unit created but daemon-reload failed")
-      }
-    }
+    createProcess.running = true
   }
 }

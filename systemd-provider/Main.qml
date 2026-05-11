@@ -15,8 +15,6 @@ Item {
   readonly property string userUnitDir: (Quickshell.env("HOME") || "/root") + "/.config/systemd/user"
   readonly property string systemUnitDir: "/etc/systemd/system"
 
-  readonly property var _supportedUnitTypes: ["service", "timer", "socket", "path", "mount", "automount", "swap", "target", "slice", "scope"]
-
   IpcHandler {
     target: "plugin:systemd-provider"
 
@@ -27,12 +25,6 @@ Item {
         })
       }
     }
-  }
-
-  function refreshUnits() {
-    loading = true
-    errorMessage = ""
-    listUnitsTimer.start()
   }
 
   Process {
@@ -55,16 +47,76 @@ Item {
     }
   }
 
-  Timer {
-    id: listUnitsTimer
-    interval: 50
-    onTriggered: {
-      var args = ["systemctl", "--user", "list-units", "--all", "--no-pager",
-                  "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope",
-                  "--format=json"]
-      listUnitsProcess.command = args
-      listUnitsProcess.running = true
+  Process {
+    id: writeUnitProcess
+
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode === 0) {
+        reloadDaemon()
+      } else {
+        Logger.e("SystemdMain", "Failed to write unit file, exit:", exitCode)
+      }
     }
+  }
+
+  Process {
+    id: reloadDaemonProcess
+
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      Logger.i("SystemdMain", "daemon-reload done, exit:", exitCode)
+    }
+  }
+
+  Process {
+    id: systemctlProcess
+
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      Logger.i("SystemdMain", "systemctl exit:", exitCode)
+    }
+  }
+
+  Process {
+    id: logProcess
+    property string out: ""
+
+    stdout: SplitParser {
+      onRead: function(data) { logProcess.out += data + "\n" }
+    }
+    stderr: SplitParser {
+      onRead: function(data) { Logger.w("SystemdMain", "log stderr:", data) }
+    }
+    environment: Object.assign({}, Qt.application.environment)
+
+    onExited: function(exitCode, exitStatus) {
+      var result = logProcess.out
+      logProcess.out = ""
+      if (root._logCallback) {
+        root._logCallback(result)
+        root._logCallback = null
+      }
+    }
+  }
+
+  property var _logCallback: null
+
+  function refreshUnits() {
+    loading = true
+    errorMessage = ""
+    listUnitsProcess.out = ""
+    listUnitsProcess.err = ""
+    listUnitsProcess.command = [
+      "sh", "-c",
+      "systemctl --user list-units --all --no-pager " +
+      "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope " +
+      "--format=json 2>/dev/null || echo '[]'"
+    ]
+    listUnitsProcess.running = true
   }
 
   function parseUnitsOutput(out, err, exitCode) {
@@ -74,7 +126,7 @@ Item {
       return
     }
     try {
-      var data = JSON.parse(out)
+      var data = JSON.parse(out.trim())
       var mapped = []
       for (var i = 0; i < data.length; i++) {
         var u = data[i]
@@ -94,118 +146,68 @@ Item {
     }
   }
 
-  function startUnit(name, cb) {
-    runSystemctl(["systemctl", "--user", "start", name], cb)
+  function startUnit(name) {
+    runSystemctl("--user", "start", name)
   }
 
-  function stopUnit(name, cb) {
-    runSystemctl(["systemctl", "--user", "stop", name], cb)
+  function stopUnit(name) {
+    runSystemctl("--user", "stop", name)
   }
 
-  function restartUnit(name, cb) {
-    runSystemctl(["systemctl", "--user", "restart", name], cb)
+  function restartUnit(name) {
+    runSystemctl("--user", "restart", name)
   }
 
-  function enableUnit(name, cb) {
-    runSystemctl(["systemctl", "--user", "enable", name], cb)
+  function enableUnit(name) {
+    runSystemctl("--user", "enable", name)
   }
 
-  function disableUnit(name, cb) {
-    runSystemctl(["systemctl", "--user", "disable", name], cb)
+  function disableUnit(name) {
+    runSystemctl("--user", "disable", name)
   }
 
-  function createUnit(unitData, cb) {
-    var content = generateUnitFile(unitData)
-    var unitFilePath = root.userUnitDir + "/" + unitData.name + "." + unitData.type
+  function runSystemctl(scope, action, name) {
+    var cmd = scope
+      ? "systemctl " + scope + " " + action + " '" + name + "'"
+      : "systemctl " + action + " '" + name + "'"
+    systemctlProcess.command = ["sh", "-c", cmd]
+    systemctlProcess.running = true
+  }
 
-    var writeProcess = Process {
-      id: writeProcess
-      environment: Object.assign({}, Qt.application.environment)
+  function reloadDaemon() {
+    reloadDaemonProcess.command = ["systemctl", "--user", "daemon-reload"]
+    reloadDaemonProcess.running = true
+  }
 
-      onExited: function(exitCode, exitStatus) {
-        if (exitCode === 0) {
-          reloadDaemon(cb)
-        } else {
-          if (cb) cb(false, "Failed to write unit file")
-        }
-      }
+  function createUnitFile(name, type, execStart, description, wantedBy, asUser) {
+    var targetDir = asUser
+      ? root.userUnitDir
+      : root.systemUnitDir
+
+    var installSection = wantedBy ? "\n[Install]\nWantedBy=" + wantedBy : ""
+
+    var unitContent = "[Unit]\nDescription=" + (description || name) + "\n\n"
+    if (type === "service") {
+      unitContent += "[Service]\nExecStart=" + (execStart || "/bin/true") + installSection + "\n"
+    } else if (type === "timer") {
+      unitContent += "[Timer]\nOnCalendar=hourly" + installSection + "\n"
     }
 
-    writeProcess.command = ["sh", "-c",
-      "mkdir -p '" + root.userUnitDir + "' && " +
-      "printf '%s' " + JSON.stringify(content) + " > '" + unitFilePath + "'"
-    ]
-    writeProcess.running = true
-  }
+    var cmd = "mkdir -p '" + targetDir + "' && " +
+              "printf '%s' " + JSON.stringify(unitContent) + " > '" + targetDir + "/" + name + "." + type + "'"
 
-  function reloadDaemon(cb) {
-    var reloadProcess = Process {
-      id: reloadProcess
-      environment: Object.assign({}, Qt.application.environment)
-
-      onExited: function(exitCode, exitStatus) {
-        if (cb) cb(exitCode === 0, exitCode === 0 ? "Unit created" : "Failed to reload daemon")
-      }
-    }
-    reloadProcess.command = ["systemctl", "--user", "daemon-reload"]
-    reloadProcess.running = true
-  }
-
-  function runSystemctl(args, cb) {
-    var p = Process {
-      id: systemctlProcess
-      environment: Object.assign({}, Qt.application.environment)
-
-      onExited: function(exitCode, exitStatus) {
-        if (cb) cb(exitCode === 0, exitCode === 0 ? "Done" : "Failed")
-      }
-    }
-    p.command = args
-    p.running = true
-  }
-
-  function generateUnitFile(data) {
-    var lines = []
-    lines.push("[Unit]")
-    if (data.description) {
-      lines.push("Description=" + data.description)
-    }
-    if (data.type === "service") {
-      if (data.execStart) {
-        lines.push("ExecStart=" + data.execStart)
-      }
-      if (data.wantedBy && data.wantedBy.length > 0) {
-        lines.push("[Install]")
-        lines.push("WantedBy=" + data.wantedBy.join(" "))
-      }
-    } else if (data.type === "timer") {
-      if (data.onCalendar) {
-        lines.push("[Timer]")
-        lines.push("OnCalendar=" + data.onCalendar)
-      }
-      if (data.wantedBy && data.wantedBy.length > 0) {
-        lines.push("[Install]")
-        lines.push("WantedBy=" + data.wantedBy.join(" "))
-      }
-    }
-    return lines.join("\n") + "\n"
+    writeUnitProcess.command = ["sh", "-c", cmd]
+    writeUnitProcess.running = true
+    Logger.i("SystemdMain", "Creating unit:", name, "in", targetDir)
   }
 
   function getUnitLogs(name, lines, cb) {
-    var p = Process {
-      id: logProcess
-      property string out: ""
-      environment: Object.assign({}, Qt.application.environment)
-
-      stdout: SplitParser {
-        onRead: function(data) { logProcess.out += data + "\n" }
-      }
-      onExited: function(exitCode, exitStatus) {
-        if (cb) cb(logProcess.out)
-        logProcess.out = ""
-      }
-    }
-    p.command = ["journalctl", "--user", "-u", name, "-n", String(lines), "--no-pager"]
-    p.running = true
+    root._logCallback = cb
+    logProcess.out = ""
+    logProcess.command = [
+      "sh", "-c",
+      "journalctl --user -u '" + name + "' -n " + String(lines || 100) + " --no-pager 2>/dev/null || echo 'No logs'"
+    ]
+    logProcess.running = true
   }
 }
