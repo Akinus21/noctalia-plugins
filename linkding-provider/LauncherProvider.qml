@@ -296,7 +296,8 @@ Item {
 
             "onActivate": function() {
                 pendingDeleteId = ""
-                Quickshell.execDetached(["xdg-open", bUrl])
+                copyToClipboard(bUrl)
+                ToastService.showNotice("URL copied to clipboard")
                 launcher.close()
             },
 
@@ -563,6 +564,10 @@ Item {
         root.categories     = cats
         root.categoryIcons  = icons
         root.showsCategories = cats.length > 1
+    }
+
+    function copyToClipboard(text) {
+        Quickshell.execDetached(["sh", "-c", "printf '%s' '" + text.replace(/'/g, "'\''") + "' | wl-copy"])
     }
 
     // ── Panel helpers ─────────────────────────────────────────────────────
