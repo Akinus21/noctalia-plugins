@@ -23,7 +23,8 @@ Item {
   property string selectedScope: "user"
 
   property var selectedUnit: pluginApi?.pluginSettings?._selectedUnit || null
-  property string panelMode: pluginApi?.pluginSettings?._panelMode || "view"
+  property string panelMode: pluginApi?.pluginSettings?._panelMode || "running"
+  property string selectedTab: "processes"
 
   property string unitName: ""
   property string unitType: "service"
@@ -39,7 +40,7 @@ Item {
   property var startupItems: []
   property bool loadingStartup: false
 
-  Component.onCompleted: refreshUnits()
+  Component.onCompleted: refreshAll()
 
   Process {
     id: listUnitsProcess
@@ -47,7 +48,7 @@ Item {
       onRead: function(data) { listUnitsProcess_out += data + "\n" }
     }
     stderr: SplitParser {
-      onRead: function(data) { Logger.w("SystemdPanel", "list stderr:", data) }
+      onRead: function(data) { Logger.w("TaskManagerPanel", "list stderr:", data) }
     }
     environment: Object.assign({}, Qt.application.environment)
 
@@ -65,7 +66,7 @@ Item {
       onRead: function(data) { listSystemUnitsProcess_out += data + "\n" }
     }
     stderr: SplitParser {
-      onRead: function(data) { Logger.w("SystemdPanel", "system list stderr:", data) }
+      onRead: function(data) { Logger.w("TaskManagerPanel", "system list stderr:", data) }
     }
     environment: Object.assign({}, Qt.application.environment)
 
@@ -84,8 +85,7 @@ Item {
     onExited: function(exitCode, exitStatus) {
       if (exitCode === 0) {
         ToastService.showNotice(root._actionUnit + " " + root._actionName + "ed")
-        if (selectedScope === "user") refreshUnits()
-        else refreshUnitsSystem()
+        refreshAll()
       } else {
         ToastService.showError(root._actionUnit + " " + root._actionName + " failed")
       }
@@ -145,9 +145,9 @@ Item {
         root.unitDescription = ""
         root.onCalendar = ""
         root.wantedBy = "default.target"
-        root.panelMode = "view"
-        if (root.createAsUser) refreshUnits()
-        else refreshUnitsSystem()
+        root.panelMode = "running"
+        root.selectedTab = "services"
+        refreshAll()
       } else {
         ToastService.showError("Unit created but daemon-reload failed")
       }
@@ -169,7 +169,7 @@ Item {
         spacing: Style.marginM
 
         NText {
-          text: pluginApi?.tr("panel.title") || "Systemd Services"
+          text: "Task Manager"
           pointSize: Style.fontSizeXL
           font.weight: Font.Bold
           color: Color.mOnSurface
@@ -180,7 +180,7 @@ Item {
         NButton {
           text: "Refresh"
           outlined: true
-          onClicked: refreshUnits()
+          onClicked: refreshAll()
         }
       }
 
@@ -189,25 +189,30 @@ Item {
         spacing: Style.marginS
 
         NButton {
-          text: "User"
-          outlined: selectedScope !== "user"
-          onClicked: { selectedScope = "user"; refreshUnits() }
+          text: "Processes"
+          outlined: selectedTab !== "processes" || panelMode !== "running"
+          onClicked: { panelMode = "running"; selectedTab = "processes" }
         }
         NButton {
-          text: "System"
-          outlined: selectedScope !== "system"
-          onClicked: { selectedScope = "system"; refreshUnitsSystem() }
+          text: "Services"
+          outlined: selectedTab !== "services" || panelMode !== "running"
+          onClicked: { panelMode = "running"; selectedTab = "services" }
+        }
+        NButton {
+          text: "Timers"
+          outlined: selectedTab !== "timers" || panelMode !== "running"
+          onClicked: { panelMode = "running"; selectedTab = "timers" }
         }
         NButton {
           text: "Startup"
-          outlined: panelMode !== "startup"
-          onClicked: { panelMode = "startup"; loadStartupItems() }
+          outlined: selectedTab !== "startup" || panelMode !== "running"
+          onClicked: { panelMode = "running"; selectedTab = "startup"; loadStartupItems() }
         }
       }
 
       NText {
         visible: loading
-        text: pluginApi?.tr("panel.loading") || "Loading units..."
+        text: "Loading..."
         color: Color.mOnSurfaceVariant
         pointSize: Style.fontSizeS
       }
@@ -221,24 +226,10 @@ Item {
         Layout.fillWidth: true
       }
 
-      NText {
-        visible: !loading && units.length === 0 && errorMessage === "" && panelMode !== "startup"
-        text: pluginApi?.tr("panel.noUnits") || "No units found"
-        color: Color.mOnSurfaceVariant
-        pointSize: Style.fontSizeS
-      }
-
-      NText {
-        visible: !loadingStartup && startupItems.length === 0 && errorMessage === "" && panelMode === "startup"
-        text: "No startup items"
-        color: Color.mOnSurfaceVariant
-        pointSize: Style.fontSizeS
-      }
-
       NScrollView {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        visible: panelMode === "view" || panelMode === "logs" || panelMode === "startup"
+        visible: panelMode === "running" && selectedTab !== "startup"
 
         ColumnLayout {
           width: parent.width
@@ -246,7 +237,7 @@ Item {
 
           Repeater {
             id: unitRepeater
-            model: panelMode === "logs" && selectedUnit ? [selectedUnit] : (panelMode === "startup" ? startupItems : units)
+            model: filteredUnits
 
             NBox {
               Layout.fillWidth: true
@@ -291,7 +282,6 @@ Item {
                 NButton {
                   text: modelData.activeState === "active" ? "Stop" : "Start"
                   outlined: true
-                  visible: panelMode !== "startup"
                   onClicked: {
                     var action = modelData.activeState === "active" ? "stop" : "start"
                     runAction(modelData.name, action)
@@ -301,21 +291,15 @@ Item {
                 NButton {
                   text: "Restart"
                   outlined: true
-                  visible: panelMode !== "startup"
                   onClicked: runAction(modelData.name, "restart")
                 }
 
                 NButton {
-                  text: panelMode === "startup" ? (modelData.state === "enabled" ? "Disable" : "Enable") : (modelData.loadState === "enabled" ? "Disable" : "Enable")
+                  text: modelData.loadState === "enabled" ? "Disable" : "Enable"
                   outlined: true
                   onClicked: {
-                    if (panelMode === "startup") {
-                      var a = modelData.state === "enabled" ? "disable" : "enable"
-                      runEnableDisable(modelData.name, a)
-                    } else {
-                      var action2 = modelData.loadState === "enabled" ? "disable" : "enable"
-                      runAction(modelData.name, action2)
-                    }
+                    var action = modelData.loadState === "enabled" ? "disable" : "enable"
+                    runAction(modelData.name, action)
                   }
                 }
 
@@ -328,7 +312,6 @@ Item {
                 NButton {
                   text: "Logs"
                   outlined: true
-                  visible: panelMode !== "startup"
                   onClicked: {
                     selectedUnit = modelData
                     panelMode = "logs"
@@ -339,6 +322,93 @@ Item {
             }
           }
         }
+      }
+
+      NScrollView {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: panelMode === "running" && selectedTab === "startup"
+
+        ColumnLayout {
+          width: parent.width
+          spacing: Style.marginS
+
+          Repeater {
+            id: startupRepeater
+            model: startupItems
+
+            NBox {
+              Layout.fillWidth: true
+              implicitHeight: rowLayout.implicitHeight + Style.marginM * 2
+              radius: Style.radiusM
+
+              RowLayout {
+                id: rowLayout
+                anchors {
+                  left: parent.left
+                  right: parent.right
+                  verticalCenter: parent.verticalCenter
+                  margins: Style.marginM
+                }
+                spacing: Style.marginM
+
+                Rectangle {
+                  Layout.preferredWidth: 8
+                  Layout.preferredHeight: 8
+                  radius: 4
+                  color: modelData.state === "enabled" ? "#4CAF50" : "#9E9E9E"
+                }
+
+                ColumnLayout {
+                  Layout.fillWidth: true
+                  spacing: 2
+
+                  NText {
+                    text: modelData.name || ""
+                    font.weight: Font.Medium
+                    color: Color.mOnSurface
+                    Layout.fillWidth: true
+                  }
+                  NText {
+                    text: modelData.state || ""
+                    color: Color.mOnSurfaceVariant
+                    pointSize: Style.fontSizeXS
+                    Layout.fillWidth: true
+                  }
+                }
+
+                NButton {
+                  text: modelData.state === "enabled" ? "Disable" : "Enable"
+                  outlined: true
+                  onClicked: {
+                    var action = modelData.state === "enabled" ? "disable" : "enable"
+                    runEnableDisable(modelData.name, action)
+                  }
+                }
+
+                NButton {
+                  text: "Delete"
+                  outlined: true
+                  onClicked: deleteUnit(modelData.name, modelData.type)
+                }
+              }
+            }
+          }
+        }
+      }
+
+      NText {
+        visible: !loading && filteredUnits.length === 0 && errorMessage === "" && panelMode === "running" && selectedTab !== "startup"
+        text: "No items"
+        color: Color.mOnSurfaceVariant
+        pointSize: Style.fontSizeS
+      }
+
+      NText {
+        visible: !loadingStartup && startupItems.length === 0 && errorMessage === "" && panelMode === "running" && selectedTab === "startup"
+        text: "No startup items"
+        color: Color.mOnSurfaceVariant
+        pointSize: Style.fontSizeS
       }
 
       NScrollView {
@@ -359,7 +429,7 @@ Item {
 
           NTextInput {
             Layout.fillWidth: true
-            label: pluginApi?.tr("unit.name") || "Unit Name"
+            label: "Unit Name"
             placeholderText: "my-service"
             text: root.unitName
             enabled: panelMode === "create"
@@ -371,7 +441,7 @@ Item {
             spacing: Style.marginS
 
             NText {
-              text: pluginApi?.tr("unit.type") || "Type"
+              text: "Type"
               color: Color.mOnSurface
               Layout.preferredWidth: 100
             }
@@ -428,7 +498,7 @@ Item {
             spacing: Style.marginS
 
             NText {
-              text: pluginApi?.tr("unit.scope") || "Scope"
+              text: "Scope"
               color: Color.mOnSurface
               Layout.preferredWidth: 100
             }
@@ -457,7 +527,7 @@ Item {
             NButton {
               text: "Cancel"
               outlined: true
-              onClicked: panelMode = "view"
+              onClicked: { panelMode = "running"; unitName = ""; execStart = ""; unitDescription = ""; onCalendar = ""; wantedBy = "default.target" }
             }
           }
         }
@@ -486,7 +556,7 @@ Item {
             NButton {
               text: "Back"
               outlined: true
-              onClicked: { panelMode = "view"; logOutput = "" }
+              onClicked: { panelMode = "running"; logOutput = "" }
             }
             NButton {
               text: "Reload"
@@ -514,6 +584,28 @@ Item {
         }
       }
     }
+  }
+
+  property var filteredUnits: {
+    var filtered = []
+    for (var i = 0; i < units.length; i++) {
+      var u = units[i]
+      if (selectedTab === "processes") {
+        if (u.type === "service" || u.type === "timer") {
+          filtered.push(u)
+        }
+      } else if (selectedTab === "services") {
+        if (u.type === "service") filtered.push(u)
+      } else if (selectedTab === "timers") {
+        if (u.type === "timer") filtered.push(u)
+      }
+    }
+    return filtered
+  }
+
+  function refreshAll() {
+    if (selectedScope === "user") refreshUnits()
+    else refreshUnitsSystem()
   }
 
   function refreshUnits() {
@@ -564,7 +656,7 @@ Item {
     }
     root.units = result
     if (result.length === 0) {
-      Logger.w("SystemdPanel", "No units parsed from text output, raw sample:", raw.substring(0, 300))
+      Logger.w("TaskManagerPanel", "No units parsed from text output, raw sample:", raw.substring(0, 300))
     }
   }
 
@@ -644,8 +736,7 @@ Item {
     onExited: function(exitCode, exitStatus) {
       if (exitCode === 0) {
         ToastService.showNotice(root._actionUnit + " deleted")
-        if (selectedScope === "user") refreshUnits()
-        else refreshUnitsSystem()
+        refreshAll()
       } else {
         ToastService.showError(root._actionUnit + " delete failed")
       }
@@ -673,7 +764,7 @@ Item {
       onRead: function(data) { listStartupProcess_out += data + "\n" }
     }
     stderr: SplitParser {
-      onRead: function(data) { Logger.w("SystemdPanel", "startup stderr:", data) }
+      onRead: function(data) { Logger.w("TaskManagerPanel", "startup stderr:", data) }
     }
     environment: Object.assign({}, Qt.application.environment)
 
@@ -727,7 +818,7 @@ Item {
     }
     startupItems = result
     if (result.length === 0) {
-      Logger.w("SystemdPanel", "No startup items parsed, raw sample:", raw.substring(0, 300))
+      Logger.w("TaskManagerPanel", "No startup items parsed, raw sample:", raw.substring(0, 300))
     }
   }
 

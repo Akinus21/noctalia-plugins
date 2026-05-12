@@ -1,12 +1,12 @@
 {
   "id": "systemd-provider",
-  "name": "Systemd Provider",
-  "version": "1.0.11",
+  "name": "Task Manager",
+  "version": "1.1.0",
   "minNoctaliaVersion": "4.4.1",
   "author": "Noctalia",
   "license": "MIT",
   "repository": "https://github.com/noctalia-dev/noctalia-plugins",
-  "description": "Manage systemd user and system services, timers, and units from Noctalia",
+  "description": "Manage systemd units, processes, services, timers, and startup items from Noctalia",
   "tags": [
     "Launcher",
     "Panel"

@@ -10,7 +10,7 @@ Item {
   property var pluginApi: null
   property var launcher: null
 
-  property string name: "Systemd Services"
+  property string name: "Task Manager"
   property string supportedLayouts: "list"
   property bool handleSearch: false
   property bool supportsAutoPaste: false
@@ -33,7 +33,7 @@ Item {
       onRead: function(data) { root.unitBuffer += data + "\n" }
     }
     stderr: SplitParser {
-      onRead: function(data) { Logger.w("SystemdProvider", "stderr:", data) }
+      onRead: function(data) { Logger.w("TaskManagerProvider", "stderr:", data) }
     }
     environment: Object.assign({}, Qt.application.environment)
 
@@ -45,7 +45,7 @@ Item {
   }
 
   function init() {
-    Logger.i("SystemdProvider", "Initializing")
+    Logger.i("TaskManagerProvider", "Initializing")
     refreshUnits()
   }
 
@@ -54,68 +54,95 @@ Item {
   }
 
   function handleCommand(searchText) {
-    return searchText.startsWith(">svc")
+    return searchText.startsWith(">tm") || searchText.startsWith(">task-manager")
   }
 
   function commands() {
     return [
       {
-        "name": ">svc",
+        "name": ">tm",
         "description": pluginApi?.tr("launcher.searchPlaceholder") || "Search and manage systemd units",
         "icon": "server",
         "isTablerIcon": true,
-        "onActivate": function() { launcher.setSearchText(">svc ") }
+        "onActivate": function() { launcher.setSearchText(">tm ") }
       },
       {
-        "name": ">svc start",
+        "name": ">tm list",
+        "description": "Open task manager panel",
+        "icon": "layout-dashboard",
+        "isTablerIcon": true,
+        "onActivate": function() { openPanel() }
+      },
+      {
+        "name": ">tm start",
         "description": pluginApi?.tr("commands.start") || "Start a unit",
         "icon": "player-play",
         "isTablerIcon": true,
-        "onActivate": function() { launcher.setSearchText(">svc start ") }
+        "onActivate": function() { launcher.setSearchText(">tm start ") }
       },
       {
-        "name": ">svc stop",
+        "name": ">tm stop",
         "description": pluginApi?.tr("commands.stop") || "Stop a unit",
         "icon": "player-stop",
         "isTablerIcon": true,
-        "onActivate": function() { launcher.setSearchText(">svc stop ") }
+        "onActivate": function() { launcher.setSearchText(">tm stop ") }
       },
       {
-        "name": ">svc restart",
+        "name": ">tm restart",
         "description": pluginApi?.tr("commands.restart") || "Restart a unit",
         "icon": "refresh",
         "isTablerIcon": true,
-        "onActivate": function() { launcher.setSearchText(">svc restart ") }
+        "onActivate": function() { launcher.setSearchText(">tm restart ") }
       },
       {
-        "name": ">svc enable",
+        "name": ">tm enable",
         "description": pluginApi?.tr("commands.enable") || "Enable on boot",
         "icon": "check",
         "isTablerIcon": true,
-        "onActivate": function() { launcher.setSearchText(">svc enable ") }
+        "onActivate": function() { launcher.setSearchText(">tm enable ") }
       },
       {
-        "name": ">svc disable",
+        "name": ">tm disable",
         "description": pluginApi?.tr("commands.disable") || "Disable from boot",
         "icon": "x",
         "isTablerIcon": true,
-        "onActivate": function() { launcher.setSearchText(">svc disable ") }
+        "onActivate": function() { launcher.setSearchText(">tm disable ") }
       },
       {
-        "name": ">svc logs",
+        "name": ">tm logs",
         "description": "Show recent logs for a unit",
         "icon": "file-text",
         "isTablerIcon": true,
-        "onActivate": function() { launcher.setSearchText(">svc logs ") }
+        "onActivate": function() { launcher.setSearchText(">tm logs ") }
       },
       {
-        "name": ">svc new",
+        "name": ">tm new",
         "description": pluginApi?.tr("commands.new") || "Create new unit",
         "icon": "plus",
         "isTablerIcon": true,
         "onActivate": function() { openCreatePanel() }
+      },
+      {
+        "name": ">task-manager",
+        "description": pluginApi?.tr("launcher.searchPlaceholder") || "Search and manage systemd units",
+        "icon": "server",
+        "isTablerIcon": true,
+        "onActivate": function() { launcher.setSearchText(">tm ") }
+      },
+      {
+        "name": ">task-manager list",
+        "description": "Open task manager panel",
+        "icon": "layout-dashboard",
+        "isTablerIcon": true,
+        "onActivate": function() { openPanel() }
       }
     ]
+  }
+
+  function getPrefix(query) {
+    if (query.startsWith("task-manager")) return "task-manager"
+    if (query.startsWith("tm")) return "tm"
+    return null
   }
 
   function refreshUnits() {
@@ -155,7 +182,7 @@ Item {
     root.loaded = true
     if (launcher) launcher.updateResults()
     if (result.length === 0) {
-      Logger.w("SystemdProvider", "No units parsed from text output, raw sample:", raw.substring(0, 200))
+      Logger.w("TaskManagerProvider", "No units parsed from text output, raw sample:", raw.substring(0, 200))
     }
   }
 
@@ -193,11 +220,18 @@ Item {
   }
 
   function getResults(searchText) {
-    if (!searchText.startsWith(">svc")) return []
+    if (!searchText.startsWith(">tm") && !searchText.startsWith(">task-manager")) return []
 
-    var query = searchText.slice(4).trim()
-    if (query === "") {
-      return makeBrowseResults()
+    var prefix = searchText.startsWith(">task-manager") ? ">task-manager" : ">tm"
+    var query = searchText.slice(prefix.length).trim()
+
+    if (query === "" || query === "list") {
+      return [{ name: "Open Task Manager", description: "View running processes, services, timers, and startup items", icon: "layout-dashboard", isTablerIcon: true, onActivate: function() { openPanel() } }]
+    }
+
+    if (query === "new") {
+      openCreatePanel()
+      return []
     }
 
     var parts = query.split(/\s+/)
@@ -219,11 +253,6 @@ Item {
         isTablerIcon: true,
         onActivate: function() {}
       }]
-    }
-
-    if (cmd === "new") {
-      openCreatePanel()
-      return []
     }
 
     return makeSearchResults(query)
@@ -314,7 +343,7 @@ Item {
       onActivate: function() {
         pluginApi.withCurrentScreen(function(screen) {
           pluginApi.pluginSettings._selectedUnit = u
-          pluginApi.pluginSettings._panelMode = "view"
+          pluginApi.pluginSettings._panelMode = "running"
           pluginApi.openPanel(screen)
         })
         launcher.close()
@@ -419,6 +448,16 @@ Item {
       "systemctl --user " + action + " '" + name + "'"
     ]
     actionProcess.running = true
+  }
+
+  function openPanel() {
+    if (!pluginApi) return
+    pluginApi.withCurrentScreen(function(screen) {
+      pluginApi.pluginSettings._panelMode = "running"
+      pluginApi.pluginSettings._selectedUnit = null
+      pluginApi.openPanel(screen)
+    })
+    launcher.close()
   }
 
   function openCreatePanel() {
