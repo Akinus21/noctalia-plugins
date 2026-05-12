@@ -38,6 +38,7 @@ Item {
   property bool loadingLogs: false
 
   property var startupItems: []
+  property var registeredUnits: []
   property bool loadingStartup: false
 
   Component.onCompleted: refreshAll()
@@ -172,24 +173,24 @@ Item {
         spacing: Style.marginS
 
         NButton {
-          text: "Processes"
-          outlined: selectedTab !== "processes" || panelMode !== "running"
-          onClicked: { panelMode = "running"; selectedTab = "processes" }
-        }
-        NButton {
           text: "Services"
           outlined: selectedTab !== "services" || panelMode !== "running"
-          onClicked: { panelMode = "running"; selectedTab = "services" }
+          onClicked: { panelMode = "running"; selectedTab = "services"; if (allUnits.length === 0) refreshAll() }
         }
         NButton {
           text: "Timers"
           outlined: selectedTab !== "timers" || panelMode !== "running"
-          onClicked: { panelMode = "running"; selectedTab = "timers" }
+          onClicked: { panelMode = "running"; selectedTab = "timers"; if (allUnits.length === 0) refreshAll() }
         }
         NButton {
           text: "Startup"
           outlined: selectedTab !== "startup" || panelMode !== "running"
           onClicked: { panelMode = "running"; selectedTab = "startup"; loadStartupItems() }
+        }
+        NButton {
+          text: "Processes"
+          outlined: selectedTab !== "processes" || panelMode !== "running"
+          onClicked: { panelMode = "running"; selectedTab = "processes"; if (allUnits.length === 0) refreshAll() }
         }
       }
 
@@ -801,30 +802,6 @@ Item {
     return result
   }
 
-  property var sortedServices: {
-    var result = []
-    for (var i = 0; i < allUnits.length; i++) {
-      if (allUnits[i].type === "service") result.push(allUnits[i])
-    }
-    result.sort(function(a, b) { return a.name.localeCompare(b.name) })
-    return result
-  }
-
-  property var sortedTimers: {
-    var result = []
-    for (var i = 0; i < allUnits.length; i++) {
-      if (allUnits[i].type === "timer") result.push(allUnits[i])
-    }
-    result.sort(function(a, b) { return a.name.localeCompare(b.name) })
-    return result
-  }
-
-  property var sortedStartupItems: {
-    var result = startupItems.slice()
-    result.sort(function(a, b) { return a.name.localeCompare(b.name) })
-    return result
-  }
-
   function refreshAll() {
     loading = true
     errorMessage = ""
@@ -856,6 +833,7 @@ Item {
       if (unit.name) result.push(unit)
     }
     root.allUnits = result
+    root.registeredUnits = result
     if (result.length === 0) {
       Logger.w("TaskManagerPanel", "No units parsed, raw sample:", raw.substring(0, 300))
     }
@@ -1001,6 +979,7 @@ Item {
   property string listStartupProcess_out: ""
 
   function loadStartupItems() {
+    if (loadingStartup) return
     loadingStartup = true
     startupItems = []
     listStartupProcess_out = ""
@@ -1041,6 +1020,43 @@ Item {
       }
     }
     startupItems = result
+  }
+
+  property var sortedStartupItems: {
+    var result = startupItems.slice()
+    result.sort(function(a, b) { return a.name.localeCompare(b.name) })
+    return result
+  }
+
+  property var sortedServices: {
+    var result = []
+    for (var i = 0; i < registeredUnits.length; i++) {
+      if (registeredUnits[i].type === "service") result.push(registeredUnits[i])
+    }
+    result.sort(function(a, b) { return a.name.localeCompare(b.name) })
+    return result
+  }
+
+  property var sortedTimers: {
+    var result = []
+    for (var i = 0; i < registeredUnits.length; i++) {
+      if (registeredUnits[i].type === "timer") result.push(registeredUnits[i])
+    }
+    result.sort(function(a, b) { return a.name.localeCompare(b.name) })
+    return result
+  }
+
+  property var sortedProcesses: {
+    var result = []
+    for (var i = 0; i < allUnits.length; i++) {
+      var u = allUnits[i]
+      var excludedTypes = ["service", "timer", "socket", "path", "mount", "automount", "swap", "target", "slice", "scope"]
+      if (excludedTypes.indexOf(u.type) === -1) {
+        result.push(u)
+      }
+    }
+    result.sort(function(a, b) { return a.name.localeCompare(b.name) })
+    return result
   }
 
   Process {
