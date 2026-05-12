@@ -58,7 +58,7 @@
     {
       "id": "systemd-provider",
       "name": "Task Manager",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "description": "Manage systemd units, processes, services, timers, and startup items from Noctalia",
       "tags": [
         "Launcher",
