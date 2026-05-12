@@ -540,6 +540,6 @@ Item {
     }
 
     function copyToClipboard(text) {
-        Quickshell.execDetached(["sh", "-c", "echo -n '" + String(text).replace(/'/g, "'\''") + "' | wl-copy"])
+        Quickshell.execDetached(["sh", "-c", "printf '%s' '" + String(text).replace(/'/g, "'\''") + "' | wl-copy"])
     }
 }
