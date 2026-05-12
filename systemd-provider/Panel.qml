@@ -17,7 +17,7 @@ Item {
 
   anchors.fill: parent
 
-  property var units: []
+  property var allUnits: []
   property bool loading: false
   property string errorMessage: ""
   property string selectedScope: "user"
@@ -59,24 +59,6 @@ Item {
   }
 
   property string listUnitsProcess_out: ""
-
-  Process {
-    id: listSystemUnitsProcess
-    stdout: SplitParser {
-      onRead: function(data) { listSystemUnitsProcess_out += data + "\n" }
-    }
-    stderr: SplitParser {
-      onRead: function(data) { Logger.w("TaskManagerPanel", "system list stderr:", data) }
-    }
-    environment: Object.assign({}, Qt.application.environment)
-
-    onExited: function(exitCode, exitStatus) {
-      parseUnits(listSystemUnitsProcess_out)
-      listSystemUnitsProcess_out = ""
-    }
-  }
-
-  property string listSystemUnitsProcess_out: ""
 
   Process {
     id: actionProcess
@@ -146,7 +128,8 @@ Item {
         root.onCalendar = ""
         root.wantedBy = "default.target"
         root.panelMode = "running"
-        root.selectedTab = "services"
+        if (root.unitType === "timer") root.selectedTab = "timers"
+        else root.selectedTab = "services"
         refreshAll()
       } else {
         ToastService.showError("Unit created but daemon-reload failed")
@@ -229,15 +212,104 @@ Item {
       NScrollView {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        visible: panelMode === "running" && selectedTab !== "startup"
+        visible: panelMode === "running" && selectedTab === "processes"
 
         ColumnLayout {
           width: parent.width
           spacing: Style.marginS
 
           Repeater {
-            id: unitRepeater
-            model: filteredUnits
+            id: processRepeater
+            model: sortedProcesses
+
+            NBox {
+              Layout.fillWidth: true
+              implicitHeight: rowLayout.implicitHeight + Style.marginM * 2
+              radius: Style.radiusM
+
+              RowLayout {
+                id: rowLayout
+                anchors {
+                  left: parent.left
+                  right: parent.right
+                  verticalCenter: parent.verticalCenter
+                  margins: Style.marginM
+                }
+                spacing: Style.marginM
+
+                Rectangle {
+                  Layout.preferredWidth: 8
+                  Layout.preferredHeight: 8
+                  radius: 4
+                  color: modelData.activeState === "active" ? "#4CAF50" : "#9E9E9E"
+                }
+
+                ColumnLayout {
+                  Layout.fillWidth: true
+                  spacing: 2
+
+                  NText {
+                    text: modelData.name || ""
+                    font.weight: Font.Medium
+                    color: Color.mOnSurface
+                    Layout.fillWidth: true
+                  }
+                  NText {
+                    text: (modelData.activeState || "") + " / " + (modelData.subState || "") + (modelData.description ? " — " + modelData.description : "")
+                    color: Color.mOnSurfaceVariant
+                    pointSize: Style.fontSizeXS
+                    Layout.fillWidth: true
+                  }
+                }
+
+                NButton {
+                  text: "Kill"
+                  outlined: true
+                  onClicked: {
+                    var action = "kill"
+                    runAction(modelData.name, action)
+                  }
+                }
+
+                NButton {
+                  text: "Logs"
+                  outlined: true
+                  onClicked: {
+                    selectedUnit = modelData
+                    panelMode = "logs"
+                    loadLogs(modelData.name)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      NScrollView {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: panelMode === "running" && selectedTab === "services"
+
+        ColumnLayout {
+          width: parent.width
+          spacing: Style.marginS
+
+          RowLayout {
+            Layout.fillWidth: true
+
+            NButton {
+              text: "+ New Service"
+              outlined: true
+              onClicked: { unitType = "service"; panelMode = "create" }
+            }
+
+            Item { Layout.fillWidth: true }
+          }
+
+          Repeater {
+            id: serviceRepeater
+            model: sortedServices
 
             NBox {
               Layout.fillWidth: true
@@ -304,6 +376,128 @@ Item {
                 }
 
                 NButton {
+                  text: "Edit"
+                  outlined: true
+                  onClicked: editUnitFile(modelData.name, modelData.type)
+                }
+
+                NButton {
+                  text: "Delete"
+                  outlined: true
+                  onClicked: deleteUnit(modelData.name, modelData.type)
+                }
+
+                NButton {
+                  text: "Logs"
+                  outlined: true
+                  onClicked: {
+                    selectedUnit = modelData
+                    panelMode = "logs"
+                    loadLogs(modelData.name)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      NScrollView {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: panelMode === "running" && selectedTab === "timers"
+
+        ColumnLayout {
+          width: parent.width
+          spacing: Style.marginS
+
+          RowLayout {
+            Layout.fillWidth: true
+
+            NButton {
+              text: "+ New Timer"
+              outlined: true
+              onClicked: { unitType = "timer"; panelMode = "create" }
+            }
+
+            Item { Layout.fillWidth: true }
+          }
+
+          Repeater {
+            id: timerRepeater
+            model: sortedTimers
+
+            NBox {
+              Layout.fillWidth: true
+              implicitHeight: rowLayout.implicitHeight + Style.marginM * 2
+              radius: Style.radiusM
+
+              RowLayout {
+                id: rowLayout
+                anchors {
+                  left: parent.left
+                  right: parent.right
+                  verticalCenter: parent.verticalCenter
+                  margins: Style.marginM
+                }
+                spacing: Style.marginM
+
+                Rectangle {
+                  Layout.preferredWidth: 8
+                  Layout.preferredHeight: 8
+                  radius: 4
+                  color: modelData.activeState === "active" ? "#4CAF50" : "#9E9E9E"
+                }
+
+                ColumnLayout {
+                  Layout.fillWidth: true
+                  spacing: 2
+
+                  NText {
+                    text: modelData.name || ""
+                    font.weight: Font.Medium
+                    color: Color.mOnSurface
+                    Layout.fillWidth: true
+                  }
+                  NText {
+                    text: (modelData.activeState || "") + " / " + (modelData.subState || "") + (modelData.description ? " — " + modelData.description : "")
+                    color: Color.mOnSurfaceVariant
+                    pointSize: Style.fontSizeXS
+                    Layout.fillWidth: true
+                  }
+                }
+
+                NButton {
+                  text: modelData.activeState === "active" ? "Stop" : "Start"
+                  outlined: true
+                  onClicked: {
+                    var action = modelData.activeState === "active" ? "stop" : "start"
+                    runAction(modelData.name, action)
+                  }
+                }
+
+                NButton {
+                  text: "Restart"
+                  outlined: true
+                  onClicked: runAction(modelData.name, "restart")
+                }
+
+                NButton {
+                  text: modelData.loadState === "enabled" ? "Disable" : "Enable"
+                  outlined: true
+                  onClicked: {
+                    var action = modelData.loadState === "enabled" ? "disable" : "enable"
+                    runAction(modelData.name, action)
+                  }
+                }
+
+                NButton {
+                  text: "Edit"
+                  outlined: true
+                  onClicked: editUnitFile(modelData.name, modelData.type)
+                }
+
+                NButton {
                   text: "Delete"
                   outlined: true
                   onClicked: deleteUnit(modelData.name, modelData.type)
@@ -333,9 +527,21 @@ Item {
           width: parent.width
           spacing: Style.marginS
 
+          RowLayout {
+            Layout.fillWidth: true
+
+            NButton {
+              text: "+ New Service"
+              outlined: true
+              onClicked: { unitType = "service"; panelMode = "create" }
+            }
+
+            Item { Layout.fillWidth: true }
+          }
+
           Repeater {
             id: startupRepeater
-            model: startupItems
+            model: sortedStartupItems
 
             NBox {
               Layout.fillWidth: true
@@ -387,9 +593,15 @@ Item {
                 }
 
                 NButton {
+                  text: "Edit"
+                  outlined: true
+                  onClicked: editStartupFile(modelData.name, modelData.type)
+                }
+
+                NButton {
                   text: "Delete"
                   outlined: true
-                  onClicked: deleteUnit(modelData.name, modelData.type)
+                  onClicked: deleteStartupItem(modelData.name, modelData.type)
                 }
               }
             }
@@ -398,14 +610,28 @@ Item {
       }
 
       NText {
-        visible: !loading && filteredUnits.length === 0 && errorMessage === "" && panelMode === "running" && selectedTab !== "startup"
-        text: "No items"
+        visible: !loading && panelMode === "running" && selectedTab === "processes" && sortedProcesses.length === 0
+        text: "No processes"
         color: Color.mOnSurfaceVariant
         pointSize: Style.fontSizeS
       }
 
       NText {
-        visible: !loadingStartup && startupItems.length === 0 && errorMessage === "" && panelMode === "running" && selectedTab === "startup"
+        visible: !loading && panelMode === "running" && selectedTab === "services" && sortedServices.length === 0
+        text: "No services"
+        color: Color.mOnSurfaceVariant
+        pointSize: Style.fontSizeS
+      }
+
+      NText {
+        visible: !loading && panelMode === "running" && selectedTab === "timers" && sortedTimers.length === 0
+        text: "No timers"
+        color: Color.mOnSurfaceVariant
+        pointSize: Style.fontSizeS
+      }
+
+      NText {
+        visible: !loadingStartup && panelMode === "running" && selectedTab === "startup" && startupItems.length === 0
         text: "No startup items"
         color: Color.mOnSurfaceVariant
         pointSize: Style.fontSizeS
@@ -414,14 +640,14 @@ Item {
       NScrollView {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        visible: panelMode === "create" || panelMode === "edit"
+        visible: panelMode === "create"
 
         ColumnLayout {
           width: parent.width
           spacing: Style.marginM
 
           NText {
-            text: panelMode === "create" ? "Create New Unit" : "Edit Unit"
+            text: unitType === "timer" ? "Create New Timer" : "Create New Service"
             font.weight: Font.Bold
             pointSize: Style.fontSizeL
             Layout.fillWidth: true
@@ -432,30 +658,7 @@ Item {
             label: "Unit Name"
             placeholderText: "my-service"
             text: root.unitName
-            enabled: panelMode === "create"
             onTextChanged: root.unitName = text
-          }
-
-          RowLayout {
-            Layout.fillWidth: true
-            spacing: Style.marginS
-
-            NText {
-              text: "Type"
-              color: Color.mOnSurface
-              Layout.preferredWidth: 100
-            }
-
-            NButton {
-              text: "Service"
-              outlined: unitType !== "service"
-              onClicked: unitType = "service"
-            }
-            NButton {
-              text: "Timer"
-              outlined: unitType !== "timer"
-              onClicked: unitType = "timer"
-            }
           }
 
           NTextInput {
@@ -586,63 +789,61 @@ Item {
     }
   }
 
-  property var filteredUnits: {
-    var filtered = []
-    for (var i = 0; i < units.length; i++) {
-      var u = units[i]
-      if (selectedTab === "processes") {
-        if (u.type === "service" || u.type === "timer") {
-          filtered.push(u)
-        }
-      } else if (selectedTab === "services") {
-        if (u.type === "service") filtered.push(u)
-      } else if (selectedTab === "timers") {
-        if (u.type === "timer") filtered.push(u)
+  property var sortedProcesses: {
+    var result = []
+    for (var i = 0; i < allUnits.length; i++) {
+      var u = allUnits[i]
+      if (u.type === "service" || u.type === "timer") {
+        result.push(u)
       }
     }
-    return filtered
+    result.sort(function(a, b) { return a.name.localeCompare(b.name) })
+    return result
+  }
+
+  property var sortedServices: {
+    var result = []
+    for (var i = 0; i < allUnits.length; i++) {
+      if (allUnits[i].type === "service") result.push(allUnits[i])
+    }
+    result.sort(function(a, b) { return a.name.localeCompare(b.name) })
+    return result
+  }
+
+  property var sortedTimers: {
+    var result = []
+    for (var i = 0; i < allUnits.length; i++) {
+      if (allUnits[i].type === "timer") result.push(allUnits[i])
+    }
+    result.sort(function(a, b) { return a.name.localeCompare(b.name) })
+    return result
+  }
+
+  property var sortedStartupItems: {
+    var result = startupItems.slice()
+    result.sort(function(a, b) { return a.name.localeCompare(b.name) })
+    return result
   }
 
   function refreshAll() {
-    if (selectedScope === "user") refreshUnits()
-    else refreshUnitsSystem()
-  }
-
-  function refreshUnits() {
     loading = true
     errorMessage = ""
     listUnitsProcess_out = ""
+    var dbug = selectedScope === "system" ? "" : "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && "
     listUnitsProcess.command = [
       "sh", "-c",
-      "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
-      "systemctl --user list-units --all --no-pager " +
+      dbug + "systemctl " + (selectedScope === "system" ? "" : "--user") + " list-units --all --no-pager " +
       "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope 2>&1"
     ]
     listUnitsProcess.running = true
   }
 
-  function refreshUnitsSystem() {
-    loading = true
-    errorMessage = ""
-    listSystemUnitsProcess_out = ""
-    listSystemUnitsProcess.command = [
-      "sh", "-c",
-      "systemctl list-units --all --no-pager " +
-      "--type=service,timer,socket,path,mount,automount,swap,target,slice,scope 2>&1"
-    ]
-    listSystemUnitsProcess.running = true
-  }
-
   function parseUnits(raw) {
     loading = false
     if (!raw || raw.trim().length === 0) {
-      units = []
+      allUnits = []
       return
     }
-    parseUnitsFromText(raw)
-  }
-
-  function parseUnitsFromText(raw) {
     var lines = raw.split("\n")
     var result = []
     for (var i = 0; i < lines.length; i++) {
@@ -654,9 +855,9 @@ Item {
       var unit = parseUnitLine(line)
       if (unit.name) result.push(unit)
     }
-    root.units = result
+    root.allUnits = result
     if (result.length === 0) {
-      Logger.w("TaskManagerPanel", "No units parsed from text output, raw sample:", raw.substring(0, 300))
+      Logger.w("TaskManagerPanel", "No units parsed, raw sample:", raw.substring(0, 300))
     }
   }
 
@@ -697,10 +898,10 @@ Item {
     root._actionUnit = name
     root._actionName = action
     var scope = selectedScope === "system" ? "" : "--user"
+    var dbug = selectedScope === "system" ? "" : "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && "
     actionProcess.command = [
       "sh", "-c",
-      "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
-      "systemctl " + scope + " " + action + " '" + name + "'"
+      dbug + "systemctl " + scope + " " + action + " '" + name + "'"
     ]
     actionProcess.running = true
   }
@@ -709,9 +910,9 @@ Item {
     root._actionUnit = name
     root._actionName = "delete"
     var scope = selectedScope === "system" ? "" : "--user"
-    var targetDir = root.createAsUser
-      ? (Quickshell.env("HOME") || "/root") + "/.config/systemd/user"
-      : "/etc/systemd/system"
+    var targetDir = selectedScope === "system"
+      ? "/etc/systemd/system"
+      : (Quickshell.env("HOME") || "/root") + "/.config/systemd/user"
 
     var baseName = name.replace(/\.(service|timer)$/, "")
     var filesToDelete = "'" + targetDir + "/" + baseName + ".service'"
@@ -720,11 +921,10 @@ Item {
       filesToDelete += " '" + targetDir + "/" + baseName + ".timer'"
     }
 
+    var dbug = selectedScope === "system" ? "" : "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && "
     deleteProcess.command = [
       "sh", "-c",
-      "rm -f " + filesToDelete + " && " +
-      "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
-      "systemctl " + scope + " daemon-reload"
+      "rm -f " + filesToDelete + " && " + dbug + "systemctl " + scope + " daemon-reload"
     ]
     deleteProcess.running = true
   }
@@ -745,15 +945,39 @@ Item {
     }
   }
 
+  function editUnitFile(name, type) {
+    var scope = selectedScope === "system" ? "" : "--user"
+    var targetDir = selectedScope === "system"
+      ? "/etc/systemd/system"
+      : (Quickshell.env("HOME") || "/root") + "/.config/systemd/user"
+    var baseName = name.replace(/\.(service|timer)$/, "")
+    var ext = type || (name.indexOf(".timer") !== -1 ? "timer" : "service")
+    var filePath = targetDir + "/" + baseName + "." + ext
+    Quickshell.execDetached(["xdg-open", filePath])
+  }
+
+  function editStartupFile(name, type) {
+    var scope = selectedScope === "system" ? "" : "--user"
+    var targetDir = selectedScope === "system"
+      ? "/etc/systemd/system"
+      : (Quickshell.env("HOME") || "/root") + "/.config/systemd/user"
+    var filePath = targetDir + "/" + name
+    Quickshell.execDetached(["xdg-open", filePath])
+  }
+
+  function deleteStartupItem(name, type) {
+    deleteUnit(name, type)
+  }
+
   function loadLogs(name) {
     loadingLogs = true
     logOutput = ""
     var scope = selectedScope === "system" ? "" : "--user"
+    var dbug = selectedScope === "system" ? "" : "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && "
     logProcess_out = ""
     logProcess.command = [
       "sh", "-c",
-      "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus && " +
-      "journalctl " + scope + " -u '" + name + "' -n 100 --no-pager 2>&1"
+      dbug + "journalctl " + scope + " -u '" + name + "' -n 100 --no-pager 2>&1"
     ]
     logProcess.running = true
   }
@@ -817,9 +1041,6 @@ Item {
       }
     }
     startupItems = result
-    if (result.length === 0) {
-      Logger.w("TaskManagerPanel", "No startup items parsed, raw sample:", raw.substring(0, 300))
-    }
   }
 
   Process {
