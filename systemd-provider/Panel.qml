@@ -24,7 +24,7 @@ Item {
 
   property var selectedUnit: pluginApi?.pluginSettings?._selectedUnit || null
   property string panelMode: pluginApi?.pluginSettings?._panelMode || "running"
-  property string selectedTab: "processes"
+  property string selectedTab: "services"
 
   property string unitName: ""
   property string unitType: "service"
