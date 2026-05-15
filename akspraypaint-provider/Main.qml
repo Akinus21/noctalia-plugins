@@ -18,18 +18,22 @@ Item {
 
     Process {
         id: checkProcess
-        stdout: SplitParser { onRead: function(d) {} }
-        stderr: SplitParser { onRead: function(d) {} }
+        stdout: SplitParser { onRead: function(d) { checkOut += d } }
+        stderr: SplitParser { onRead: function(d) { Logger.w("AKSprayPaintMain", "check stderr:", d) } }
         onExited: function(exitCode, exitStatus) {
-            isInstalled = (exitCode === 0)
+            var foundPath = checkOut.trim()
+            isInstalled = (foundPath.length > 0)
             if (!isInstalled) {
-                Logger.w("AKSprayPaintMain", "akspraypaint not found in PATH")
+                Logger.w("AKSprayPaintMain", "akspraypaint not found, tried linuxbrew and PATH")
             } else {
-                Logger.i("AKSprayPaintMain", "akspraypaint found, cleaning cache...")
+                Logger.i("AKSprayPaintMain", "akspraypaint found at:", foundPath, "cleaning cache...")
                 Qt.callLater(cleanCache)
             }
+            checkOut = ""
         }
     }
+
+    property string checkOut: ""
 
     Process {
         id: cleanProcess
@@ -120,15 +124,16 @@ Item {
     function checkInstalled() {
         var env = Object.assign({}, Qt.application.environment)
         checkProcess.environment = env
-        checkProcess.command = ["sh", "-lc", "command -v akspraypaint || [ -x /home/linuxbrew/.linuxbrew/bin/akspraypaint ] && echo /home/linuxbrew/.linuxbrew/bin/akspraypaint || which akspraypaint 2>/dev/null || echo ''"]
+        checkProcess.command = ["sh", "-c",
+            "[ -x /home/linuxbrew/.linuxbrew/bin/akspraypaint ] && echo /home/linuxbrew/.linuxbrew/bin/akspraypaint && exit 0; " +
+            "command -v akspraypaint 2>/dev/null || " +
+            "which akspraypaint 2>/dev/null || " +
+            "type akspraypaint 2>/dev/null || " +
+            "echo ''"]
         checkProcess.running = true
     }
 
     function startDaemonWithWallpaper(wallpaperPath) {
-        if (!isInstalled) {
-            Logger.w("AKSprayPaintMain", "Cannot start daemon: akspraypaint not installed")
-            return
-        }
         if (daemonProcess.running) {
             Logger.w("AKSprayPaintMain", "daemonProcess busy")
             return
@@ -140,7 +145,11 @@ Item {
         activeWallpaperPath = wallpaperPath
         var env = Object.assign({}, Qt.application.environment)
         daemonProcess.environment = env
-        daemonProcess.command = ["sh", "-c", "akspraypaint watch --wallpaper '" + wallpaperPath + "'"]
+        daemonProcess.command = ["sh", "-c",
+            "AKSP='/home/linuxbrew/.linuxbrew/bin/akspraypaint'; " +
+            "COMMAND=$(command -v akspraypaint 2>/dev/null || [ -x \"$AKSP\" ] && echo \"$AKSP\" || echo ''); " +
+            "[ -z \"$COMMAND\" ] && exit 1; " +
+            "$COMMAND watch --wallpaper '" + wallpaperPath + "'"]
         daemonProcess.running = true
         daemonRunning = true
         Logger.i("AKSprayPaintMain", "Daemon started with wallpaper:", wallpaperPath)
@@ -170,7 +179,6 @@ Item {
     }
 
     function runWallpaperOnce(wallpaperPath) {
-        if (!isInstalled) return
         if (runProcess.running) {
             Logger.w("AKSprayPaintMain", "runWallpaperOnce: runProcess busy")
             return
@@ -179,7 +187,11 @@ Item {
         wallpaperBusy = true
         var env = Object.assign({}, Qt.application.environment)
         runProcess.environment = env
-        runProcess.command = ["sh", "-c", "akspraypaint run --wallpaper '" + wallpaperPath + "' --no-cache"]
+        runProcess.command = ["sh", "-c",
+            "AKSP='/home/linuxbrew/.linuxbrew/bin/akspraypaint'; " +
+            "COMMAND=$(command -v akspraypaint 2>/dev/null || [ -x \"$AKSP\" ] && echo \"$AKSP\" || echo ''); " +
+            "[ -z \"$COMMAND\" ] && exit 1; " +
+            "$COMMAND run --wallpaper '" + wallpaperPath + "' --no-cache"]
         runProcess.running = true
         Logger.i("AKSprayPaintMain", "runWallpaperOnce:", wallpaperPath)
     }
