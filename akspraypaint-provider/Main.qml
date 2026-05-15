@@ -101,9 +101,11 @@ Item {
         var env = Object.assign({}, Qt.application.environment)
         cleanProcess.environment = env
         cleanProcess.command = ["sh", "-c",
-            "AKSP='/home/linuxbrew/.linuxbrew/bin/akspraypaint'; " +
-            "CMD=$(command -v akspraypaint 2>/dev/null || [ -x \"$AKSP\" ] && echo \"$AKSP\"); " +
-            "[ -n \"$CMD\" ] && $CMD clean || true"]
+            "if [ -x /home/linuxbrew/.linuxbrew/bin/akspraypaint ]; then " +
+            "  /home/linuxbrew/.linuxbrew/bin/akspraypaint clean; " +
+            "elif which akspraypaint >/dev/null 2>&1; then " +
+            "  akspraypaint clean; " +
+            "else exit 42; fi"]
         cleanProcess.running = true
     }
 
@@ -111,9 +113,11 @@ Item {
         var env = Object.assign({}, Qt.application.environment)
         updateProcess.environment = env
         updateProcess.command = ["sh", "-c",
-            "AKSP='/home/linuxbrew/.linuxbrew/bin/akspraypaint'; " +
-            "CMD=$(command -v akspraypaint 2>/dev/null || [ -x \"$AKSP\" ] && echo \"$AKSP\"); " +
-            "[ -n \"$CMD\" ] && $CMD update 2>/dev/null || brew update && brew upgrade akspraypaint 2>/dev/null || true"]
+            "if [ -x /home/linuxbrew/.linuxbrew/bin/akspraypaint ]; then " +
+            "  /home/linuxbrew/.linuxbrew/bin/akspraypaint update 2>/dev/null; " +
+            "elif which akspraypaint >/dev/null 2>&1; then " +
+            "  akspraypaint update 2>/dev/null; " +
+            "else exit 42; fi"]
         updateProcess.running = true
     }
 
@@ -152,10 +156,11 @@ Item {
         var env = Object.assign({}, Qt.application.environment)
         daemonProcess.environment = env
         daemonProcess.command = ["sh", "-c",
-            "AKSP='/home/linuxbrew/.linuxbrew/bin/akspraypaint'; " +
-            "COMMAND=$(command -v akspraypaint 2>/dev/null || [ -x \"$AKSP\" ] && echo \"$AKSP\" || echo ''); " +
-            "[ -z \"$COMMAND\" ] && exit 1; " +
-            "$COMMAND watch --wallpaper '" + wallpaperPath + "'"]
+            "if [ -x /home/linuxbrew/.linuxbrew/bin/akspraypaint ]; then " +
+            "  /home/linuxbrew/.linuxbrew/bin/akspraypaint watch --wallpaper '" + wallpaperPath + "'; " +
+            "elif which akspraypaint >/dev/null 2>&1; then " +
+            "  akspraypaint watch --wallpaper '" + wallpaperPath + "'; " +
+            "else exit 42; fi"]
         daemonProcess.running = true
         daemonRunning = true
         Logger.i("AKSprayPaintMain", "Daemon started with wallpaper:", wallpaperPath)
@@ -194,10 +199,11 @@ Item {
         var env = Object.assign({}, Qt.application.environment)
         runProcess.environment = env
         runProcess.command = ["sh", "-c",
-            "AKSP='/home/linuxbrew/.linuxbrew/bin/akspraypaint'; " +
-            "COMMAND=$(command -v akspraypaint 2>/dev/null || [ -x \"$AKSP\" ] && echo \"$AKSP\" || echo ''); " +
-            "[ -z \"$COMMAND\" ] && exit 1; " +
-            "$COMMAND run --wallpaper '" + wallpaperPath + "' --no-cache"]
+            "if [ -x /home/linuxbrew/.linuxbrew/bin/akspraypaint ]; then " +
+            "  /home/linuxbrew/.linuxbrew/bin/akspraypaint run --wallpaper '" + wallpaperPath + "' --no-cache; " +
+            "elif which akspraypaint >/dev/null 2>&1; then " +
+            "  akspraypaint run --wallpaper '" + wallpaperPath + "' --no-cache; " +
+            "else exit 42; fi"]
         runProcess.running = true
         Logger.i("AKSprayPaintMain", "runWallpaperOnce:", wallpaperPath)
     }
