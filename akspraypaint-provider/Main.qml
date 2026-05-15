@@ -100,14 +100,20 @@ Item {
     function cleanCache() {
         var env = Object.assign({}, Qt.application.environment)
         cleanProcess.environment = env
-        cleanProcess.command = ["sh", "-c", "akspraypaint clean"]
+        cleanProcess.command = ["sh", "-c",
+            "AKSP='/home/linuxbrew/.linuxbrew/bin/akspraypaint'; " +
+            "CMD=$(command -v akspraypaint 2>/dev/null || [ -x \"$AKSP\" ] && echo \"$AKSP\"); " +
+            "[ -n \"$CMD\" ] && $CMD clean || true"]
         cleanProcess.running = true
     }
 
     function runBrewUpdate() {
         var env = Object.assign({}, Qt.application.environment)
         updateProcess.environment = env
-        updateProcess.command = ["sh", "-c", "brew update && brew upgrade akspraypaint"]
+        updateProcess.command = ["sh", "-c",
+            "AKSP='/home/linuxbrew/.linuxbrew/bin/akspraypaint'; " +
+            "CMD=$(command -v akspraypaint 2>/dev/null || [ -x \"$AKSP\" ] && echo \"$AKSP\"); " +
+            "[ -n \"$CMD\" ] && $CMD update 2>/dev/null || brew update && brew upgrade akspraypaint 2>/dev/null || true"]
         updateProcess.running = true
     }
 
@@ -125,11 +131,11 @@ Item {
         var env = Object.assign({}, Qt.application.environment)
         checkProcess.environment = env
         checkProcess.command = ["sh", "-c",
-            "[ -x /home/linuxbrew/.linuxbrew/bin/akspraypaint ] && echo /home/linuxbrew/.linuxbrew/bin/akspraypaint && exit 0; " +
-            "command -v akspraypaint 2>/dev/null || " +
-            "which akspraypaint 2>/dev/null || " +
-            "type akspraypaint 2>/dev/null || " +
-            "echo ''"]
+            "[ -x /home/linuxbrew/.linuxbrew/bin/akspraypaint ] && echo '/home/linuxbrew/.linuxbrew/bin/akspraypaint' && exit 0; " +
+            "which akspraypaint 2>/dev/null && exit 0; " +
+            "command -v akspraypaint 2>/dev/null && exit 0; " +
+            "type akspraypaint 2>/dev/null && exit 0; " +
+            "exit 1"]
         checkProcess.running = true
     }
 
