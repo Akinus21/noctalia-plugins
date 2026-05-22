@@ -465,6 +465,37 @@ Item {
         })
     }
 
+    // ── Edit item ───────────────────────────────────────────────────────
+
+    function editItem(itemId, itemData, callback) {
+        ensureUnlocked(function() {
+            _doEditItem(itemId, itemData, callback)
+        })
+    }
+
+    function _doEditItem(itemId, itemData, callback) {
+        if (bwProcess.running) {
+            Logger.w("BitwardenProvider", "editItem: process busy")
+            if (callback) callback(false, "Process busy")
+            return
+        }
+        var jsonStr = JSON.stringify(itemData)
+        var safeJson = jsonStr.replace(/'/g, "'\''")
+        var script = "printf '%s' '" + safeJson + "' | " + bwPath + " encode | " + bwPath + " edit item " + itemId + " --session " + sessionToken
+
+        Logger.i("BitwardenProvider", "Editing item:", itemId, itemData.name)
+        runBw(["sh", "-c", script], function(out, exitCode) {
+            if (exitCode === 0) {
+                Logger.i("BitwardenProvider", "Item edited:", itemId)
+                fetchItems()
+                if (callback) callback(true, "Updated")
+            } else {
+                Logger.e("BitwardenProvider", "Edit failed. exitCode=" + exitCode + " output:", out)
+                if (callback) callback(false, out || "Edit failed")
+            }
+        })
+    }
+
     // ── Command handling ──────────────────────────────────────────────────
 
     function handleCommand(searchText) {

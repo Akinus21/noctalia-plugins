@@ -202,6 +202,27 @@ Item {
                 Layout.fillWidth: true
                 onClicked: closePanel()
             }
+
+            NButton {
+                text: "Edit"
+                outlined: true
+                Layout.fillWidth: true
+                visible: root.viewItem !== null
+                onClicked: {
+                    if (root.viewItem.type === 1) {
+                        editLoginForm.editName = root.viewItem.name || ""
+                        editLoginForm.editUsername = root.viewItem.login?.username || ""
+                        editLoginForm.editPassword = root.viewItem.login?.password || ""
+                        editLoginForm.editUri = root.viewItem.login?.uri || ""
+                        editLoginForm.editItemId = root.viewItem.id
+                    } else if (root.viewItem.type === 2) {
+                        editNoteForm.editName = root.viewItem.name || ""
+                        editNoteForm.editNotes = root.viewItem.notes || ""
+                        editNoteForm.editItemId = root.viewItem.id
+                    }
+                    root.panelMode = "edit"
+                }
+            }
         }
 
         // ── ADD MODE ────────────────────────────────────────────────────────
@@ -416,6 +437,179 @@ Item {
         }
     }
 
+    // ── EDIT LOGIN FORM ────────────────────────────────────────────────────
+    ColumnLayout {
+        id: editLoginForm
+        anchors { fill: parent; margins: Style.marginL }
+        spacing: Style.marginL
+        visible: root.panelMode === "edit" && root.viewItem && root.viewItem.type === 1
+
+        property string editName: ""
+        property string editUsername: ""
+        property string editPassword: ""
+        property string editUri: ""
+        property string editItemId: ""
+        property string statusText: ""
+        property bool statusOk: true
+        property bool isSaving: false
+
+        NText {
+            text: "Edit Login"
+            font.weight: Font.Bold
+            pointSize: Style.fontSizeL
+            Layout.fillWidth: true
+        }
+
+        NTextInput {
+            Layout.fillWidth: true
+            label: "Name / Title"
+            placeholderText: "e.g. github.com"
+            text: editLoginForm.editName
+            onTextChanged: editLoginForm.editName = text
+        }
+        NTextInput {
+            Layout.fillWidth: true
+            label: "Username"
+            placeholderText: "your@email.com"
+            text: editLoginForm.editUsername
+            onTextChanged: editLoginForm.editUsername = text
+        }
+        NTextInput {
+            Layout.fillWidth: true
+            label: "Password"
+            placeholderText: "your password"
+            text: editLoginForm.editPassword
+            onTextChanged: editLoginForm.editPassword = text
+        }
+        NTextInput {
+            Layout.fillWidth: true
+            label: "URL"
+            placeholderText: "https://github.com"
+            text: editLoginForm.editUri
+            onTextChanged: editLoginForm.editUri = text
+        }
+
+        NText {
+            visible: editLoginForm.statusText !== ""
+            text: editLoginForm.statusText
+            color: editLoginForm.statusOk ? "#4CAF50" : "#F44336"
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+        }
+
+        Item { Layout.fillHeight: true; Layout.fillWidth: true }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.marginS
+
+            NButton {
+                text: "Cancel"
+                outlined: true
+                Layout.fillWidth: true
+                enabled: !editLoginForm.isSaving
+                onClicked: root.panelMode = "view"
+            }
+            NButton {
+                text: editLoginForm.isSaving ? "Saving…" : "Save"
+                Layout.fillWidth: true
+                enabled: editLoginForm.editName !== "" && !editLoginForm.isSaving
+                onClicked: saveEditLogin()
+            }
+        }
+    }
+
+    // ── EDIT NOTE FORM ────────────────────────────────────────────────────
+    ColumnLayout {
+        id: editNoteForm
+        anchors { fill: parent; margins: Style.marginL }
+        spacing: Style.marginL
+        visible: root.panelMode === "edit" && root.viewItem && root.viewItem.type === 2
+
+        property string editName: ""
+        property string editNotes: ""
+        property string editItemId: ""
+        property string statusText: ""
+        property bool statusOk: true
+        property bool isSaving: false
+
+        NText {
+            text: "Edit Secure Note"
+            font.weight: Font.Bold
+            pointSize: Style.fontSizeL
+            Layout.fillWidth: true
+        }
+
+        NTextInput {
+            Layout.fillWidth: true
+            label: "Name / Title"
+            placeholderText: "e.g. My secret note"
+            text: editNoteForm.editName
+            onTextChanged: editNoteForm.editName = text
+        }
+
+        NText {
+            text: "Note"
+            font.weight: Font.Bold
+        }
+
+        NBox {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 200 * Style.uiScaleRatio
+            color: Color.mSurface
+            radius: Style.radiusM
+
+            TextEdit {
+                id: editNoteTextArea
+                anchors { left: parent.left; right: parent.right; top: parent.top; bottom: parent.bottom; margins: Style.marginM }
+                color: Color.mOnSurface
+                font.pixelSize: 14
+                wrapMode: TextEdit.Wrap
+                readOnly: false
+                text: editNoteForm.editNotes
+                onTextChanged: editNoteForm.editNotes = text
+                property string placeholderText: "Enter your secret note here..."
+                Text {
+                    anchors.fill: parent
+                    text: editNoteTextArea.placeholderText
+                    color: Color.mOnSurfaceVariant
+                    font: editNoteTextArea.font
+                    visible: editNoteTextArea.text.length === 0 && !editNoteTextArea.activeFocus
+                    z: -1
+                }
+            }
+        }
+
+        NText {
+            visible: editNoteForm.statusText !== ""
+            text: editNoteForm.statusText
+            color: editNoteForm.statusOk ? "#4CAF50" : "#F44336"
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+        }
+
+        Item { Layout.fillHeight: true; Layout.fillWidth: true }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.marginS
+
+            NButton {
+                text: "Cancel"
+                outlined: true
+                Layout.fillWidth: true
+                enabled: !editNoteForm.isSaving
+                onClicked: root.panelMode = "view"
+            }
+            NButton {
+                text: editNoteForm.isSaving ? "Saving…" : "Save"
+                Layout.fillWidth: true
+                enabled: editNoteForm.editName !== "" && !editNoteForm.isSaving
+                onClicked: saveEditNote()
+            }
+        }
+    }
+
     // ── Actions ───────────────────────────────────────────────────────────
 
     function saveNewLogin() {
@@ -506,6 +700,92 @@ Item {
                 addNoteForm.statusText = "Error: " + (message || "Failed")
                 addNoteForm.statusOk = false
                 Logger.e("BitwardenPanel", "Save note failed:", message)
+            }
+        })
+    }
+
+    function saveEditLogin() {
+        var name     = editLoginForm.editName.trim()
+        var username = editLoginForm.editUsername.trim()
+        var password = editLoginForm.editPassword.trim()
+        var uri      = editLoginForm.editUri.trim()
+        var itemId   = editLoginForm.editItemId
+
+        if (!name) {
+            editLoginForm.statusText = "Name is required"
+            editLoginForm.statusOk = false
+            return
+        }
+
+        editLoginForm.isSaving = true
+        editLoginForm.statusText = ""
+
+        var main = pluginApi?.mainInstance
+        if (!main || !main.editItem) {
+            editLoginForm.statusText = "Provider not ready"
+            editLoginForm.statusOk = false
+            editLoginForm.isSaving = false
+            return
+        }
+
+        main.editItem(itemId, {
+            name: name,
+            login: {
+                username: username,
+                password: password,
+                uris: uri ? [{ uri: uri, match: null }] : []
+            }
+        }, function(success, message) {
+            editLoginForm.isSaving = false
+            if (success) {
+                editLoginForm.statusText = "Item updated"
+                editLoginForm.statusOk = true
+                ToastService.showNotice("Vault item updated")
+                Qt.callLater(function() { root.panelMode = "view" })
+            } else {
+                editLoginForm.statusText = "Error: " + (message || "Failed")
+                editLoginForm.statusOk = false
+                Logger.e("BitwardenPanel", "Edit login failed:", message)
+            }
+        })
+    }
+
+    function saveEditNote() {
+        var name  = editNoteForm.editName.trim()
+        var notes = editNoteForm.editNotes.trim()
+        var itemId = editNoteForm.editItemId
+
+        if (!name) {
+            editNoteForm.statusText = "Name is required"
+            editNoteForm.statusOk = false
+            return
+        }
+
+        editNoteForm.isSaving = true
+        editNoteForm.statusText = ""
+
+        var main = pluginApi?.mainInstance
+        if (!main || !main.editItem) {
+            editNoteForm.statusText = "Provider not ready"
+            editNoteForm.statusOk = false
+            editNoteForm.isSaving = false
+            return
+        }
+
+        main.editItem(itemId, {
+            name: name,
+            notes: notes
+        }, function(success, message) {
+            editNoteForm.isSaving = false
+            if (success) {
+                editNoteForm.statusText = "Item updated"
+                editNoteForm.statusOk = true
+                ToastService.showNotice("Vault item updated")
+                Qt.callLater(function() { root.panelMode = "view" })
+            } else {
+                editNoteForm.statusText = "Error: " + (message || "Failed")
+                editNoteForm.statusOk = false
+                Logger.e("BitwardenPanel", "Edit note failed:", message)
             }
         })
     }

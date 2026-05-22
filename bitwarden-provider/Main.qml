@@ -41,4 +41,13 @@ Item {
             provider.fetchItems()
         }
     }
+
+    function editItem(itemId, itemData, callback) {
+        if (provider) {
+            provider.editItem(itemId, itemData, callback)
+        } else {
+            Logger.w("BitwardenMain", "No provider registered")
+            if (callback) callback(false, "Provider not ready")
+        }
+    }
 }
