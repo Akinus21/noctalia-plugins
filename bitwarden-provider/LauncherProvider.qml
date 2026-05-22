@@ -666,7 +666,6 @@ Item {
             pluginApi.pluginSettings._viewItem  = item
             pluginApi.openPanel(screen)
         })
-        if (launcher) launcher.close()
     }
 
     function openAddPanel(type) {
