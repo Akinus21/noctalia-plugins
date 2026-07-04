@@ -350,12 +350,17 @@ Item {
 
             NBox {
               Layout.fillWidth: true
+              implicitHeight: rowLayout.implicitHeight + Style.marginM * 2
               radius: Style.radiusM
 
               RowLayout {
                 id: rowLayout
-                Layout.fillWidth: true
-                Layout.margins: Style.marginM
+                anchors {
+                  left: parent.left
+                  right: parent.right
+                  verticalCenter: parent.verticalCenter
+                  margins: Style.marginM
+                }
                 spacing: Style.marginM
 
                 ColumnLayout {
