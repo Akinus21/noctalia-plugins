@@ -1,7 +1,7 @@
 {
   "id": "flatpak-manager",
   "name": "Flatpak Manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minNoctaliaVersion": "4.4.1",
   "author": "Noctalia",
   "license": "MIT",
@@ -23,7 +23,10 @@
   "metadata": {
     "defaultSettings": {
       "defaultScope": "user",
-      "enabledRemotes": ["flathub", "flathub-beta"],
+      "enabledRemotes": [
+        "flathub",
+        "flathub-beta"
+      ],
       "appstreamUpdated": false
     }
   }

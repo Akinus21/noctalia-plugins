@@ -68,6 +68,20 @@
       "license": "MIT",
       "repository": "https://github.com/noctalia-dev/noctalia-plugins",
       "minNoctaliaVersion": "4.4.1"
+    },
+    {
+      "id": "flatpak-manager",
+      "name": "Flatpak Manager",
+      "version": "1.0.1",
+      "description": "Full Flatpak management: search, install, uninstall, update, run, kill flatpaks with multiple remotes support",
+      "tags": [
+        "Launcher",
+        "Panel"
+      ],
+      "author": "Noctalia",
+      "license": "MIT",
+      "repository": "https://github.com/noctalia-dev/noctalia-plugins",
+      "minNoctaliaVersion": "4.4.1"
     }
   ]
 }
