@@ -314,6 +314,7 @@ Item {
         visible: selectedTab === "browse"
 
         ColumnLayout {
+          Layout.fillWidth: true
           width: parent.width
           spacing: Style.marginM
 
@@ -367,19 +368,21 @@ Item {
                   spacing: 2
 
                   NText {
-                    text: modelData.name || modelData.id || ""
+                    text: modelData.name || modelData.application || ""
                     font.weight: Font.Medium
                     color: Color.mOnSurface
                     Layout.fillWidth: true
                   }
                   NText {
-                    text: modelData.id || ""
-                    color: Color.mOnSurfaceVariant
-                    pointSize: Style.fontSizeXS
+                    text: modelData.description || ""
+                    color: Color.mOnSurface
+                    pointSize: Style.fontSizeS
                     Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: 2
                   }
                   NText {
-                    text: modelData.version || ""
+                    text: modelData.application || modelData.id || ""
                     color: Color.mOnSurfaceVariant
                     pointSize: Style.fontSizeXS
                     Layout.fillWidth: true
@@ -389,7 +392,7 @@ Item {
                 NButton {
                   text: pluginApi?.tr("panel.install") || "Install"
                   outlined: true
-                  onClicked: installFlatpak(modelData.id, modelData.name)
+                  onClicked: installFlatpak(modelData.application || modelData.id, modelData.name)
                 }
 
                 NButton {
@@ -827,9 +830,10 @@ Item {
 
     return {
       name: parts[0] || "",
-      application: parts[1] || "",
-      version: parts[2] || "",
-      origin: parts[3] || ""
+      description: parts[1] || "",
+      application: parts[2] || "",
+      version: parts[3] || "",
+      origin: parts[4] || ""
     }
   }
 
