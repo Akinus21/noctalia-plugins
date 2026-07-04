@@ -314,8 +314,7 @@ Item {
         visible: selectedTab === "browse"
 
         ColumnLayout {
-          Layout.fillWidth: true
-          Layout.fillHeight: true
+          width: parent.width
           spacing: Style.marginM
 
           NTextInput {
@@ -820,9 +819,6 @@ Item {
 
   function parseFlatpakLine(line) {
     var parts = line.split(/\t+/)
-    if (parts.length < 2) {
-      parts = line.split(/\s{2,}/)
-    }
     if (parts.length < 2) {
       parts = line.split(/\s+/)
     }
