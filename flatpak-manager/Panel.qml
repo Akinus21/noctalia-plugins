@@ -315,7 +315,7 @@ Item {
 
         ColumnLayout {
           Layout.fillWidth: true
-          width: parent.width
+          Layout.fillHeight: true
           spacing: Style.marginM
 
           NTextInput {
@@ -350,17 +350,12 @@ Item {
 
             NBox {
               Layout.fillWidth: true
-              implicitHeight: rowLayout.implicitHeight + Style.marginM * 2
               radius: Style.radiusM
 
               RowLayout {
                 id: rowLayout
-                anchors {
-                  left: parent.left
-                  right: parent.right
-                  verticalCenter: parent.verticalCenter
-                  margins: Style.marginM
-                }
+                Layout.fillWidth: true
+                Layout.margins: Style.marginM
                 spacing: Style.marginM
 
                 ColumnLayout {
