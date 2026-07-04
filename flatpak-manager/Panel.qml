@@ -314,7 +314,9 @@ Item {
         visible: selectedTab === "browse"
 
         ColumnLayout {
-          width: parent.width
+          Layout.fillWidth: true
+          Layout.fillHeight: true
+          implicitWidth: availableWidth
           spacing: Style.marginM
 
           NTextInput {
@@ -818,18 +820,21 @@ Item {
   }
 
   function parseFlatpakLine(line) {
-    var parts = line.split(/\t+/)
-    if (parts.length < 2) {
+    // flatpak search output: Name    Description    app.id    version    origin
+    // Fields separated by 2+ spaces
+    var parts = line.split(/\s{2,}/)
+    if (parts.length < 3) {
+      // fallback: try single spaces but then we need to know field positions
       parts = line.split(/\s+/)
     }
-    if (parts.length < 2) return null
+    if (parts.length < 3) return null
 
     return {
-      name: parts[0] || "",
-      description: parts[1] || "",
-      application: parts[2] || "",
-      version: parts[3] || "",
-      origin: parts[4] || ""
+      name: parts[0]?.trim() || "",
+      description: parts[1]?.trim() || "",
+      application: parts[2]?.trim() || "",
+      version: parts[3]?.trim() || "",
+      origin: parts[4]?.trim() || ""
     }
   }
 
