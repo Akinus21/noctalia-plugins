@@ -314,7 +314,8 @@ Item {
         visible: selectedTab === "browse"
 
         ColumnLayout {
-          width: parent.width
+          width: parent.contentItem ? parent.contentItem.width : parent.width
+          height: parent.contentItem ? parent.contentItem.height : parent.height
           spacing: Style.marginM
 
           NTextInput {
