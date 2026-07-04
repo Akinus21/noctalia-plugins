@@ -156,7 +156,7 @@ Item {
     var scope = getScopeFlag()
     listInstalledProcess.command = [
       "sh", "-c",
-      "flatpak " + scope + " list --app --columns=name,id,version,origin,runtime,size 2>&1"
+      "flatpak " + scope + " list --app --columns=name,application,version,origin,runtime,size 2>&1"
     ]
     listInstalledProcess.running = true
   }
@@ -178,7 +178,7 @@ Item {
     var scope = getScopeFlag()
     listUpdatesProcess.command = [
       "sh", "-c",
-      "flatpak " + scope + " list --app --upgrades --columns=name,id,version,origin,runtime,size 2>&1"
+      "flatpak " + scope + " list --app --upgrades --columns=name,application,version,origin,runtime,size 2>&1"
     ]
     listUpdatesProcess.running = true
   }
@@ -206,7 +206,7 @@ Item {
       if (!line || line.length < 5) continue
       if (line.indexOf("Name") !== -1 && line.indexOf("ID") !== -1) continue
       var flatpak = parseFlatpakLine(line)
-      if (flatpak && flatpak.id) result.push(flatpak)
+      if (flatpak && flatpak.application) result.push(flatpak)
     }
     installedFlatpaks = result
     Logger.i("FlatpakManager", "Parsed", result.length, "installed flatpaks")
@@ -248,7 +248,7 @@ Item {
       if (!line || line.length < 5) continue
       if (line.indexOf("Name") !== -1 && line.indexOf("ID") !== -1) continue
       var flatpak = parseFlatpakLine(line)
-      if (flatpak && flatpak.id) result.push(flatpak)
+      if (flatpak && flatpak.application) result.push(flatpak)
     }
     updateableFlatpaks = result
     Logger.i("FlatpakManager", "Parsed", result.length, "updateable flatpaks")
@@ -289,7 +289,7 @@ Item {
 
     return {
       name: parts[0] || "",
-      id: parts[1] || "",
+      application: parts[1] || "",
       version: parts[2] || "",
       origin: parts[3] || "",
       runtime: parts[4] || "",
@@ -446,7 +446,7 @@ Item {
       var line = lines[i].trim()
       if (!line || line.length < 5) continue
       var flatpak = parseFlatpakLine(line)
-      if (flatpak && flatpak.id) result.push(flatpak)
+      if (flatpak && flatpak.application) result.push(flatpak)
     }
     if (root._searchCallback) {
       root._searchCallback(result)

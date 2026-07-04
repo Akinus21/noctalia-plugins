@@ -131,7 +131,7 @@ Item {
     var scope = getScopeFlag()
     listProcess.command = [
       "sh", "-c",
-      "flatpak " + scope + " list --app --columns=name,id,version,origin 2>&1"
+      "flatpak " + scope + " list --app --columns=name,application,version,origin 2>&1"
     ]
     listProcess.running = true
   }
@@ -153,7 +153,7 @@ Item {
       if (!line || line.length < 5) continue
       if (line.indexOf("Name") !== -1 && line.indexOf("ID") !== -1) continue
       var flatpak = parseFlatpakLine(line)
-      if (flatpak && flatpak.id) result.push(flatpak)
+      if (flatpak && flatpak.application) result.push(flatpak)
     }
     root.installedFlatpaks = result
     root.loaded = true
@@ -175,7 +175,7 @@ Item {
 
     return {
       name: parts[0] || "",
-      id: parts[1] || "",
+      application: parts[1] || "",
       version: parts[2] || "",
       origin: parts[3] || ""
     }

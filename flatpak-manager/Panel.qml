@@ -695,7 +695,7 @@ Item {
     var scope = getScopeFlag()
     listInstalledProcess.command = [
       "sh", "-c",
-      "flatpak " + scope + " list --app --columns=name,id,version,origin 2>&1"
+      "flatpak " + scope + " list --app --columns=name,application,version,origin 2>&1"
     ]
     listInstalledProcess.running = true
   }
@@ -716,7 +716,7 @@ Item {
     var scope = getScopeFlag()
     listUpdatesProcess.command = [
       "sh", "-c",
-      "flatpak " + scope + " list --app --upgrades --columns=name,id,version,origin 2>&1"
+      "flatpak " + scope + " list --app --upgrades --columns=name,application,version,origin 2>&1"
     ]
     listUpdatesProcess.running = true
   }
@@ -744,7 +744,7 @@ Item {
       if (!line || line.length < 5) continue
       if (line.indexOf("Name") !== -1 && line.indexOf("ID") !== -1) continue
       var flatpak = parseFlatpakLine(line)
-      if (flatpak && flatpak.id) result.push(flatpak)
+      if (flatpak && flatpak.application) result.push(flatpak)
     }
     allFlatpaks = result
     Logger.i("FlatpakPanel", "Parsed", result.length, "installed flatpaks")
@@ -786,7 +786,7 @@ Item {
       if (!line || line.length < 5) continue
       if (line.indexOf("Name") !== -1 && line.indexOf("ID") !== -1) continue
       var flatpak = parseFlatpakLine(line)
-      if (flatpak && flatpak.id) result.push(flatpak)
+      if (flatpak && flatpak.application) result.push(flatpak)
     }
     updateableFlatpaks = result
     Logger.i("FlatpakPanel", "Parsed", result.length, "updateable flatpaks")
@@ -827,7 +827,7 @@ Item {
 
     return {
       name: parts[0] || "",
-      id: parts[1] || "",
+      application: parts[1] || "",
       version: parts[2] || "",
       origin: parts[3] || ""
     }
@@ -860,7 +860,7 @@ Item {
       var line = lines[i].trim()
       if (!line || line.length < 5) continue
       var flatpak = parseFlatpakLine(line)
-      if (flatpak && flatpak.id) result.push(flatpak)
+      if (flatpak && flatpak.application) result.push(flatpak)
     }
     searchResults = result
     Logger.i("FlatpakPanel", "Parsed", result.length, "search results")
@@ -871,7 +871,7 @@ Item {
   }
 
   function showFlatpakInfo(flatpak) {
-    ToastService.showNotice(flatpak.name + ": " + flatpak.id)
+    ToastService.showNotice(flatpak.name + ": " + flatpak.application)
   }
 
   function runFlatpak(id, name) {
