@@ -1,0 +1,92 @@
+{
+  "launcher": {
+    "searchPlaceholder": "Search flatpaks... (>fp for commands)",
+    "noResults": "No flatpaks found"
+  },
+  "panel": {
+    "title": "Flatpak Manager",
+    "installed": "Installed",
+    "browse": "Browse",
+    "updates": "Updates",
+    "remotes": "Remotes",
+    "running": "Running",
+    "noInstalled": "No installed flatpaks",
+    "noUpdates": "All flatpaks are up to date",
+    "noRunning": "No running flatpaks",
+    "noRemotes": "No remotes configured",
+    "loading": "Loading...",
+    "searchLabel": "Search Flatpaks",
+    "searchHint": "Type to search flatpaks",
+    "updateAll": "Update All",
+    "refreshAppstream": "Refresh Appstream",
+    "refresh": "Refresh",
+    "run": "Run",
+    "update": "Update",
+    "uninstall": "Uninstall",
+    "install": "Install",
+    "info": "Info",
+    "kill": "Kill",
+    "configuredRemotes": "Configured Remotes",
+    "pid": "PID:"
+  },
+  "flatpak": {
+    "name": "Name",
+    "id": "ID",
+    "version": "Version",
+    "origin": "Origin",
+    "runtime": "Runtime",
+    "size": "Size",
+    "installed": "Installed",
+    "available": "Available"
+  },
+  "actions": {
+    "install": "Install",
+    "uninstall": "Uninstall",
+    "update": "Update",
+    "run": "Run",
+    "kill": "Kill",
+    "info": "Info",
+    "reinstall": "Reinstall",
+    "launch": "Launch",
+    "open": "Open",
+    "refreshRemotes": "Refresh Remotes",
+    "addRemote": "Add Remote",
+    "removeRemote": "Remove Remote"
+  },
+  "remotes": {
+    "flathub": "Flathub",
+    "flathubBeta": "Flathub Beta",
+    "gnomeNightly": "GNOME Nightly",
+    "gnomeStable": "GNOME Stable",
+    "kde": "KDE",
+    "kdeNext": "KDE Next",
+    "opensuse": "openSUSE",
+    "archExtra": "Arch Extra"
+  },
+  "settings": {
+    "defaultScope": "Default Scope",
+    "scopeUser": "User",
+    "scopeSystem": "System",
+    "scopeUserDesc": "Flatpaks installed for current user only",
+    "scopeSystemDesc": "System-wide flatpak installations",
+    "manageRemotes": "Manage Remotes",
+    "enabledRemotes": "Enabled Remotes"
+  },
+  "commands": {
+    "install": "Install a flatpak",
+    "uninstall": "Uninstall a flatpak",
+    "update": "Update a flatpak",
+    "run": "Run a flatpak",
+    "kill": "Stop a running flatpak",
+    "search": "Search for flatpaks",
+    "list": "List installed flatpaks"
+  },
+  "errors": {
+    "notInstalled": "Flatpak is not installed",
+    "installFailed": "Installation failed",
+    "uninstallFailed": "Uninstallation failed",
+    "updateFailed": "Update failed",
+    "searchFailed": "Search failed",
+    "noAppstream": "Run 'flatpak update --appstream' first to search"
+  }
+}
