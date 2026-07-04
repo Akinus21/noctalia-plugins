@@ -72,7 +72,7 @@
     {
       "id": "flatpak-manager",
       "name": "Flatpak Manager",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "description": "Full Flatpak management: search, install, uninstall, update, run, kill flatpaks with multiple remotes support",
       "tags": [
         "Launcher",
